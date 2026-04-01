@@ -492,100 +492,46 @@ const CustomizePage = () => {
             </div>
 
             <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
-              {/* Apple Wallet preview */}
+              {/* Device preview with toggle */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-base">🍎</span>
-                    <h2 className="font-display font-semibold text-sm">Apple Wallet</h2>
+                    <h2 className="font-display font-semibold text-sm">Aperçu Wallet</h2>
                     <Badge variant="outline" className="text-[9px] text-emerald-600 border-emerald-300">PassKit 1:1</Badge>
                   </div>
-                  <button
-                    onClick={() => setShowIPhoneMockup(!showIPhoneMockup)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                      showIPhoneMockup
-                        ? "bg-primary/10 text-primary border border-primary/20"
-                        : "bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Smartphone className="w-3 h-3" />
-                    iPhone
-                  </button>
+                  <div className="flex rounded-lg bg-secondary/60 p-0.5">
+                    <button
+                      onClick={() => setPreviewDevice("iphone")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                        previewDevice === "iphone"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🍎 iPhone
+                    </button>
+                    <button
+                      onClick={() => setPreviewDevice("samsung")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
+                        previewDevice === "samsung"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🤖 Samsung
+                    </button>
+                  </div>
                 </div>
                 <div className="flex justify-center">
-                  {showIPhoneMockup ? (
-                    <IPhoneMockup width={290}>
-                      <AppleWalletPass
-                        backgroundColor={form.primary_color}
-                        foregroundColor={form.foreground_color || undefined}
-                        labelColor={form.label_color || undefined}
-                        logoUrl={logoUrl || undefined}
-                        logoText={form.name || "Mon Commerce"}
-                        stripImageUrl={stripImageUrl || undefined}
-                        headerFields={headerFields}
-                        primaryFields={primaryFields}
-                        secondaryFields={secondaryFields}
-                        auxiliaryFields={auxiliaryFields}
-                        barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
-                        footerText={cardPreviewId.slice(0, 12)}
-                        
-                        width={258}
-                      />
+                  {previewDevice === "iphone" ? (
+                    <IPhoneMockup width={280}>
+                      {walletPassElement}
                     </IPhoneMockup>
                   ) : (
-                    walletPassElement
+                    <SamsungMockup width={280}>
+                      {walletPassElement}
+                    </SamsungMockup>
                   )}
-                </div>
-              </div>
-
-              {/* Google Wallet preview */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-base">🤖</span>
-                  <h2 className="font-display font-semibold text-sm">Google Wallet</h2>
-                  <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-full">Aperçu simulé</span>
-                </div>
-                <div
-                  className="rounded-2xl overflow-hidden shadow-md"
-                  style={{ background: `linear-gradient(145deg, ${form.primary_color}dd, ${form.secondary_color || form.primary_color}bb)` }}
-                >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        {logoUrl ? (
-                          <img src={logoUrl} alt="" className="w-8 h-8 rounded-lg object-cover bg-white/20" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-[10px] font-bold">
-                            {(form.name || "MC").slice(0, 2).toUpperCase()}
-                          </div>
-                        )}
-                        <div>
-                          <p className="text-white text-xs font-bold">{form.name || "Mon Commerce"}</p>
-                          <p className="text-white/60 text-[10px]">Carte de fidélité</p>
-                        </div>
-                      </div>
-                      <span className="text-white/60 text-[10px]">Google Wallet</span>
-                    </div>
-                    <div className="bg-white/10 rounded-xl p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-white/70 text-[10px] uppercase tracking-wide">Titulaire</p>
-                          <p className="text-white text-sm font-semibold">Marie Dupont</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-white/70 text-[10px] uppercase tracking-wide">Points</p>
-                          <p className="text-white text-sm font-bold">7 / {form.max_points_per_card}</p>
-                        </div>
-                      </div>
-                      <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                        <div className="h-full bg-white/80 rounded-full" style={{ width: `${Math.min((7 / form.max_points_per_card) * 100, 100)}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-black/20 px-4 py-2 flex items-center justify-between">
-                    <span className="text-white/60 text-[10px]">⭐ Gold</span>
-                    <span className="text-white/60 text-[10px]">{form.reward_description || "Récompense offerte"}</span>
-                  </div>
                 </div>
               </div>
 
