@@ -84,6 +84,7 @@ const App = () => (
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="/tarifs" element={<Tarifs />} />
+            <Route path="/faq" element={<FaqPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
