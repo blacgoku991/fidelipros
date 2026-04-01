@@ -18,12 +18,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link, Shield,
+  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -239,316 +237,280 @@ const CustomizePage = () => {
       <div className="grid lg:grid-cols-[1fr,360px] gap-6">
         {/* ─── LEFT: Configuration accordion ─── */}
         <div className="space-y-4">
-          <Accordion type="multiple" defaultValue={["branding", "type", "design"]} className="space-y-3">
+          <Tabs defaultValue="branding" className="space-y-4">
+            <TabsList className="bg-card border border-border/40 rounded-xl p-1 h-auto flex-wrap">
+              <TabsTrigger value="branding" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Palette className="w-3.5 h-3.5" /> Identité</TabsTrigger>
+              <TabsTrigger value="type" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Zap className="w-3.5 h-3.5" /> Type</TabsTrigger>
+              <TabsTrigger value="design" className="rounded-lg text-xs gap-1.5 px-3 py-2"><CreditCard className="w-3.5 h-3.5" /> Design</TabsTrigger>
+              <TabsTrigger value="fields" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Eye className="w-3.5 h-3.5" /> Champs</TabsTrigger>
+              <TabsTrigger value="rewards" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Gift className="w-3.5 h-3.5" /> Récompenses</TabsTrigger>
+              <TabsTrigger value="more" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Layout className="w-3.5 h-3.5" /> Plus</TabsTrigger>
+            </TabsList>
 
             {/* ── BRANDING ── */}
-            <AccordionItem value="branding" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Palette className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Identité & Marque</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 space-y-4">
-                <div>
-                  <Label className="mb-2 block text-xs">
-                    Logo
-                    {!logoUrl && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
-                  </Label>
-                  {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
+            <TabsContent value="branding" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
+              <div>
+                <Label className="mb-2 block text-xs">
+                  Logo
+                  {!logoUrl && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
+                </Label>
+                {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nom du commerce</Label>
+                <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Description</Label>
+                <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl text-sm" rows={2} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Catégorie</Label>
+                  <Select value={form.category} onValueChange={(v) => update("category", v)}>
+                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["general","boucherie","boulangerie","restaurant","cafe","coiffeur","barbier","fleuriste"].map(c => (
+                        <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Nom du commerce</Label>
-                  <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl text-sm" />
+                  <Label className="text-xs">Téléphone</Label>
+                  <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl text-sm" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Description</Label>
-                  <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl text-sm" rows={2} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Catégorie</Label>
-                    <Select value={form.category} onValueChange={(v) => update("category", v)}>
-                      <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {["general","boucherie","boulangerie","restaurant","cafe","coiffeur","barbier","fleuriste"].map(c => (
-                          <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Téléphone</Label>
-                    <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl text-sm" />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+              </div>
+            </TabsContent>
 
             {/* ── CARD TYPE ── */}
-            <AccordionItem value="type" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Zap className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Type de fidélité</span>
+            <TabsContent value="type" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { val: "points", emoji: "⭐", label: "Points" },
+                  { val: "stamps", emoji: "🎯", label: "Tampons" },
+                  { val: "cashback", emoji: "💰", label: "Cashback" },
+                  { val: "subscription", emoji: "📋", label: "Abonnement" },
+                ].map((type) => (
+                  <button
+                    key={type.val}
+                    onClick={() => update("loyalty_type", type.val as any)}
+                    className={`p-3 rounded-xl border-2 text-center transition-all ${
+                      form.loyalty_type === type.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
+                    }`}
+                  >
+                    <span className="text-xl block">{type.emoji}</span>
+                    <p className="font-semibold text-[11px] mt-1">{type.label}</p>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{form.loyalty_type === "stamps" ? "Tampons pour récompense" : "Points max par carte"}</Label>
+                  <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl text-sm" />
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 space-y-4">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">{form.loyalty_type === "cashback" ? "Points par euro" : "Points par visite"}</Label>
+                  <Input
+                    type="number"
+                    value={form.loyalty_type === "cashback" ? form.points_per_euro : form.points_per_visit}
+                    onChange={(e) => update(form.loyalty_type === "cashback" ? "points_per_euro" : "points_per_visit", parseInt(e.target.value) || 1)}
+                    className="rounded-xl text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Récompense</Label>
+                <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />
+              </div>
+              <div className="pt-3 border-t border-border/50 space-y-3">
+                <Label className="text-xs">Mode d'inscription client</Label>
+                <div className="grid grid-cols-3 gap-2">
                   {[
-                    { val: "points", emoji: "⭐", label: "Points" },
-                    { val: "stamps", emoji: "🎯", label: "Tampons" },
-                    { val: "cashback", emoji: "💰", label: "Cashback" },
-                    { val: "subscription", emoji: "📋", label: "Abonnement" },
-                  ].map((type) => (
+                    { val: "instant", emoji: "⚡", label: "Instantané" },
+                    { val: "email", emoji: "📧", label: "Email requis" },
+                    { val: "phone", emoji: "📱", label: "Tél. requis" },
+                  ].map((mode) => (
                     <button
-                      key={type.val}
-                      onClick={() => update("loyalty_type", type.val as any)}
-                      className={`p-3 rounded-xl border-2 text-center transition-all ${
-                        form.loyalty_type === type.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
+                      key={mode.val}
+                      onClick={() => update("onboarding_mode", mode.val as any)}
+                      className={`p-2 rounded-xl border-2 text-center transition-all text-xs ${
+                        form.onboarding_mode === mode.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
                       }`}
                     >
-                      <span className="text-xl block">{type.emoji}</span>
-                      <p className="font-semibold text-[11px] mt-1">{type.label}</p>
+                      <span className="text-lg block">{mode.emoji}</span>
+                      {mode.label}
                     </button>
                   ))}
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{form.loyalty_type === "stamps" ? "Tampons pour récompense" : "Points max par carte"}</Label>
-                    <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl text-sm" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">{form.loyalty_type === "cashback" ? "Points par euro" : "Points par visite"}</Label>
-                    <Input
-                      type="number"
-                      value={form.loyalty_type === "cashback" ? form.points_per_euro : form.points_per_visit}
-                      onChange={(e) => update(form.loyalty_type === "cashback" ? "points_per_euro" : "points_per_visit", parseInt(e.target.value) || 1)}
-                      className="rounded-xl text-sm"
-                    />
+              </div>
+            </TabsContent>
+
+            {/* ── DESIGN ── */}
+            <TabsContent value="design" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
+              {/* Preset themes */}
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Thèmes rapides</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {presetThemes.map((theme) => (
+                    <button
+                      key={theme.label}
+                      onClick={() => {
+                        update("primary_color", theme.primary);
+                        update("secondary_color", theme.secondary);
+                        update("card_style", theme.style as any);
+                        toast.success(`Thème "${theme.label}" appliqué !`);
+                      }}
+                      className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-md transition-all"
+                    >
+                      <div className="w-full h-8 rounded-lg shadow-sm group-hover:scale-105 transition-transform" style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }} />
+                      <span className="text-[10px] font-semibold">{theme.emoji} {theme.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* Colors */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Fond</Label>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
+                    <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-[11px]" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Récompense</Label>
-                  <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />
-                </div>
-                <div className="pt-3 border-t border-border/50 space-y-3">
-                  <Label className="text-xs">Mode d'inscription client</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { val: "instant", emoji: "⚡", label: "Instantané" },
-                      { val: "email", emoji: "📧", label: "Email requis" },
-                      { val: "phone", emoji: "📱", label: "Tél. requis" },
-                    ].map((mode) => (
-                      <button
-                        key={mode.val}
-                        onClick={() => update("onboarding_mode", mode.val as any)}
-                        className={`p-2 rounded-xl border-2 text-center transition-all text-xs ${
-                          form.onboarding_mode === mode.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
-                        }`}
-                      >
-                        <span className="text-lg block">{mode.emoji}</span>
-                        {mode.label}
-                      </button>
-                    ))}
+                  <Label className="text-xs">Texte</Label>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={form.foreground_color || "#ffffff"} onChange={(e) => update("foreground_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
+                    <Input value={form.foreground_color} onChange={(e) => update("foreground_color", e.target.value)} className="rounded-xl text-[11px]" placeholder="Auto" />
                   </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* ── DESIGN (Colors, style, strip) ── */}
-            <AccordionItem value="design" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <CreditCard className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Design de la carte</span>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Labels</Label>
+                  <div className="flex gap-2 items-center">
+                    <input type="color" value={form.label_color || "#cccccc"} onChange={(e) => update("label_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
+                    <Input value={form.label_color} onChange={(e) => update("label_color", e.target.value)} className="rounded-xl text-[11px]" placeholder="Auto" />
+                  </div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 space-y-4">
-                {/* Preset themes */}
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Thèmes rapides</p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {presetThemes.map((theme) => (
+              </div>
+              {/* Style */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Style</Label>
+                  <Select value={form.card_style} onValueChange={(v) => update("card_style", v)}>
+                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {cardStyles.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Type de fond</Label>
+                  <Select value={form.card_bg_type} onValueChange={(v) => update("card_bg_type", v as any)}>
+                    <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="solid">Couleur unie</SelectItem>
+                      <SelectItem value="gradient">Dégradé</SelectItem>
+                      <SelectItem value="image">Image</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {/* Strip/Banner image upload */}
+              {form.card_bg_type === "image" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Image bannière (strip)</Label>
+                  {stripImageUrl ? (
+                    <div className="relative group">
+                      <img src={stripImageUrl} alt="Strip" className="w-full h-20 object-cover rounded-xl border border-border/50" />
                       <button
-                        key={theme.label}
-                        onClick={() => {
-                          update("primary_color", theme.primary);
-                          update("secondary_color", theme.secondary);
-                          update("card_style", theme.style as any);
-                          toast.success(`Thème "${theme.label}" appliqué !`);
+                        onClick={async () => {
+                          setStripImageUrl(null);
+                          if (business) {
+                            await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
+                          }
                         }}
-                        className="group flex flex-col items-center gap-1.5 p-2.5 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-md transition-all"
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                       >
-                        <div className="w-full h-8 rounded-lg shadow-sm group-hover:scale-105 transition-transform" style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }} />
-                        <span className="text-[10px] font-semibold">{theme.emoji} {theme.label}</span>
+                        ×
                       </button>
-                    ))}
-                  </div>
-                </div>
-                {/* Colors */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Fond</Label>
-                    <div className="flex gap-2 items-center">
-                      <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
-                      <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-[11px]" />
                     </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Texte</Label>
-                    <div className="flex gap-2 items-center">
-                      <input type="color" value={form.foreground_color || "#ffffff"} onChange={(e) => update("foreground_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
-                      <Input value={form.foreground_color} onChange={(e) => update("foreground_color", e.target.value)} className="rounded-xl text-[11px]" placeholder="Auto" />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Labels</Label>
-                    <div className="flex gap-2 items-center">
-                      <input type="color" value={form.label_color || "#cccccc"} onChange={(e) => update("label_color", e.target.value)} className="w-8 h-8 rounded-lg border cursor-pointer" />
-                      <Input value={form.label_color} onChange={(e) => update("label_color", e.target.value)} className="rounded-xl text-[11px]" placeholder="Auto" />
-                    </div>
-                  </div>
+                  ) : (
+                    <button
+                      onClick={() => stripFileRef.current?.click()}
+                      className="w-full h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                    >
+                      <span className="text-xs text-muted-foreground">+ Ajouter une image</span>
+                    </button>
+                  )}
+                  <input
+                    ref={stripFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !business) return;
+                      if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
+                      const ext = file.name.split(".").pop();
+                      const path = `${business.id}/strip.${ext}`;
+                      const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
+                      if (error) { toast.error("Erreur upload"); return; }
+                      const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
+                      const url = `${publicUrl}?t=${Date.now()}`;
+                      setStripImageUrl(url);
+                      await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
+                      toast.success("Image bannière mise à jour !");
+                    }}
+                  />
+                  <p className="text-[10px] text-muted-foreground">Idéal : 640×200px · PNG/JPG · max 2 Mo</p>
                 </div>
-                {/* Style */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Style</Label>
-                    <Select value={form.card_style} onValueChange={(v) => update("card_style", v)}>
-                      <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {cardStyles.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Type de fond</Label>
-                    <Select value={form.card_bg_type} onValueChange={(v) => update("card_bg_type", v as any)}>
-                      <SelectTrigger className="rounded-xl text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="solid">Couleur unie</SelectItem>
-                        <SelectItem value="gradient">Dégradé</SelectItem>
-                        <SelectItem value="image">Image</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                {/* Strip/Banner image upload */}
-                {form.card_bg_type === "image" && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Image bannière (strip)</Label>
-                    {stripImageUrl ? (
-                      <div className="relative group">
-                        <img src={stripImageUrl} alt="Strip" className="w-full h-20 object-cover rounded-xl border border-border/50" />
-                        <button
-                          onClick={async () => {
-                            setStripImageUrl(null);
-                            if (business) {
-                              await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
-                            }
-                          }}
-                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => stripFileRef.current?.click()}
-                        className="w-full h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                      >
-                        <span className="text-xs text-muted-foreground">+ Ajouter une image</span>
-                      </button>
-                    )}
-                    <input
-                      ref={stripFileRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file || !business) return;
-                        if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
-                        const ext = file.name.split(".").pop();
-                        const path = `${business.id}/strip.${ext}`;
-                        const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
-                        if (error) { toast.error("Erreur upload"); return; }
-                        const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
-                        const url = `${publicUrl}?t=${Date.now()}`;
-                        setStripImageUrl(url);
-                        await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
-                        toast.success("Image bannière mise à jour !");
-                      }}
-                    />
-                    <p className="text-[10px] text-muted-foreground">Idéal : 640×200px · PNG/JPG · max 2 Mo</p>
-                  </div>
-                )}
-              </AccordionContent>
-            </AccordionItem>
+              )}
+            </TabsContent>
 
             {/* ── VISIBLE FIELDS ── */}
-            <AccordionItem value="fields" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Eye className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Champs visibles</span>
+            <TabsContent value="fields" className="rounded-2xl bg-card border border-border/50 p-5 space-y-2.5">
+              {[
+                { key: "show_customer_name" as const, label: "Nom du client" },
+                { key: "show_qr_code" as const, label: "QR Code" },
+                { key: "show_points" as const, label: "Points / Tampons" },
+                { key: "show_expiration" as const, label: "Date d'expiration" },
+                { key: "show_rewards_preview" as const, label: "Récompense" },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between py-1">
+                  <span className="text-sm">{item.label}</span>
+                  <Switch checked={form[item.key]} onCheckedChange={(v) => update(item.key, v)} />
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 space-y-2.5">
-                {[
-                  { key: "show_customer_name" as const, label: "Nom du client" },
-                  { key: "show_qr_code" as const, label: "QR Code" },
-                  { key: "show_points" as const, label: "Points / Tampons" },
-                  { key: "show_expiration" as const, label: "Date d'expiration" },
-                  { key: "show_rewards_preview" as const, label: "Récompense" },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between py-1">
-                    <span className="text-sm">{item.label}</span>
-                    <Switch checked={form[item.key]} onCheckedChange={(v) => update(item.key, v)} />
-                  </div>
-                ))}
-              </AccordionContent>
-            </AccordionItem>
+              ))}
+            </TabsContent>
 
             {/* ── REWARDS ── */}
-            <AccordionItem value="rewards" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Gift className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Récompenses & Relance</span>
+            <TabsContent value="rewards" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm">Relance des inactifs</p>
+                  <p className="text-xs text-muted-foreground">Notification push après X jours</p>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm">Relance des inactifs</p>
-                    <p className="text-xs text-muted-foreground">Notification push après X jours</p>
-                  </div>
-                  <Switch checked={form.auto_reminder_enabled} onCheckedChange={(v) => update("auto_reminder_enabled", v)} />
-                </div>
-                {form.auto_reminder_enabled && (
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Jours d'inactivité</Label>
-                    <Input type="number" value={form.auto_reminder_days} onChange={(e) => update("auto_reminder_days", parseInt(e.target.value) || 7)} className="rounded-xl text-sm" />
-                  </div>
-                )}
+                <Switch checked={form.auto_reminder_enabled} onCheckedChange={(v) => update("auto_reminder_enabled", v)} />
+              </div>
+              {form.auto_reminder_enabled && (
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Seuil d'alerte récompense</Label>
-                  <Input type="number" value={form.reward_alert_threshold} onChange={(e) => update("reward_alert_threshold", parseInt(e.target.value) || 2)} className="rounded-xl text-sm" />
-                  <p className="text-[11px] text-muted-foreground">Rappel quand le client est à {form.reward_alert_threshold} points de sa récompense</p>
+                  <Label className="text-xs">Jours d'inactivité</Label>
+                  <Input type="number" value={form.auto_reminder_days} onChange={(e) => update("auto_reminder_days", parseInt(e.target.value) || 7)} className="rounded-xl text-sm" />
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-xs">Seuil d'alerte récompense</Label>
+                <Input type="number" value={form.reward_alert_threshold} onChange={(e) => update("reward_alert_threshold", parseInt(e.target.value) || 2)} className="rounded-xl text-sm" />
+                <p className="text-[11px] text-muted-foreground">Rappel quand le client est à {form.reward_alert_threshold} points de sa récompense</p>
+              </div>
+            </TabsContent>
 
-            {/* ── QR CODE / VITRINE ── */}
-            <AccordionItem value="qrcode" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Link className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">QR Code & Vitrine</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5">
+            {/* ── MORE: QR, Template, Modules ── */}
+            <TabsContent value="more" className="space-y-4">
+              {/* QR Code */}
+              <div className="rounded-2xl bg-card border border-border/50 p-5">
+                <h3 className="font-display font-semibold text-sm mb-4 flex items-center gap-2"><LinkIcon className="w-4 h-4 text-primary" /> QR Code & Vitrine</h3>
                 <div className="flex flex-col items-center space-y-4">
                   <div
                     id="qr-printable"
@@ -600,31 +562,17 @@ const CustomizePage = () => {
                     </Button>
                   </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
+              </div>
 
-            {/* ── TEMPLATE ── */}
-            <AccordionItem value="template" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Layout className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Template métier</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5">
+              {/* Template */}
+              <div className="rounded-2xl bg-card border border-border/50 p-5">
+                <h3 className="font-display font-semibold text-sm mb-4 flex items-center gap-2"><Layout className="w-4 h-4 text-primary" /> Template métier</h3>
                 <TemplatePicker currentTemplate={form.business_template} onSelect={handleTemplateSelect} />
-              </AccordionContent>
-            </AccordionItem>
+              </div>
 
-            {/* ── MODULES ── */}
-            <AccordionItem value="modules" className="rounded-2xl bg-card border border-border/50 px-5">
-              <AccordionTrigger className="py-4 hover:no-underline">
-                <div className="flex items-center gap-2.5">
-                  <Shield className="w-4 h-4 text-primary" />
-                  <span className="font-display font-semibold text-sm">Modules</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-5">
+              {/* Modules */}
+              <div className="rounded-2xl bg-card border border-border/50 p-5">
+                <h3 className="font-display font-semibold text-sm mb-4 flex items-center gap-2"><Shield className="w-4 h-4 text-primary" /> Modules</h3>
                 <FeatureToggles
                   config={{
                     feature_gamification: form.feature_gamification,
@@ -635,9 +583,9 @@ const CustomizePage = () => {
                   onChange={(key, value) => update(key as keyof typeof form, value as any)}
                   plan={business?.subscription_plan || "starter"}
                 />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* ─── RIGHT: Sticky device preview ─── */}

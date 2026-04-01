@@ -10,6 +10,9 @@ import { AnalyticsChart } from "@/components/dashboard/AnalyticsChart";
 import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton";
 import { RecentActivityWidget } from "@/components/dashboard/RecentActivityWidget";
 import { ProgramHealthScore } from "@/components/dashboard/ProgramHealthScore";
+import { BusinessResults } from "@/components/dashboard/BusinessResults";
+import { SmartSuggestions } from "@/components/dashboard/SmartSuggestions";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -337,6 +340,15 @@ const Dashboard = () => {
           </div>
         </motion.div>
       )}
+
+      {/* ── Quick Actions + Suggestions ── */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <BusinessResults />
+        <div className="space-y-4">
+          <QuickActions />
+          <SmartSuggestions />
+        </div>
+      </div>
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

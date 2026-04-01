@@ -14,6 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      automations: {
+        Row: {
+          business_id: string
+          cooldown_hours: number
+          created_at: string
+          id: string
+          is_active: boolean
+          last_triggered_at: string | null
+          message: string
+          target_segment: string
+          title: string
+          trigger_type: string
+          trigger_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          cooldown_hours?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          message: string
+          target_segment?: string
+          title: string
+          trigger_type?: string
+          trigger_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          cooldown_hours?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          message?: string
+          target_segment?: string
+          title?: string
+          trigger_type?: string
+          trigger_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       businesses: {
         Row: {
           accent_color: string | null
@@ -531,6 +584,53 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_locations: {
+        Row: {
+          address: string | null
+          business_id: string
+          city: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          latitude: number | null
+          longitude: number | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_id: string
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_id?: string
+          city?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_locations_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_campaigns: {
         Row: {
           business_id: string
@@ -1029,6 +1129,58 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      user_merchant_points: {
+        Row: {
+          business_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          merchant_location_id: string
+          points: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          merchant_location_id: string
+          points?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          merchant_location_id?: string
+          points?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_merchant_points_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_merchant_points_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_merchant_points_merchant_location_id_fkey"
+            columns: ["merchant_location_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_locations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
