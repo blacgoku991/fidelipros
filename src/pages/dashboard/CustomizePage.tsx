@@ -301,7 +301,7 @@ const CustomizePage = () => {
                     width: "260px",
                   }}
                 >
-                  {/* Header: logo + name + stamps */}
+                  {/* Header: logo + name + points */}
                   <div className="flex items-center justify-between px-4 pt-4 pb-2">
                     <div className="flex items-center gap-2.5 min-w-0">
                       {logoUrl ? (
@@ -314,8 +314,8 @@ const CustomizePage = () => {
                       <span className="font-bold text-sm text-white truncate">{form.name || "Mon Commerce"}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Stamps</p>
-                      <p className="text-lg font-bold text-white leading-none">7</p>
+                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Points</p>
+                      <p className="text-xl font-bold text-white leading-none">7</p>
                     </div>
                   </div>
 
@@ -330,22 +330,22 @@ const CustomizePage = () => {
                     )}
                   </div>
 
-                  {/* Member + Reward */}
+                  {/* Member + Tier */}
                   <div className="flex items-start justify-between px-4 pt-3 pb-1">
                     <div className="min-w-0">
                       <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Member</p>
-                      <p className="text-sm font-bold text-white truncate">Marie Dupont</p>
+                      <p className="text-base font-bold text-white truncate">Marie Dupont</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Reward</p>
-                      <p className="text-sm font-bold text-white">0</p>
+                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Tier</p>
+                      <p className="text-base font-bold text-white">Gold</p>
                     </div>
                   </div>
 
                   {/* QR Code */}
-                  <div className="flex flex-col items-center py-3 gap-1.5">
+                  <div className="flex flex-col items-center py-4 gap-2">
                     <div className="rounded-xl p-2 bg-white shadow-sm">
-                      <QRCodeSVG value="demo-card-001" size={80} bgColor="#fff" fgColor="#1a1a1a" level="M" />
+                      <QRCodeSVG value="demo-card-001" size={90} bgColor="#fff" fgColor="#1a1a1a" level="M" />
                     </div>
                     <span className="text-[10px] font-mono tracking-wider text-white/40">808f4ba8</span>
                   </div>
