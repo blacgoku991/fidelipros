@@ -119,6 +119,10 @@ export function Navbar() {
                   )
                 )}
                 <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-sm text-muted-foreground">Thème</span>
+                    <ThemeToggle />
+                  </div>
                   <Button asChild variant="outline" className="w-full justify-center rounded-xl h-11">
                     <Link to="/login">Se connecter</Link>
                   </Button>
