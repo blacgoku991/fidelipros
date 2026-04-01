@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CreditCard, LogOut, Menu } from "lucide-react";
+import { CreditCard, LogOut, Menu, Shield } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import type { SidebarItem, SidebarGroup } from "@/lib/sidebarItems";
 
 interface MobileHeaderProps {
