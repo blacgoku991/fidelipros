@@ -329,8 +329,8 @@ async function buildPkpassForUpdate(
   authToken: string
 ): Promise<Uint8Array> {
   const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
-  const p12Base64 = Deno.env.get("APPLE_P12_BASE64")!;
-  const p12Password = Deno.env.get("APPLE_P12_PASSWORD")!;
+  const p12Base64 = Deno.env.get("APPLE_PASS_CERTIFICATE")!;
+  const p12Password = Deno.env.get("APPLE_PASS_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
 
