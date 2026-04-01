@@ -541,7 +541,7 @@ const CampaignsPage = () => {
                     <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground">1</div>
                     <h3 className="text-sm font-semibold">Message</h3>
                   </div>
-                  <div className="flex gap-6">
+                  <div className="flex flex-col sm:flex-row gap-6">
                     {/* Fields */}
                     <div className="flex-1 space-y-4">
                       <div className="space-y-2">
