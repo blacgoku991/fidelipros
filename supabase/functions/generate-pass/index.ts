@@ -164,8 +164,8 @@ export async function buildPkpass(
   rewards: any[] = []
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
-  const p12Base64 = requireEnv("APPLE_P12_BASE64");
-  const p12Password = requireEnv("APPLE_P12_PASSWORD");
+  const p12Base64 = requireEnv("APPLE_PASS_CERTIFICATE");
+  const p12Password = requireEnv("APPLE_PASS_PASSWORD");
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
   const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);
