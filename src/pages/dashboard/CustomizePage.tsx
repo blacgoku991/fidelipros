@@ -229,11 +229,24 @@ const CustomizePage = () => {
       }
     >
       <div className="grid lg:grid-cols-[1fr,360px] gap-6">
+        {/* ─── MOBILE PREVIEW (visible on small screens only) ─── */}
+        <div className="lg:hidden">
+          <details className="rounded-2xl bg-card border border-border/50 overflow-hidden" open>
+            <summary className="p-4 cursor-pointer flex items-center justify-between font-display font-semibold text-sm">
+              <span className="flex items-center gap-2">👁️ Aperçu carte en temps réel</span>
+              <Badge variant="outline" className="text-[9px] text-emerald-600 border-emerald-300">Live</Badge>
+            </summary>
+            <div className="flex justify-center pb-4 px-4">
+              {walletPassElement}
+            </div>
+          </details>
+        </div>
+
         {/* ─── LEFT: Configuration accordion ─── */}
         <div className="space-y-4">
           <Tabs defaultValue="branding" className="space-y-4">
             <TabsList className="bg-card border border-border/40 rounded-xl p-1 h-auto flex-wrap">
-              <TabsTrigger value="branding" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Palette className="w-3.5 h-3.5" /> Identité</TabsTrigger>
+              <TabsTrigger value="branding" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Palette className="w-3.5 h-3.5" /> Identité & Logo</TabsTrigger>
               <TabsTrigger value="type" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Zap className="w-3.5 h-3.5" /> Type</TabsTrigger>
               <TabsTrigger value="design" className="rounded-lg text-xs gap-1.5 px-3 py-2"><CreditCard className="w-3.5 h-3.5" /> Design</TabsTrigger>
               <TabsTrigger value="fields" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Eye className="w-3.5 h-3.5" /> Champs</TabsTrigger>
