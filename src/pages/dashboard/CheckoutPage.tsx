@@ -350,9 +350,25 @@ const CheckoutPage = () => {
               className="space-y-6"
             >
               {error && (
-                <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-sm text-destructive text-center">
-                  {error} — <button className="underline" onClick={() => setError(null)}>Réessayer</button>
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-5 rounded-2xl bg-destructive/10 border border-destructive/20 text-center space-y-3"
+                >
+                  <div className="flex items-center justify-center gap-2 text-destructive">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-semibold text-sm">Erreur de paiement</span>
+                  </div>
+                  <p className="text-sm text-destructive/80">{error}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setError(null)}
+                    className="rounded-xl gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" /> Réessayer
+                  </Button>
+                </motion.div>
               )}
 
               <div className="grid md:grid-cols-2 gap-5">
