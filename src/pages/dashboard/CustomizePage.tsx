@@ -70,7 +70,8 @@ const CustomizePage = () => {
     { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉" }
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [stripImageUrl, setStripImageUrl] = useState<string | null>(null);
+  const stripFileRef = useRef<HTMLInputElement>(null);
   const [geocoding, setGeocoding] = useState(false);
 
   const geocodeAddress = async (address: string) => {
