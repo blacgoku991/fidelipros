@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -23,15 +23,15 @@ serve(async (req) => {
     );
 
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No auth header");
+    if (!authHeader) throw new Error("Non authentifié");
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !userData.user?.email) throw new Error("Auth failed");
+    if (userError || !userData.user?.email) throw new Error("Utilisateur non authentifié");
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
     const customers = await stripe.customers.list({ email: userData.user.email, limit: 1 });
-    if (customers.data.length === 0) throw new Error("No Stripe customer found");
+    if (customers.data.length === 0) throw new Error("Aucun client Stripe trouvé. Souscrivez d'abord un abonnement.");
 
     // Optional flow_data for subscription upgrade/downgrade
     let flow: string | undefined;
@@ -40,7 +40,7 @@ serve(async (req) => {
       flow = body?.flow;
     } catch { /* no body */ }
 
-    const origin = req.headers.get("origin") || "https://fidelispro.vercel.app";
+    const origin = req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
     const sessionParams: any = {
       customer: customers.data[0].id,
       return_url: `${origin}/dashboard/settings`,
@@ -60,7 +60,7 @@ serve(async (req) => {
     const msg = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 400,
     });
   }
 });

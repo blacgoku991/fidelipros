@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Fallback Price IDs (env vars ou hardcodé)
+// Fallback Price IDs
 const FALLBACK_PLANS: Record<string, string> = {
   starter:    Deno.env.get("STRIPE_PRICE_STARTER")    || "price_1TGQcwFQlLT8Im0J1OI53niu",
   pro:        Deno.env.get("STRIPE_PRICE_PRO")        || "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
@@ -24,7 +24,6 @@ serve(async (req) => {
     Deno.env.get("SUPABASE_ANON_KEY") ?? ""
   );
 
-  // Service role client pour lire site_settings
   const supabaseAdmin = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -32,15 +31,25 @@ serve(async (req) => {
   );
 
   try {
-    const authHeader = req.headers.get("Authorization")!;
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not configured");
+
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Non authentifié");
+
     const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
+    const { data, error: authError } = await supabaseClient.auth.getUser(token);
+    if (authError || !data.user?.email) throw new Error("Utilisateur non authentifié");
     const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated");
 
-    const { plan } = await req.json();
+    const body = await req.json();
+    const plan = body?.plan;
+    if (!plan || typeof plan !== "string") throw new Error("Plan non spécifié");
 
-    // Lire le Price ID depuis site_settings en priorité
+    // Dynamic origin from client or fallback
+    const origin = body?.origin || req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
+
+    // Read Price ID from site_settings first
     const { data: settingRow } = await supabaseAdmin
       .from("site_settings")
       .select("value")
@@ -51,11 +60,11 @@ serve(async (req) => {
       ? settingRow.value.trim()
       : FALLBACK_PLANS[plan];
 
-    if (!priceId) throw new Error(`Invalid plan: ${plan}`);
+    if (!priceId) throw new Error(`Plan invalide: ${plan}`);
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
-    });
+    console.log(`[CHECKOUT] Creating session for plan=${plan}, priceId=${priceId}, email=${user.email}`);
+
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     // Find or create Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
@@ -64,14 +73,13 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    // Hosted mode (redirect vers Stripe)
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: "https://fidelispro.vercel.app/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "https://fidelispro.vercel.app/dashboard/checkout",
+      success_url: `${origin}/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard/checkout?plan=${plan}`,
       payment_method_types: ["card"],
       subscription_data: {
         metadata: { user_id: user.id, plan },
@@ -79,15 +87,18 @@ serve(async (req) => {
       metadata: { user_id: user.id, plan },
     });
 
+    console.log(`[CHECKOUT] Session created: ${session.id}`);
+
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error(`[CHECKOUT] Error: ${msg}`);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: 400,
     });
   }
 });
