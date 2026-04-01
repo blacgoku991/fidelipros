@@ -353,13 +353,23 @@ async function createApnsJwt(
     .replace(/-----END PRIVATE KEY-----/g, "")
     .replace(/[\s\r\n]+/g, "");                     // strip all whitespace
 
-  console.log(`[APNs JWT] Cleaned PEM length: ${pemContent.length} chars`);
+  console.log(`[APNs JWT] Cleaned PEM length: ${pemContent.length} chars, first 20: "${pemContent.substring(0, 20)}", last 20: "${pemContent.substring(pemContent.length - 20)}"`);
 
-  // Decode base64 (support both standard and base64url variants)
-  const std = pemContent.replace(/-/g, "+").replace(/_/g, "/");
-  // Add padding if needed
-  const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
-  const bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  // Decode base64 — try standard atob first, fall back to manual
+  let bin: Uint8Array;
+  try {
+    const std = pemContent.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+    bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  } catch (e) {
+    // If atob still fails, the key might have been double-encoded or contain invalid chars
+    console.error(`[APNs JWT] atob failed, attempting manual decode. Error: ${e}`);
+    // Try removing any non-base64 characters
+    const cleaned = pemContent.replace(/[^A-Za-z0-9+/=]/g, "");
+    console.log(`[APNs JWT] After extra cleaning: ${cleaned.length} chars`);
+    const padded = cleaned + "=".repeat((4 - (cleaned.length % 4)) % 4);
+    bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  }
 
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
