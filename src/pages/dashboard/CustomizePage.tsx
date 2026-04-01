@@ -21,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link, Shield,
+  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
