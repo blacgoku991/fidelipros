@@ -2,12 +2,12 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { AppleWalletPass } from "@/components/AppleWalletPass";
+import { IPhoneMockup } from "@/components/IPhoneMockup";
 import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
-import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Users, Download, Copy, Printer, ExternalLink, Link, MapPin, Radar, Navigation,
+  Save, Palette, CreditCard, Bell, Zap, Shield, Layout, Download, Copy, Printer, ExternalLink, Link, Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,46 +34,57 @@ const cardStyles = [
 ];
 
 const presetThemes = [
-  {
-    label: "Dark",
-    emoji: "🌑",
-    primary: "#1a1a2e",
-    secondary: "#e94560",
-    style: "neon",
-  },
-  {
-    label: "Gold",
-    emoji: "✨",
-    primary: "#92400e",
-    secondary: "#F59E0B",
-    style: "luxury",
-  },
-  {
-    label: "Pastel",
-    emoji: "🌸",
-    primary: "#7c3aed",
-    secondary: "#f9a8d4",
-    style: "classic",
-  },
-  {
-    label: "Coloré",
-    emoji: "🎨",
-    primary: "#059669",
-    secondary: "#3b82f6",
-    style: "restaurant",
-  },
+  { label: "Dark", emoji: "🌑", primary: "#1a1a2e", secondary: "#e94560", style: "neon" },
+  { label: "Gold", emoji: "✨", primary: "#92400e", secondary: "#F59E0B", style: "luxury" },
+  { label: "Pastel", emoji: "🌸", primary: "#7c3aed", secondary: "#f9a8d4", style: "classic" },
+  { label: "Coloré", emoji: "🎨", primary: "#059669", secondary: "#3b82f6", style: "restaurant" },
 ];
+
+/** Build PassKit field arrays from form state */
+function buildPassFields(form: any) {
+  const headerFields = form.show_points
+    ? [{ key: "points", label: form.loyalty_type === "stamps" ? "Tampons" : "Points", value: "7" }]
+    : [];
+
+  const primaryFields = form.show_customer_name
+    ? [{ key: "member", label: "Membre", value: "Marie Dupont" }]
+    : [];
+
+  const secondaryFields = [];
+  if (form.loyalty_type === "cashback") {
+    secondaryFields.push({ key: "balance", label: "Cagnotte", value: "24,50 €" });
+  } else {
+    secondaryFields.push({
+      key: "progress",
+      label: form.loyalty_type === "stamps" ? "Progression" : "Objectif",
+      value: `7 / ${form.max_points_per_card}`,
+    });
+  }
+  if (form.reward_description) {
+    secondaryFields.push({ key: "reward", label: "Récompense", value: form.reward_description });
+  }
+
+  const auxiliaryFields = [
+    { key: "tier", label: "Niveau", value: "Gold ⭐" },
+  ];
+  if (form.show_expiration) {
+    auxiliaryFields.push({ key: "expiry", label: "Expire", value: "31/12/2026" });
+  }
+
+  return { headerFields, primaryFields, secondaryFields, auxiliaryFields };
+}
 
 const CustomizePage = () => {
   const { user, business } = useAuth();
-  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string }>(
-    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉" }
+  const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string; foreground_color: string; label_color: string }>(
+    { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉", foreground_color: "", label_color: "" }
   );
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [stripImageUrl, setStripImageUrl] = useState<string | null>(null);
   const stripFileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [showIPhoneMockup, setShowIPhoneMockup] = useState(false);
 
   const geocodeAddress = async (address: string) => {
     if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
@@ -142,6 +153,8 @@ const CustomizePage = () => {
       latitude: business.latitude || null,
       longitude: business.longitude || null,
       geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
+      foreground_color: (business as any).foreground_color || "",
+      label_color: (business as any).label_color || "",
     });
     setLogoUrl(business.logo_url || null);
     setStripImageUrl(business.card_bg_image_url || null);
@@ -150,7 +163,7 @@ const CustomizePage = () => {
   const handleSave = async () => {
     if (!business) return;
     setSaving(true);
-    const { name, description, address, city, phone, website, latitude, longitude, geofence_message, ...config } = form;
+    const { name, description, address, city, phone, website, latitude, longitude, geofence_message, foreground_color, label_color, ...config } = form;
     const { error } = await supabase.from("businesses").update({
       name, description, address, city, phone, website, latitude, longitude, geofence_message, ...config,
     } as any).eq("id", business.id);
@@ -168,7 +181,6 @@ const CustomizePage = () => {
     setForm(prev => ({ ...prev, [key]: value }));
   };
 
-  // QR code helpers
   const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
   const publicUrl = `${appBase}/b/${business?.id}`;
   const copyLink = () => { navigator.clipboard.writeText(publicUrl); toast.success("Lien copié !"); };
@@ -183,6 +195,29 @@ const CustomizePage = () => {
     img.onload = () => { ctx?.drawImage(img, 0, 0, 1024, 1024); const a = document.createElement("a"); a.download = `qr-${business?.name || "fidelipro"}.png`; a.href = canvas.toDataURL("image/png"); a.click(); };
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
+
+  // Build PassKit fields
+  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = buildPassFields(form);
+  const cardPreviewId = `preview-${user?.id?.slice(0, 8) || "demo"}`;
+
+  const walletPassElement = (
+    <AppleWalletPass
+      backgroundColor={form.primary_color}
+      foregroundColor={form.foreground_color || undefined}
+      labelColor={form.label_color || undefined}
+      logoUrl={logoUrl || undefined}
+      logoText={form.name || "Mon Commerce"}
+      stripImageUrl={stripImageUrl || undefined}
+      headerFields={headerFields}
+      primaryFields={primaryFields}
+      secondaryFields={secondaryFields}
+      auxiliaryFields={auxiliaryFields}
+      barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
+      footerText={cardPreviewId.slice(0, 12)}
+      promoText={form.show_rewards_preview ? form.reward_description : undefined}
+      width={280}
+    />
+  );
 
   return (
     <DashboardLayout
@@ -218,14 +253,11 @@ const CustomizePage = () => {
                 {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Nom du commerce</Label>
+                <Label className="text-xs">Nom du commerce (logoText)</Label>
                 <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl text-sm" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">
-                  Description
-                  {!form.description && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
-                </Label>
+                <Label className="text-xs">Description</Label>
                 <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl text-sm" placeholder="Décrivez votre commerce..." rows={2} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -263,24 +295,30 @@ const CustomizePage = () => {
             </div>
 
             <div className="space-y-5">
+              {/* Colors */}
               <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-                <h2 className="font-display font-semibold text-sm">Couleurs</h2>
-                <div className="grid grid-cols-2 gap-3">
+                <h2 className="font-display font-semibold text-sm">Couleurs PassKit</h2>
+                <p className="text-[11px] text-muted-foreground -mt-2">Ces couleurs sont envoyées telles quelles dans le fichier .pkpass</p>
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">
-                      Principale
-                      {form.primary_color === "#000000" && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
-                    </Label>
+                    <Label className="text-xs">Fond (backgroundColor)</Label>
                     <div className="flex gap-2 items-center">
                       <input type="color" value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
-                      <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-sm" />
+                      <Input value={form.primary_color} onChange={(e) => update("primary_color", e.target.value)} className="rounded-xl text-xs" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Secondaire</Label>
+                    <Label className="text-xs">Texte (foregroundColor)</Label>
                     <div className="flex gap-2 items-center">
-                      <input type="color" value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
-                      <Input value={form.secondary_color} onChange={(e) => update("secondary_color", e.target.value)} className="rounded-xl text-sm" />
+                      <input type="color" value={form.foreground_color || "#ffffff"} onChange={(e) => update("foreground_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                      <Input value={form.foreground_color} onChange={(e) => update("foreground_color", e.target.value)} className="rounded-xl text-xs" placeholder="Auto" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Labels (labelColor)</Label>
+                    <div className="flex gap-2 items-center">
+                      <input type="color" value={form.label_color || "#cccccc"} onChange={(e) => update("label_color", e.target.value)} className="w-9 h-9 rounded-lg border cursor-pointer" />
+                      <Input value={form.label_color} onChange={(e) => update("label_color", e.target.value)} className="rounded-xl text-xs" placeholder="Auto" />
                     </div>
                   </div>
                 </div>
@@ -290,66 +328,52 @@ const CustomizePage = () => {
                 </div>
               </div>
 
-              {/* Live Apple Wallet Preview */}
+              {/* Live preview */}
               <div className="p-5 rounded-2xl bg-card border border-border/50">
-                <h2 className="font-display font-semibold text-sm mb-3">Aperçu Apple Wallet</h2>
-                {/* Realistic Apple Wallet pass — portrait ratio */}
-                <div
-                  className="mx-auto rounded-2xl overflow-hidden shadow-xl"
-                  style={{
-                    background: `linear-gradient(145deg, ${form.primary_color || "#6B46C1"}, ${form.secondary_color || "#4c2d8a"})`,
-                    width: "260px",
-                  }}
-                >
-                  {/* Header: logo + name + points */}
-                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {logoUrl ? (
-                        <img src={logoUrl} alt="" className="w-9 h-9 rounded-lg object-cover border border-white/20" />
-                      ) : (
-                        <div className="w-9 h-9 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-xs font-bold text-white">
-                          {(form.name || "?").slice(0, 2).toUpperCase()}
-                        </div>
-                      )}
-                      <span className="font-bold text-sm text-white truncate">{form.name || "Mon Commerce"}</span>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Points</p>
-                      <p className="text-xl font-bold text-white leading-none">7</p>
-                    </div>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🍎</span>
+                    <h2 className="font-display font-semibold text-sm">Aperçu Apple Wallet</h2>
                   </div>
-
-                  {/* Strip image */}
-                  <div className="mx-3 rounded-xl overflow-hidden" style={{ aspectRatio: "3.2 / 1" }}>
-                    {stripImageUrl ? (
-                      <img src={stripImageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-white/10 flex items-center justify-center">
-                        <span className="text-white/30 text-xs">Bannière</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Member + Tier */}
-                  <div className="flex items-start justify-between px-4 pt-3 pb-1">
-                    <div className="min-w-0">
-                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Member</p>
-                      <p className="text-base font-bold text-white truncate">Marie Dupont</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Tier</p>
-                      <p className="text-base font-bold text-white">Gold</p>
-                    </div>
-                  </div>
-
-                  {/* QR Code */}
-                  <div className="flex flex-col items-center py-4 gap-2">
-                    <div className="rounded-xl p-2 bg-white shadow-sm">
-                      <QRCodeSVG value="demo-card-001" size={90} bgColor="#fff" fgColor="#1a1a1a" level="M" />
-                    </div>
-                    <span className="text-[10px] font-mono tracking-wider text-white/40">808f4ba8</span>
-                  </div>
+                  <button
+                    onClick={() => setShowIPhoneMockup(!showIPhoneMockup)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      showIPhoneMockup
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    {showIPhoneMockup ? "Vue iPhone" : "Vue carte"}
+                  </button>
                 </div>
+                <div className="flex justify-center">
+                  {showIPhoneMockup ? (
+                    <IPhoneMockup width={290}>
+                      <AppleWalletPass
+                        backgroundColor={form.primary_color}
+                        foregroundColor={form.foreground_color || undefined}
+                        labelColor={form.label_color || undefined}
+                        logoUrl={logoUrl || undefined}
+                        logoText={form.name || "Mon Commerce"}
+                        stripImageUrl={stripImageUrl || undefined}
+                        headerFields={headerFields}
+                        primaryFields={primaryFields}
+                        secondaryFields={secondaryFields}
+                        auxiliaryFields={auxiliaryFields}
+                        barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
+                        footerText={cardPreviewId.slice(0, 12)}
+                        promoText={form.show_rewards_preview ? form.reward_description : undefined}
+                        width={258}
+                      />
+                    </IPhoneMockup>
+                  ) : (
+                    walletPassElement
+                  )}
+                </div>
+                <p className="text-center text-[10px] text-muted-foreground mt-3">
+                  ✅ Ce que vous voyez = ce que vos clients verront dans leur Wallet
+                </p>
               </div>
             </div>
           </div>
@@ -458,11 +482,11 @@ const CustomizePage = () => {
               <div className="space-y-2.5">
                 <h3 className="text-xs font-medium text-muted-foreground">Éléments visibles</h3>
                 {[
-                  { key: "show_customer_name" as const, label: "Nom du client" },
-                  { key: "show_qr_code" as const, label: "QR Code" },
-                  { key: "show_points" as const, label: "Points / Progression" },
-                  { key: "show_expiration" as const, label: "Date d'expiration" },
-                  { key: "show_rewards_preview" as const, label: "Aperçu récompense" },
+                  { key: "show_customer_name" as const, label: "Nom du client (primaryFields)" },
+                  { key: "show_qr_code" as const, label: "QR Code (barcode)" },
+                  { key: "show_points" as const, label: "Points (headerFields)" },
+                  { key: "show_expiration" as const, label: "Date d'expiration (auxiliaryFields)" },
+                  { key: "show_rewards_preview" as const, label: "Récompense (promoText)" },
                 ].map((item) => (
                   <div key={item.key} className="flex items-center justify-between py-0.5">
                     <span className="text-sm">{item.label}</span>
@@ -475,32 +499,47 @@ const CustomizePage = () => {
             <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
               {/* Apple Wallet preview */}
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-base">🍎</span>
-                  <h2 className="font-display font-semibold text-sm">Apple Wallet</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🍎</span>
+                    <h2 className="font-display font-semibold text-sm">Apple Wallet</h2>
+                    <Badge variant="outline" className="text-[9px] text-emerald-600 border-emerald-300">PassKit 1:1</Badge>
+                  </div>
+                  <button
+                    onClick={() => setShowIPhoneMockup(!showIPhoneMockup)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                      showIPhoneMockup
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-secondary text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Smartphone className="w-3 h-3" />
+                    iPhone
+                  </button>
                 </div>
                 <div className="flex justify-center">
-                  <LoyaltyCard
-                    businessName={form.name || "Mon Commerce"}
-                    customerName="Client exemple"
-                    points={7}
-                    maxPoints={form.max_points_per_card}
-                    level="gold"
-                    cardId={`preview-${user?.id?.slice(0, 8) || "demo"}`}
-                    logoUrl={logoUrl || undefined}
-                    accentColor={form.primary_color}
-                    secondaryColor={form.secondary_color}
-                    rewardDescription={form.reward_description}
-                    rewardsEarned={2}
-                    showQr={form.show_qr_code}
-                    showPoints={form.show_points}
-                    showCustomerName={form.show_customer_name}
-                    showExpiration={form.show_expiration}
-                    showRewardsPreview={form.show_rewards_preview}
-                    cardStyle={form.card_style}
-                    cardBgType={form.card_bg_type}
-                    cardBgImageUrl={stripImageUrl || undefined}
-                  />
+                  {showIPhoneMockup ? (
+                    <IPhoneMockup width={290}>
+                      <AppleWalletPass
+                        backgroundColor={form.primary_color}
+                        foregroundColor={form.foreground_color || undefined}
+                        labelColor={form.label_color || undefined}
+                        logoUrl={logoUrl || undefined}
+                        logoText={form.name || "Mon Commerce"}
+                        stripImageUrl={stripImageUrl || undefined}
+                        headerFields={headerFields}
+                        primaryFields={primaryFields}
+                        secondaryFields={secondaryFields}
+                        auxiliaryFields={auxiliaryFields}
+                        barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
+                        footerText={cardPreviewId.slice(0, 12)}
+                        promoText={form.show_rewards_preview ? form.reward_description : undefined}
+                        width={258}
+                      />
+                    </IPhoneMockup>
+                  ) : (
+                    walletPassElement
+                  )}
                 </div>
               </div>
 
@@ -516,7 +555,6 @@ const CustomizePage = () => {
                   style={{ background: `linear-gradient(145deg, ${form.primary_color}dd, ${form.secondary_color || form.primary_color}bb)` }}
                 >
                   <div className="p-4">
-                    {/* Header */}
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         {logoUrl ? (
@@ -533,12 +571,11 @@ const CustomizePage = () => {
                       </div>
                       <span className="text-white/60 text-[10px]">Google Wallet</span>
                     </div>
-                    {/* Content */}
                     <div className="bg-white/10 rounded-xl p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-white/70 text-[10px] uppercase tracking-wide">Titulaire</p>
-                          <p className="text-white text-sm font-semibold">Client Exemple</p>
+                          <p className="text-white text-sm font-semibold">Marie Dupont</p>
                         </div>
                         <div className="text-right">
                           <p className="text-white/70 text-[10px] uppercase tracking-wide">Points</p>
@@ -550,11 +587,22 @@ const CustomizePage = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Bottom bar (Material style) */}
                   <div className="bg-black/20 px-4 py-2 flex items-center justify-between">
                     <span className="text-white/60 text-[10px]">⭐ Gold</span>
                     <span className="text-white/60 text-[10px]">{form.reward_description || "Récompense offerte"}</span>
                   </div>
+                </div>
+              </div>
+
+              {/* PassKit field mapping reference */}
+              <div className="p-3 rounded-xl bg-secondary/30 border border-border/30">
+                <p className="text-[10px] font-semibold text-muted-foreground mb-1">📋 Structure PassKit</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground">
+                  <span>headerFields →</span><span>Points / Tampons</span>
+                  <span>primaryFields →</span><span>Nom du client</span>
+                  <span>secondaryFields →</span><span>Progression / Récompense</span>
+                  <span>auxiliaryFields →</span><span>Niveau / Expiration</span>
+                  <span>barcode →</span><span>QR Code client</span>
                 </div>
               </div>
             </div>
@@ -603,8 +651,6 @@ const CustomizePage = () => {
               <Label className="text-xs">Récompense</Label>
               <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />
             </div>
-
-            {/* Onboarding mode */}
             <div className="pt-3 border-t border-border/50 space-y-3">
               <Label className="text-xs">Mode d'inscription client</Label>
               <div className="grid grid-cols-3 gap-2">
@@ -660,11 +706,8 @@ const CustomizePage = () => {
         {/* === QR CODE === */}
         <TabsContent value="qrcode">
           <div className="grid lg:grid-cols-2 gap-5">
-            {/* QR Code display */}
             <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center space-y-5">
               <h2 className="font-display font-semibold text-sm self-start">Votre QR Code vitrine</h2>
-
-              {/* QR Preview with brand frame */}
               <div
                 id="qr-printable"
                 className="relative p-8 rounded-3xl flex flex-col items-center gap-4"
@@ -673,26 +716,15 @@ const CustomizePage = () => {
                   border: `2px solid ${form.primary_color}20`,
                 }}
               >
-                {logoUrl && (
-                  <img src={logoUrl} alt={form.name} className="w-12 h-12 rounded-xl object-cover" />
-                )}
+                {logoUrl && <img src={logoUrl} alt={form.name} className="w-12 h-12 rounded-xl object-cover" />}
                 <div className="p-4 bg-background rounded-2xl shadow-sm">
-                  <QRCodeSVG
-                    id="business-qr-svg"
-                    value={publicUrl}
-                    size={200}
-                    level="H"
-                    includeMargin={false}
-                    fgColor={form.primary_color || "#6B46C1"}
-                  />
+                  <QRCodeSVG id="business-qr-svg" value={publicUrl} size={200} level="H" includeMargin={false} fgColor={form.primary_color || "#6B46C1"} />
                 </div>
                 <div className="text-center">
                   <p className="font-display font-bold text-sm">{form.name || "Mon Commerce"}</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Scannez pour votre carte de fidélité</p>
                 </div>
               </div>
-
-              {/* Action buttons */}
               <div className="flex flex-wrap gap-2 justify-center">
                 <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs">
                   <Download className="w-3.5 h-3.5" /> Télécharger PNG
@@ -711,16 +743,12 @@ const CustomizePage = () => {
                     w.focus();
                     w.print();
                   }}
-                  variant="outline"
-                  size="sm"
-                  className="rounded-xl gap-1.5 text-xs"
+                  variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs"
                 >
                   <Printer className="w-3.5 h-3.5" /> Imprimer
                 </Button>
               </div>
             </div>
-
-            {/* Instructions + Link */}
             <div className="space-y-5">
               <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
                 <h2 className="font-display font-semibold text-sm">Comment ça marche</h2>
@@ -738,7 +766,6 @@ const CustomizePage = () => {
                   </div>
                 ))}
               </div>
-
               <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-3">
                 <h2 className="font-display font-semibold text-sm">Lien direct</h2>
                 <p className="text-xs text-muted-foreground">Partagez ce lien sur vos réseaux sociaux, votre site web ou par email.</p>

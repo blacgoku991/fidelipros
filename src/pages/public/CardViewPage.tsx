@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -173,18 +173,19 @@ const CardViewPage = () => {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md space-y-6"
       >
-        <LoyaltyCard
-          businessName={business.name}
-          customerName={customer.full_name || "Client"}
-          points={card.current_points || 0}
-          maxPoints={card.max_points || 10}
-          level={customer.level || "bronze"}
-          cardId={card.card_code || card.id}
+        <AppleWalletPass
+          backgroundColor={business.primary_color || "#6B46C1"}
           logoUrl={business.logo_url || undefined}
-          accentColor={business.primary_color}
-          secondaryColor={business.secondary_color}
-          rewardDescription={business.reward_description}
-          rewardsEarned={card.rewards_earned || 0}
+          logoText={business.name}
+          stripImageUrl={business.card_bg_image_url || undefined}
+          headerFields={[{ key: "points", label: business.loyalty_type === "stamps" ? "Tampons" : "Points", value: String(card.current_points || 0) }]}
+          primaryFields={[{ key: "member", label: "Membre", value: customer.full_name || "Client" }]}
+          secondaryFields={[{ key: "progress", label: "Objectif", value: `${card.current_points || 0} / ${card.max_points || 10}` }]}
+          auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
+          barcodeValue={card.card_code || card.id}
+          footerText={(card.card_code || card.id).slice(0, 12)}
+          promoText={business.reward_description}
+          width={320}
         />
 
         {/* Apple Wallet button */}

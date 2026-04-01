@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoyaltyCard } from "@/components/LoyaltyCard";
+import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
@@ -382,18 +382,18 @@ const BusinessPublicPage = () => {
             </motion.div>
             <h2 className="text-2xl font-display font-bold">Votre carte est prête !</h2>
 
-            <LoyaltyCard
-              businessName={business.name}
-              customerName={customer.full_name || "Client"}
-              points={card.current_points || 0}
-              maxPoints={card.max_points || 10}
-              level={customer.level || "bronze"}
-              cardId={card.card_code || card.id}
+            <AppleWalletPass
+              backgroundColor={business.primary_color || "#6B46C1"}
               logoUrl={business.logo_url || undefined}
-              accentColor={business.primary_color}
-              secondaryColor={business.secondary_color}
-              rewardDescription={business.reward_description}
-              rewardsEarned={card.rewards_earned || 0}
+              logoText={business.name}
+              headerFields={[{ key: "points", label: "Points", value: String(card.current_points || 0) }]}
+              primaryFields={[{ key: "member", label: "Membre", value: customer.full_name || "Client" }]}
+              secondaryFields={[{ key: "progress", label: "Objectif", value: `${card.current_points || 0} / ${card.max_points || 10}` }]}
+              auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
+              barcodeValue={card.card_code || card.id}
+              footerText={(card.card_code || card.id).slice(0, 12)}
+              promoText={business.reward_description}
+              width={320}
             />
 
             {/* Apple Wallet */}
