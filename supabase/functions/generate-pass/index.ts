@@ -415,13 +415,15 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        return { logoPng: imageBytes, logo2xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_IMAGE_BYTES) {
+          return { logoPng: imageBytes, logo2xPng: imageBytes };
+        }
+        console.log(`[Pass] Logo too large (${imageBytes.byteLength} bytes), using fallback`);
       }
     } catch (err) {
       console.error("[Pass] Failed to fetch logo, using fallback:", err);
     }
   }
-
   const logoPng = generateSolidColorPng(160, 50, business.primary_color || "#6B46C1");
   const logo2xPng = generateSolidColorPng(320, 100, business.primary_color || "#6B46C1");
   return { logoPng, logo2xPng };
