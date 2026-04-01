@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CreditCard, LogOut, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
