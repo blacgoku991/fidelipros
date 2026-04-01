@@ -37,6 +37,8 @@ const BusinessPublicPage = () => {
     window.location.href = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
   };
 
+  const [googleAvailable, setGoogleAvailable] = useState(true);
+
   const handleAddToGoogleWallet = async (cardCode: string) => {
     setGoogleWalletLoading(true);
     try {
@@ -47,12 +49,14 @@ const BusinessPublicPage = () => {
       const data = await res.json();
       if (data.saveUrl) {
         window.open(data.saveUrl, "_blank");
+      } else if (data.unavailable) {
+        setGoogleAvailable(false);
+        toast.info("Google Wallet n'est pas encore disponible pour ce commerce.");
       } else {
-        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+        toast.error("Impossible de générer la carte Google Wallet");
       }
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Erreur Google Wallet");
+    } catch {
+      toast.error("Erreur de connexion");
     } finally {
       setGoogleWalletLoading(false);
     }
