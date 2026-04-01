@@ -408,7 +408,7 @@ const Dashboard = () => {
 
       {/* ── Tabs ── */}
       <Tabs defaultValue="scanner" className="space-y-6">
-        <TabsList className="bg-card border border-border/40 rounded-2xl p-1.5 h-auto shadow-sm w-full sm:w-auto">
+        <TabsList className="bg-card border border-border/40 rounded-2xl p-1.5 h-auto shadow-sm w-full sm:w-auto overflow-x-auto flex-nowrap">
           <TabsTrigger value="scanner" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
             <QrCode className="w-4 h-4" /> Scanner
           </TabsTrigger>
@@ -740,9 +740,7 @@ const Dashboard = () => {
       />
 
       {/* Floating action button */}
-      <FloatingActionButton onAddClient={() => {
-        // Trigger add client dialog via URL param or simple approach
-      }} />
+      <FloatingActionButton />
     </DashboardLayout>
   );
 };

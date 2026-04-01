@@ -3,11 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, QrCode, UserPlus, Send, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
-interface FloatingActionButtonProps {
-  onAddClient?: () => void;
-}
-
-export function FloatingActionButton({ onAddClient }: FloatingActionButtonProps) {
+export function FloatingActionButton() {
   const [open, setOpen] = useState(false);
 
   const actions = [
@@ -17,14 +13,15 @@ export function FloatingActionButton({ onAddClient }: FloatingActionButtonProps)
       color: "bg-violet-600 hover:bg-violet-700",
       onClick: () => { setOpen(false); },
       as: "link" as const,
-      to: "/dashboard",
+      to: "/dashboard/scanner",
     },
     {
       icon: UserPlus,
       label: "Ajouter un client",
       color: "bg-emerald-600 hover:bg-emerald-700",
-      onClick: () => { setOpen(false); onAddClient?.(); },
-      as: "button" as const,
+      onClick: () => { setOpen(false); },
+      as: "link" as const,
+      to: "/dashboard/clients",
     },
     {
       icon: Send,
