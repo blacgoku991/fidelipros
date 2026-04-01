@@ -45,9 +45,9 @@ const FaqPage = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button asChild className="bg-gradient-primary text-primary-foreground rounded-xl gap-2">
-              <a href="mailto:support@fidelipro.app">
+              <Link to="/contact">
                 Nous contacter <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
               <Link to="/register">Créer mon compte</Link>

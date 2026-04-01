@@ -60,10 +60,10 @@ export function Footer() {
           <div>
             <h4 className="font-display font-semibold text-sm mb-5 text-foreground">Produit</h4>
             <ul className="space-y-3">
-              <li><a href="#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">Fonctionnalités</a></li>
-              <li><a href="#pricing" className="text-sm text-muted-foreground hover:text-primary transition-colors">Tarifs</a></li>
-              <li><a href="#testimonials" className="text-sm text-muted-foreground hover:text-primary transition-colors">Témoignages</a></li>
-              <li><a href="#faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
+              <li><a href="/#features" className="text-sm text-muted-foreground hover:text-primary transition-colors">Fonctionnalités</a></li>
+              <li><a href="/tarifs" className="text-sm text-muted-foreground hover:text-primary transition-colors">Tarifs</a></li>
+              <li><a href="/#testimonials" className="text-sm text-muted-foreground hover:text-primary transition-colors">Témoignages</a></li>
+              <li><a href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
             </ul>
           </div>
 
@@ -71,7 +71,7 @@ export function Footer() {
           <div>
             <h4 className="font-display font-semibold text-sm mb-5 text-foreground">Entreprise</h4>
             <ul className="space-y-3">
-              <li><a href={contactUrl} className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact</a></li>
+              <li><a href="/contact" className="text-sm text-muted-foreground hover:text-primary transition-colors">Contact</a></li>
               <li><a href="/register" className="text-sm text-muted-foreground hover:text-primary transition-colors">S'inscrire</a></li>
               <li><a href="/login" className="text-sm text-muted-foreground hover:text-primary transition-colors">Se connecter</a></li>
             </ul>

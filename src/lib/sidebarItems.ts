@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
-  LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine,
+  LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine, MessageSquare,
 } from "lucide-react";
 
 export const businessSidebarItems = [
@@ -21,4 +21,5 @@ export const adminSidebarItems = [
   { icon: Globe, label: "Contenu du site", path: "/admin/landing" },
   { icon: Tag, label: "Plans & Tarifs", path: "/admin/plans" },
   { icon: Mail, label: "Emails programmés", path: "/admin/digest" },
+  { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
 ];

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Menu, Zap } from "lucide-react";
 import {
@@ -10,13 +10,26 @@ import {
 } from "@/components/ui/sheet";
 
 const navLinks = [
-  { label: "Fonctionnalités", href: "#features" },
-  { label: "Comment ça marche", href: "#how-it-works" },
+  { label: "Fonctionnalités", href: "/#features", anchor: true },
+  { label: "Comment ça marche", href: "/#how-it-works", anchor: true },
   { label: "Tarifs", href: "/tarifs", isPage: true },
   { label: "FAQ", href: "/faq", isPage: true },
+  { label: "Contact", href: "/contact", isPage: true },
 ];
 
 export function Navbar() {
+  const location = useLocation();
+  const isHome = location.pathname === "/";
+
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (isHome) {
+      e.preventDefault();
+      const id = href.replace("/#", "");
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    }
+    // If not on home, the full href (/#features) navigates to home + anchor
+  };
+
   return (
     <nav className="sticky top-0 z-50 bg-background/85 backdrop-blur-xl border-b border-border/40 safe-area-top">
       <div className="container flex items-center justify-between h-16">
@@ -43,6 +56,7 @@ export function Navbar() {
               <a
                 key={link.label}
                 href={link.href}
+                onClick={(e) => handleAnchorClick(e, link.href)}
                 className="px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary/60 transition-colors"
               >
                 {link.label}
@@ -95,6 +109,7 @@ export function Navbar() {
                     <a
                       key={link.label}
                       href={link.href}
+                      onClick={(e) => handleAnchorClick(e, link.href)}
                       className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     >
                       {link.label}
