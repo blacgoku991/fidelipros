@@ -1,7 +1,7 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
   LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine, MessageSquare,
-  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target,
+  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target, Wand2,
 } from "lucide-react";
 
 export interface SidebarItem {
