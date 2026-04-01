@@ -26,6 +26,25 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  // Redirect already-authenticated users
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", session.user.id);
+        if (roles?.some((r) => r.role === "super_admin")) {
+          navigate("/admin", { replace: true });
+        } else {
+          navigate("/dashboard", { replace: true });
+        }
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   const handleForgotPassword = async () => {
     const target = email.trim();
     if (!target) { toast.error("Entrez votre email d'abord"); return; }
