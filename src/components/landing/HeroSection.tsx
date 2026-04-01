@@ -10,6 +10,32 @@ import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { IPhoneMockup } from "@/components/IPhoneMockup";
 import fideliproBanner from "@/assets/fidelipro-banner.jpg";
 
+/* ─── Stamp grid component ─── */
+function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?: number }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(5, 1fr)`, gap: `${6 * s}px`, padding: `${10 * s}px ${16 * s}px` }}>
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            width: `${28 * s}px`,
+            height: `${28 * s}px`,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: `${14 * s}px`,
+            background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
+            border: `${1.5 * s}px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
+          }}
+        >
+          {i < filled ? "✓" : ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Card type data for the hero demo ─── */
 const DEMO_CARDS = [
   {
@@ -18,11 +44,9 @@ const DEMO_CARDS = [
     bg: "#7c3aed",
     headerFields: [{ key: "stamps", label: "Tampons", value: "7 / 10" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "reward", label: "Récompense", value: "Café offert ☕" }],
-    auxiliaryFields: [
-      { key: "tier", label: "Niveau", value: "Gold ⭐" },
-      { key: "visits", label: "Visites", value: "32" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
+    stamps: { filled: 7, total: 10 },
   },
   {
     id: "points",
@@ -30,34 +54,26 @@ const DEMO_CARDS = [
     bg: "#2563eb",
     headerFields: [{ key: "points", label: "Points", value: "120" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [
-      { key: "progress", label: "Objectif", value: "120 / 200" },
-      { key: "reward", label: "Récompense", value: "Remise 15%" },
-    ],
-    auxiliaryFields: [{ key: "tier", label: "Niveau", value: "Gold ⭐" }],
+    secondaryFields: [{ key: "progress", label: "Objectif", value: "120 / 200" }],
+    auxiliaryFields: [],
   },
   {
     id: "cashback",
     label: "Cagnotte",
     bg: "#059669",
-    headerFields: [{ key: "balance", label: "Cagnotte", value: "24,50€" }],
+    headerFields: [{ key: "balance", label: "Cagnotte", value: "24,50 €" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "rate", label: "Taux", value: "5% cashback" }],
-    auxiliaryFields: [
-      { key: "status", label: "Statut", value: "Disponible ✓" },
-      { key: "tier", label: "Niveau", value: "Silver" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
   },
   {
     id: "subscription",
     label: "Abonnement",
     bg: "#d97706",
-    headerFields: [{ key: "plan", label: "Plan", value: "Premium" }],
+    headerFields: [{ key: "plan", label: "Plan", value: "Premium ✓" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "status", label: "Statut", value: "Actif ✓" }],
-    auxiliaryFields: [
-      { key: "renewal", label: "Renouvellement", value: "15/01/2027" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
   },
 ] as const;
 
@@ -279,14 +295,14 @@ export function HeroSection() {
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             >
-              <IPhoneMockup width={278}>
-                {/* Card type tabs (outside the pass, as a Wallet-level UI) */}
-                <div className="flex gap-1 mb-2 px-1">
+              <IPhoneMockup width={340}>
+                {/* Card type tabs */}
+                <div className="flex gap-1 mb-3 px-1">
                   {DEMO_CARDS.map((card, i) => (
                     <button
                       key={card.id}
                       onClick={() => setActiveIndex(i)}
-                      className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold transition-all ${
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
                         activeIndex === i
                           ? "text-white shadow-sm"
                           : "text-gray-400 hover:text-gray-200"
@@ -298,7 +314,7 @@ export function HeroSection() {
                   ))}
                 </div>
 
-                {/* The REAL PassKit card — same component used everywhere */}
+                {/* The REAL PassKit card */}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeCard.id}
@@ -317,13 +333,17 @@ export function HeroSection() {
                       auxiliaryFields={[...activeCard.auxiliaryFields]}
                       barcodeValue="FIDELIPRO-DEMO-001"
                       footerText="FIDELIPRO-001"
-                      width={246}
-                    />
+                      width={308}
+                    >
+                      {"stamps" in activeCard && activeCard.stamps ? (
+                        <StampGrid filled={activeCard.stamps.filled} total={activeCard.stamps.total} s={308 / 320} />
+                      ) : null}
+                    </AppleWalletPass>
                   </motion.div>
                 </AnimatePresence>
 
                 {/* Smart notification */}
-                <div className="mt-2">
+                <div className="mt-3">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={notifIndex}
@@ -331,14 +351,14 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.3 }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl ${currentNotif.bg} backdrop-blur-sm`}
+                      className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl ${currentNotif.bg} backdrop-blur-sm`}
                     >
-                      <div className={`w-6 h-6 rounded-lg ${currentNotif.iconBg} flex items-center justify-center shrink-0`}>
-                        <currentNotif.icon className="w-3 h-3 text-white" />
+                      <div className={`w-7 h-7 rounded-lg ${currentNotif.iconBg} flex items-center justify-center shrink-0`}>
+                        <currentNotif.icon className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-white leading-none">{currentNotif.text}</p>
-                        <p className="text-[7px] text-white/60 mt-0.5">{currentNotif.sub}</p>
+                        <p className="text-[10px] font-bold text-white leading-none">{currentNotif.text}</p>
+                        <p className="text-[8px] text-white/60 mt-0.5">{currentNotif.sub}</p>
                       </div>
                     </motion.div>
                   </AnimatePresence>

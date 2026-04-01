@@ -54,6 +54,8 @@ export interface AppleWalletPassProps {
   footerText?: string;
   /** Rendered width in px (default 320, Apple standard ~320pt) */
   width?: number;
+  /** Custom content inserted after auxiliary fields (e.g. stamp grid) */
+  children?: React.ReactNode;
 }
 
 export function AppleWalletPass({
@@ -70,6 +72,7 @@ export function AppleWalletPass({
   barcodeValue,
   footerText,
   width = 320,
+  children,
 }: AppleWalletPassProps) {
   const bgBrightness = hexBrightness(backgroundColor);
   const fg = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
@@ -187,6 +190,9 @@ export function AppleWalletPass({
       {auxiliaryFields.length > 0 && (
         <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={8} />
       )}
+
+      {/* ── CUSTOM CONTENT (e.g. stamp grid) ── */}
+      {children}
 
       {/* ── BARCODE ── */}
       {barcodeValue && (
