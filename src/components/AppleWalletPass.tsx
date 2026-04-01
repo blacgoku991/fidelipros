@@ -1,65 +1,59 @@
 import { QRCodeSVG } from "qrcode.react";
 
 /**
- * Apple Wallet PassKit-faithful loyalty card preview.
+ * Apple Wallet Store Card — pixel-perfect PassKit replica.
  *
- * Layout hierarchy follows the PassKit spec:
- *   ┌──────────────────────────────┐
- *   │  HEADER  (logo + logoText)   │  ← headerFields (right-aligned values)
- *   │  STRIP IMAGE (optional)      │
- *   │  PRIMARY FIELDS              │  ← member name
- *   │  SECONDARY FIELDS            │  ← points / balance
- *   │  AUXILIARY FIELDS            │  ← tier / status
- *   │  BARCODE / QR                │
- *   │  FOOTER                      │
- *   └──────────────────────────────┘
+ * Follows the REAL Apple PassKit Store Card layout:
+ *   ┌──────────────────────────────────┐
+ *   │  logo  logoText    headerFields  │
+ *   ├──────────────────────────────────┤
+ *   │         STRIP IMAGE              │
+ *   ├──────────────────────────────────┤
+ *   │  primaryFields                   │
+ *   │  secondaryFields                 │
+ *   │  auxiliaryFields                 │
+ *   ├──────────────────────────────────┤
+ *   │           [QR CODE]              │
+ *   │          footer text             │
+ *   └──────────────────────────────────┘
+ *
+ * NO custom UI elements, NO tabs, NO overlays.
+ * Only what Apple allows in a real .pkpass.
  */
-
-export interface AppleWalletPassProps {
-  // Pass colors (hex)
-  backgroundColor?: string;
-  foregroundColor?: string;
-  labelColor?: string;
-
-  // Header
-  logoUrl?: string;
-  logoText?: string; // company name next to logo
-
-  // Strip image (banner between header and fields)
-  stripImageUrl?: string;
-
-  // headerFields (top-right, e.g. points counter)
-  headerFields?: PassField[];
-
-  // primaryFields (large, prominent)
-  primaryFields?: PassField[];
-
-  // secondaryFields
-  secondaryFields?: PassField[];
-
-  // auxiliaryFields
-  auxiliaryFields?: PassField[];
-
-  // backFields (not rendered visually, just data)
-
-  // Barcode
-  barcodeValue?: string;
-  barcodeFormat?: "QR" | "PDF417" | "CODE128";
-
-  // Footer text (e.g. card code)
-  footerText?: string;
-
-  // Promo / change message
-  promoText?: string;
-
-  // Size
-  width?: number;
-}
 
 export interface PassField {
   key: string;
   label: string;
   value: string;
+}
+
+export interface AppleWalletPassProps {
+  /** Pass background color (hex). Maps to pass.json backgroundColor */
+  backgroundColor?: string;
+  /** Text color (hex). Maps to pass.json foregroundColor */
+  foregroundColor?: string;
+  /** Label text color (hex). Maps to pass.json labelColor */
+  labelColor?: string;
+  /** Logo image URL (top-left, ~29×29pt) */
+  logoUrl?: string;
+  /** Text next to logo. Maps to pass.json logoText */
+  logoText?: string;
+  /** Strip image URL (full-width banner). Maps to strip.png / strip@2x.png */
+  stripImageUrl?: string;
+  /** Top-right value fields (e.g. points counter) */
+  headerFields?: PassField[];
+  /** Large prominent field (e.g. member name) */
+  primaryFields?: PassField[];
+  /** Mid-level fields (e.g. progress, reward) */
+  secondaryFields?: PassField[];
+  /** Lower fields (e.g. tier, expiry) */
+  auxiliaryFields?: PassField[];
+  /** QR/barcode value string */
+  barcodeValue?: string;
+  /** Text under QR code */
+  footerText?: string;
+  /** Rendered width in px (default 320, Apple standard ~320pt) */
+  width?: number;
 }
 
 export function AppleWalletPass({
@@ -74,59 +68,67 @@ export function AppleWalletPass({
   secondaryFields = [],
   auxiliaryFields = [],
   barcodeValue,
-  barcodeFormat = "QR",
   footerText,
-  promoText,
   width = 320,
 }: AppleWalletPassProps) {
-  // Auto-detect text colors from background brightness if not provided
   const bgBrightness = hexBrightness(backgroundColor);
-  const fgColor = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
-  const lblColor = labelColor || (bgBrightness > 160 ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)");
+  const fg = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
+  const lbl = labelColor || (bgBrightness > 160 ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)");
 
-  const scale = width / 320;
+  // Apple Wallet uses a fixed aspect ratio for store cards.
+  // Scale everything proportionally from the 320pt base.
+  const s = width / 320;
 
   return (
     <div
-      className="relative overflow-hidden select-none"
       style={{
         width: `${width}px`,
-        borderRadius: `${14 * scale}px`,
+        borderRadius: `${14 * s}px`,
         background: backgroundColor,
-        boxShadow: `0 ${10 * scale}px ${40 * scale}px -${8 * scale}px rgba(0,0,0,0.35), 0 ${2 * scale}px ${8 * scale}px rgba(0,0,0,0.15)`,
+        overflow: "hidden",
+        position: "relative",
+        boxShadow: `0 ${8 * s}px ${32 * s}px -${6 * s}px rgba(0,0,0,0.35)`,
         fontFamily: "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
+        userSelect: "none",
       }}
     >
-      {/* ── HEADER ROW: logo + logoText + headerFields ── */}
+      {/* ── HEADER ROW ── */}
       <div
-        className="flex items-center justify-between"
-        style={{ padding: `${12 * scale}px ${14 * scale}px ${6 * scale}px` }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: `${12 * s}px ${16 * s}px ${8 * s}px`,
+        }}
       >
-        <div className="flex items-center gap-2 min-w-0" style={{ gap: `${8 * scale}px` }}>
+        {/* Logo + logoText (left) */}
+        <div style={{ display: "flex", alignItems: "center", gap: `${8 * s}px`, minWidth: 0 }}>
           {logoUrl ? (
             <img
               src={logoUrl}
               alt={logoText}
               style={{
-                width: `${29 * scale}px`,
-                height: `${29 * scale}px`,
-                borderRadius: `${6 * scale}px`,
+                width: `${29 * s}px`,
+                height: `${29 * s}px`,
+                borderRadius: `${6 * s}px`,
                 objectFit: "cover",
+                flexShrink: 0,
               }}
             />
           ) : (
             <div
               style={{
-                width: `${29 * scale}px`,
-                height: `${29 * scale}px`,
-                borderRadius: `${6 * scale}px`,
+                width: `${29 * s}px`,
+                height: `${29 * s}px`,
+                borderRadius: `${6 * s}px`,
                 background: "rgba(255,255,255,0.15)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: fgColor,
+                color: fg,
                 fontWeight: 700,
-                fontSize: `${11 * scale}px`,
+                fontSize: `${12 * s}px`,
+                flexShrink: 0,
               }}
             >
               {(logoText || "?")[0].toUpperCase()}
@@ -134,9 +136,9 @@ export function AppleWalletPass({
           )}
           <span
             style={{
-              color: fgColor,
+              color: fg,
               fontWeight: 700,
-              fontSize: `${14 * scale}px`,
+              fontSize: `${14 * s}px`,
               letterSpacing: "-0.01em",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -147,33 +149,13 @@ export function AppleWalletPass({
           </span>
         </div>
 
-        {/* Header fields (right side) */}
+        {/* headerFields (right) */}
         {headerFields.length > 0 && (
-          <div className="flex gap-3 shrink-0" style={{ gap: `${10 * scale}px` }}>
+          <div style={{ display: "flex", gap: `${12 * s}px`, flexShrink: 0 }}>
             {headerFields.map((f) => (
               <div key={f.key} style={{ textAlign: "right" }}>
-                <p
-                  style={{
-                    color: lblColor,
-                    fontSize: `${7 * scale}px`,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.08em",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  {f.label}
-                </p>
-                <p
-                  style={{
-                    color: fgColor,
-                    fontSize: `${18 * scale}px`,
-                    fontWeight: 700,
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {f.value}
-                </p>
+                <FieldLabel s={s} color={lbl}>{f.label}</FieldLabel>
+                <FieldValue s={s} color={fg} size={18}>{f.value}</FieldValue>
               </div>
             ))}
           </div>
@@ -182,162 +164,50 @@ export function AppleWalletPass({
 
       {/* ── STRIP IMAGE ── */}
       {stripImageUrl && (
-        <div
-          style={{
-            margin: `0 ${10 * scale}px`,
-            borderRadius: `${8 * scale}px`,
-            overflow: "hidden",
-            aspectRatio: "3.2 / 1",
-          }}
-        >
+        <div style={{ width: "100%", aspectRatio: "3.2 / 1", overflow: "hidden" }}>
           <img
             src={stripImageUrl}
-            alt="Banner"
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            alt=""
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
         </div>
       )}
 
       {/* ── PRIMARY FIELDS ── */}
       {primaryFields.length > 0 && (
-        <div
-          className="flex justify-between"
-          style={{ padding: `${10 * scale}px ${14 * scale}px ${2 * scale}px` }}
-        >
-          {primaryFields.map((f, i) => (
-            <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
-              <p
-                style={{
-                  color: lblColor,
-                  fontSize: `${7 * scale}px`,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  marginBottom: `${1 * scale}px`,
-                }}
-              >
-                {f.label}
-              </p>
-              <p
-                style={{
-                  color: fgColor,
-                  fontSize: `${15 * scale}px`,
-                  fontWeight: 700,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {f.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        <FieldRow fields={primaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={16} padTop={12} padBottom={2} />
       )}
 
       {/* ── SECONDARY FIELDS ── */}
       {secondaryFields.length > 0 && (
-        <div
-          className="flex justify-between"
-          style={{ padding: `${6 * scale}px ${14 * scale}px ${2 * scale}px` }}
-        >
-          {secondaryFields.map((f, i) => (
-            <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
-              <p
-                style={{
-                  color: lblColor,
-                  fontSize: `${7 * scale}px`,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  marginBottom: `${1 * scale}px`,
-                }}
-              >
-                {f.label}
-              </p>
-              <p
-                style={{
-                  color: fgColor,
-                  fontSize: `${13 * scale}px`,
-                  fontWeight: 600,
-                }}
-              >
-                {f.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        <FieldRow fields={secondaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={13} padTop={6} padBottom={2} />
       )}
 
       {/* ── AUXILIARY FIELDS ── */}
       {auxiliaryFields.length > 0 && (
-        <div
-          className="flex justify-between"
-          style={{ padding: `${4 * scale}px ${14 * scale}px ${6 * scale}px` }}
-        >
-          {auxiliaryFields.map((f, i) => (
-            <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
-              <p
-                style={{
-                  color: lblColor,
-                  fontSize: `${7 * scale}px`,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  marginBottom: `${1 * scale}px`,
-                }}
-              >
-                {f.label}
-              </p>
-              <p
-                style={{
-                  color: fgColor,
-                  fontSize: `${12 * scale}px`,
-                  fontWeight: 600,
-                }}
-              >
-                {f.value}
-              </p>
-            </div>
-          ))}
-        </div>
+        <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={8} />
       )}
 
-      {/* ── PROMO TEXT ── */}
-      {promoText && (
-        <div
-          style={{
-            margin: `${2 * scale}px ${12 * scale}px ${4 * scale}px`,
-            padding: `${6 * scale}px ${10 * scale}px`,
-            borderRadius: `${6 * scale}px`,
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ color: fgColor, fontSize: `${10 * scale}px`, fontWeight: 600 }}>
-            {promoText}
-          </p>
-        </div>
-      )}
-
-      {/* ── BARCODE / QR ── */}
+      {/* ── BARCODE ── */}
       {barcodeValue && (
         <div
-          className="flex flex-col items-center"
-          style={{ padding: `${10 * scale}px 0 ${8 * scale}px` }}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            padding: `${10 * s}px 0 ${10 * s}px`,
+          }}
         >
           <div
             style={{
               background: "#ffffff",
-              borderRadius: `${8 * scale}px`,
-              padding: `${6 * scale}px`,
-              boxShadow: `0 ${1 * scale}px ${4 * scale}px rgba(0,0,0,0.1)`,
+              borderRadius: `${8 * s}px`,
+              padding: `${6 * s}px`,
             }}
           >
             <QRCodeSVG
               value={barcodeValue}
-              size={Math.round(90 * scale)}
+              size={Math.round(90 * s)}
               bgColor="#ffffff"
               fgColor="#1a1a1a"
               level="M"
@@ -346,11 +216,11 @@ export function AppleWalletPass({
           {footerText && (
             <p
               style={{
-                color: lblColor,
-                fontSize: `${9 * scale}px`,
-                fontFamily: "monospace",
+                color: lbl,
+                fontSize: `${9 * s}px`,
+                fontFamily: "'SF Mono', 'Menlo', monospace",
                 letterSpacing: "0.05em",
-                marginTop: `${5 * scale}px`,
+                marginTop: `${5 * s}px`,
               }}
             >
               {footerText}
@@ -359,10 +229,10 @@ export function AppleWalletPass({
         </div>
       )}
 
-      {/* If no barcode, add bottom padding */}
-      {!barcodeValue && <div style={{ height: `${12 * scale}px` }} />}
+      {/* Bottom pad when no barcode */}
+      {!barcodeValue && <div style={{ height: `${14 * s}px` }} />}
 
-      {/* ── Subtle top highlight (Apple-style) ── */}
+      {/* Apple-style top highlight */}
       <div
         style={{
           position: "absolute",
@@ -370,7 +240,7 @@ export function AppleWalletPass({
           left: 0,
           right: 0,
           height: "1px",
-          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)",
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)",
           pointerEvents: "none",
         }}
       />
@@ -378,11 +248,81 @@ export function AppleWalletPass({
   );
 }
 
+/* ── Shared sub-components ── */
+
+function FieldLabel({ children, s, color }: { children: React.ReactNode; s: number; color: string }) {
+  return (
+    <p
+      style={{
+        color,
+        fontSize: `${8 * s}px`,
+        fontWeight: 600,
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        lineHeight: 1.2,
+        marginBottom: `${1 * s}px`,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function FieldValue({ children, s, color, size }: { children: React.ReactNode; s: number; color: string; size: number }) {
+  return (
+    <p
+      style={{
+        color,
+        fontSize: `${size * s}px`,
+        fontWeight: 700,
+        lineHeight: 1.15,
+      }}
+    >
+      {children}
+    </p>
+  );
+}
+
+function FieldRow({
+  fields,
+  s,
+  fg,
+  lbl,
+  valueFontSize,
+  padTop,
+  padBottom,
+}: {
+  fields: PassField[];
+  s: number;
+  fg: string;
+  lbl: string;
+  valueFontSize: number;
+  padTop: number;
+  padBottom: number;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        padding: `${padTop * s}px ${16 * s}px ${padBottom * s}px`,
+      }}
+    >
+      {fields.map((f, i) => (
+        <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
+          <FieldLabel s={s} color={lbl}>{f.label}</FieldLabel>
+          <FieldValue s={s} color={fg} size={valueFontSize}>{f.value}</FieldValue>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function hexBrightness(hex: string): number {
-  const clean = hex.replace("#", "");
-  if (clean.length !== 6) return 128;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return 128;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
   return (r * 299 + g * 587 + b * 114) / 1000;
 }
