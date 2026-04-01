@@ -21,7 +21,7 @@ export function HowItWorksSection() {
   }));
 
   return (
-    <section className="py-24 bg-secondary/30">
+    <section className="py-24 bg-secondary/30" id="how-it-works">
       <div className="container">
         <motion.div
           className="text-center max-w-2xl mx-auto mb-16"

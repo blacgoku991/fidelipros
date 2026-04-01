@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Menu, Zap } from "lucide-react";
 import {
@@ -10,10 +10,11 @@ import {
 } from "@/components/ui/sheet";
 
 const navLinks = [
-  { label: "Fonctionnalités", href: "#features" },
-  { label: "Comment ça marche", href: "#how-it-works" },
+  { label: "Fonctionnalités", href: "/#features", anchor: true },
+  { label: "Comment ça marche", href: "/#how-it-works", anchor: true },
   { label: "Tarifs", href: "/tarifs", isPage: true },
   { label: "FAQ", href: "/faq", isPage: true },
+  { label: "Contact", href: "/contact", isPage: true },
 ];
 
 export function Navbar() {
