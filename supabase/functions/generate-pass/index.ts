@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
 
-const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.fidelispro";
+const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
 // Apple Worldwide Developer Relations Certification Authority G4
 // Source officielle : https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer
@@ -136,10 +136,8 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": 'attachment; filename="loyalty.pkpass"',
         "Content-Length": String(pkpassBuffer.byteLength),
-        "Access-Control-Expose-Headers": "Content-Disposition, Content-Length",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-store",
       },
     });
   } catch (err: any) {
@@ -383,22 +381,24 @@ export async function buildPkpass(
 
 // ── Icon helpers (square, for notification icon) ─────────────────
 
+const MAX_IMAGE_BYTES = 30_000; // 30KB max per image to keep pkpass < 200KB
+
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
-  // Try to use business logo for notification icons so the logo appears on lock screen
   if (business.logo_url) {
     try {
       const logoUrl = business.logo_url.split("?")[0];
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        // Use the logo image for all icon sizes — iOS will resize appropriately
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_IMAGE_BYTES) {
+          return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        }
+        console.log(`[Pass] Logo too large for icons (${imageBytes.byteLength} bytes), using fallback`);
       }
     } catch (err) {
       console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
     }
   }
-  // Fallback: solid color square
   const color = business.primary_color || "#6B46C1";
   const iconPng   = generateSolidColorPng(29, 29, color);
   const icon2xPng = generateSolidColorPng(58, 58, color);
@@ -415,13 +415,15 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        return { logoPng: imageBytes, logo2xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_IMAGE_BYTES) {
+          return { logoPng: imageBytes, logo2xPng: imageBytes };
+        }
+        console.log(`[Pass] Logo too large (${imageBytes.byteLength} bytes), using fallback`);
       }
     } catch (err) {
       console.error("[Pass] Failed to fetch logo, using fallback:", err);
     }
   }
-
   const logoPng = generateSolidColorPng(160, 50, business.primary_color || "#6B46C1");
   const logo2xPng = generateSolidColorPng(320, 100, business.primary_color || "#6B46C1");
   return { logoPng, logo2xPng };
