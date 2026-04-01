@@ -381,22 +381,24 @@ export async function buildPkpass(
 
 // ── Icon helpers (square, for notification icon) ─────────────────
 
+const MAX_IMAGE_BYTES = 30_000; // 30KB max per image to keep pkpass < 200KB
+
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
-  // Try to use business logo for notification icons so the logo appears on lock screen
   if (business.logo_url) {
     try {
       const logoUrl = business.logo_url.split("?")[0];
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        // Use the logo image for all icon sizes — iOS will resize appropriately
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_IMAGE_BYTES) {
+          return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        }
+        console.log(`[Pass] Logo too large for icons (${imageBytes.byteLength} bytes), using fallback`);
       }
     } catch (err) {
       console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
     }
   }
-  // Fallback: solid color square
   const color = business.primary_color || "#6B46C1";
   const iconPng   = generateSolidColorPng(29, 29, color);
   const icon2xPng = generateSolidColorPng(58, 58, color);
