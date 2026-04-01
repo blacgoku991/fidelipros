@@ -446,25 +446,11 @@ const ClientsPage = () => {
                     </div>
                   )}
 
-                  {/* History */}
+                  {/* Timeline */}
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Historique des passages</p>
-                    <div className="max-h-[200px] overflow-y-auto space-y-1.5">
-                      {history.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-4">Aucun passage enregistré</p>
-                      ) : (
-                        history.map((h: any) => (
-                          <div key={h.id} className="flex items-center justify-between p-2.5 rounded-lg bg-secondary/30 text-xs">
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              <span className="font-medium">+{h.points_added} point{h.points_added > 1 ? "s" : ""}</span>
-                            </div>
-                            <span className="text-muted-foreground">
-                              {new Date(h.created_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                          </div>
-                        ))
-                      )}
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chronologie</p>
+                    <div className="max-h-[280px] overflow-y-auto">
+                      <CustomerTimeline history={history} customer={selected} />
                     </div>
                   </div>
 
