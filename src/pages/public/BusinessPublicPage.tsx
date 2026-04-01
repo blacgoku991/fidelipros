@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
+import { buildCardConfig, buildCustomerData, buildApplePassFields, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
@@ -36,6 +37,8 @@ const BusinessPublicPage = () => {
     window.location.href = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(cardCode)}`;
   };
 
+  const [googleAvailable, setGoogleAvailable] = useState(true);
+
   const handleAddToGoogleWallet = async (cardCode: string) => {
     setGoogleWalletLoading(true);
     try {
@@ -46,12 +49,14 @@ const BusinessPublicPage = () => {
       const data = await res.json();
       if (data.saveUrl) {
         window.open(data.saveUrl, "_blank");
+      } else if (data.unavailable) {
+        setGoogleAvailable(false);
+        toast.info("Google Wallet n'est pas encore disponible pour ce commerce.");
       } else {
-        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+        toast.error("Impossible de générer la carte Google Wallet");
       }
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Erreur Google Wallet");
+    } catch {
+      toast.error("Erreur de connexion");
     } finally {
       setGoogleWalletLoading(false);
     }
@@ -302,7 +307,13 @@ const BusinessPublicPage = () => {
             <div className="p-6 rounded-2xl bg-card border border-border/50 text-left space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Star className="w-4 h-4 text-accent" />
-                <span>Gagnez des points à chaque visite</span>
+                <span>
+                  {business.loyalty_type === "stamps"
+                    ? "Gagnez des tampons à chaque visite"
+                    : business.loyalty_type === "cashback"
+                      ? "Cumulez du cashback sur vos achats"
+                      : "Gagnez des points à chaque visite"}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CreditCard className="w-4 h-4 text-primary" />
@@ -386,13 +397,19 @@ const BusinessPublicPage = () => {
               backgroundColor={business.primary_color || "#6B46C1"}
               logoUrl={business.logo_url || undefined}
               logoText={business.name}
-              headerFields={[{ key: "points", label: "Points", value: String(card.current_points || 0) }]}
-              primaryFields={[{ key: "member", label: "Membre", value: customer.full_name || "Client" }]}
-              secondaryFields={[{ key: "progress", label: "Objectif", value: `${card.current_points || 0} / ${card.max_points || 10}` }]}
-              auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
-              barcodeValue={card.card_code || card.id}
-              footerText={(card.card_code || card.id).slice(0, 12)}
-              
+              {...(() => {
+                const config = buildCardConfig(business);
+                const cData = buildCustomerData(card, customer);
+                const fields = buildApplePassFields(config, cData);
+                return {
+                  headerFields: fields.headerFields,
+                  primaryFields: fields.primaryFields,
+                  secondaryFields: fields.secondaryFields,
+                  auxiliaryFields: fields.auxiliaryFields,
+                  barcodeValue: config.showQrCode ? cData.cardCode : undefined,
+                  footerText: cData.cardCode.slice(0, 12),
+                };
+              })()}
               width={320}
             />
 
@@ -412,8 +429,8 @@ const BusinessPublicPage = () => {
               </button>
             )}
 
-            {/* Google Wallet */}
-            {!isAppleDevice && card.card_code && (
+            {/* Google Wallet — only if available */}
+            {!isAppleDevice && googleAvailable && card.card_code && (
               <button
                 onClick={() => handleAddToGoogleWallet(card.card_code)}
                 disabled={googleWalletLoading}

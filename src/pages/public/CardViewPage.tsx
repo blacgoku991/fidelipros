@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
+import { buildCardConfig, buildCustomerData, buildApplePassFields, getProgressInfo, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame, Star, Crown, Trophy, Share, Download, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,29 @@ const badgeIcons: Record<string, string> = {
   vip: "⭐",
 };
 
+/* ── Stamp grid ── */
+function StampGrid({ filled, total, color }: { filled: number; total: number; color: string }) {
+  const cols = Math.min(total, 5);
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "6px", padding: "10px 16px" }}>
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            width: 28, height: 28, borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 14, color: "#fff",
+            background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
+            border: `1.5px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
+          }}
+        >
+          {i < filled ? "✓" : ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const CardViewPage = () => {
   const { cardCode } = useParams();
   const [card, setCard] = useState<any>(null);
@@ -25,11 +49,11 @@ const CardViewPage = () => {
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
+  const [googleAvailable, setGoogleAvailable] = useState(true);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
-  const isAndroidDevice = /Android/.test(navigator.userAgent);
 
   const handleAddToWallet = () => {
     if (!cardCode) return;
@@ -49,19 +73,22 @@ const CardViewPage = () => {
       const data = await res.json();
       if (data.saveUrl) {
         window.open(data.saveUrl, "_blank");
+      } else if (data.unavailable) {
+        // Google Wallet not configured — hide button gracefully
+        setGoogleAvailable(false);
+        toast.info("Google Wallet n'est pas encore disponible pour ce commerce.");
       } else {
-        toast.error(data.error || "Impossible de générer la carte Google Wallet");
+        toast.error("Impossible de générer la carte Google Wallet");
       }
-    } catch (e: any) {
-      console.error(e);
-      toast.error(e.message || "Erreur Google Wallet");
+    } catch {
+      toast.error("Erreur de connexion");
     } finally {
       setGoogleWalletLoading(false);
     }
   };
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
       if (!cardCode) return;
       const { data: cardData } = await supabase
         .from("customer_cards")
@@ -81,10 +108,9 @@ const CardViewPage = () => {
       if (biz) setBusiness(biz);
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [cardCode]);
 
-  // Show install banner if not already installed as PWA
   useEffect(() => {
     if (!isStandalone) {
       const dismissed = localStorage.getItem("pwa-install-dismissed");
@@ -111,8 +137,12 @@ const CardViewPage = () => {
     );
   }
 
-  const progress = Math.min((card.current_points / card.max_points) * 100, 100);
-  const pointsToReward = card.max_points - card.current_points;
+  // ── Unified config ──
+  const config = buildCardConfig(business);
+  const customerData = buildCustomerData(card, customer);
+  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = buildApplePassFields(config, customerData);
+  const progressInfo = getProgressInfo(config, customerData);
+  const labels = getLoyaltyLabels(config.loyaltyType);
 
   const dismissInstallBanner = () => {
     setShowInstallBanner(false);
@@ -123,7 +153,7 @@ const CardViewPage = () => {
     <div
       className="min-h-screen flex flex-col items-center p-6 pt-8 safe-area-top safe-area-bottom"
       style={{
-        background: `linear-gradient(135deg, ${business.primary_color}10 0%, ${business.secondary_color}10 100%)`,
+        background: `linear-gradient(135deg, ${config.backgroundColor}10 0%, ${config.backgroundColor}05 100%)`,
       }}
     >
       {/* PWA Install Banner */}
@@ -174,19 +204,24 @@ const CardViewPage = () => {
         className="w-full max-w-md space-y-6"
       >
         <AppleWalletPass
-          backgroundColor={business.primary_color || "#6B46C1"}
-          logoUrl={business.logo_url || undefined}
-          logoText={business.name}
-          stripImageUrl={business.card_bg_image_url || undefined}
-          headerFields={[{ key: "points", label: business.loyalty_type === "stamps" ? "Tampons" : "Points", value: String(card.current_points || 0) }]}
-          primaryFields={[{ key: "member", label: "Membre", value: customer.full_name || "Client" }]}
-          secondaryFields={[{ key: "progress", label: "Objectif", value: `${card.current_points || 0} / ${card.max_points || 10}` }]}
-          auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
-          barcodeValue={card.card_code || card.id}
-          footerText={(card.card_code || card.id).slice(0, 12)}
-          
+          backgroundColor={config.backgroundColor}
+          foregroundColor={config.foregroundColor || undefined}
+          labelColor={config.labelColor || undefined}
+          logoUrl={config.logoUrl || undefined}
+          logoText={config.businessName}
+          stripImageUrl={config.stripImageUrl || undefined}
+          headerFields={headerFields}
+          primaryFields={primaryFields}
+          secondaryFields={secondaryFields}
+          auxiliaryFields={auxiliaryFields}
+          barcodeValue={config.showQrCode ? customerData.cardCode : undefined}
+          footerText={customerData.cardCode.slice(0, 12)}
           width={320}
-        />
+        >
+          {config.loyaltyType === "stamps" && (
+            <StampGrid filled={customerData.currentPoints} total={customerData.maxPoints} color={config.backgroundColor} />
+          )}
+        </AppleWalletPass>
 
         {/* Apple Wallet button */}
         {isAppleDevice && (
@@ -204,8 +239,8 @@ const CardViewPage = () => {
           </button>
         )}
 
-        {/* Google Wallet button */}
-        {!isAppleDevice && (
+        {/* Google Wallet button — only if available */}
+        {!isAppleDevice && googleAvailable && (
           <button
             onClick={handleAddToGoogleWallet}
             disabled={googleWalletLoading}
@@ -231,19 +266,19 @@ const CardViewPage = () => {
         )}
 
         <p className="text-center text-xs text-muted-foreground">
-          Code : <span className="font-mono">{card.card_code}</span>
+          Code : <span className="font-mono">{customerData.cardCode}</span>
         </p>
 
         {/* Progress info */}
         <div className="p-5 rounded-2xl bg-card border border-border/50">
-          {pointsToReward > 0 ? (
+          {!progressInfo.isComplete ? (
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
                 <Flame className="w-5 h-5 text-accent" />
               </div>
               <div>
-                <p className="font-semibold text-sm">Plus que {pointsToReward} point{pointsToReward > 1 ? "s" : ""} !</p>
-                <p className="text-xs text-muted-foreground">{business.reward_description}</p>
+                <p className="font-semibold text-sm">{progressInfo.remainingText}</p>
+                <p className="text-xs text-muted-foreground">{config.rewardDescription}</p>
               </div>
             </div>
           ) : (
@@ -262,7 +297,7 @@ const CardViewPage = () => {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
-            <p className="text-2xl font-display font-bold">{customer.total_visits || 0}</p>
+            <p className="text-2xl font-display font-bold">{customerData.totalVisits}</p>
             <p className="text-xs text-muted-foreground">Visites</p>
           </div>
           <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
@@ -270,7 +305,7 @@ const CardViewPage = () => {
             <p className="text-xs text-muted-foreground flex items-center justify-center gap-1"><Flame className="w-3 h-3" />Streak</p>
           </div>
           <div className="p-4 rounded-2xl bg-card border border-border/50 text-center">
-            <p className="text-2xl font-display font-bold">{card.rewards_earned || 0}</p>
+            <p className="text-2xl font-display font-bold">{customerData.rewardsEarned}</p>
             <p className="text-xs text-muted-foreground">Récompenses</p>
           </div>
         </div>
@@ -300,8 +335,8 @@ const CardViewPage = () => {
             <div>
               <p className="font-semibold text-sm capitalize">Niveau {customer.level}</p>
               <p className="text-xs text-muted-foreground">
-                {customer.level === "bronze" ? "20 points pour Silver" :
-                 customer.level === "silver" ? "50 points pour Gold" :
+                {customer.level === "bronze" ? `20 ${labels.unitPlural} pour Silver` :
+                 customer.level === "silver" ? `50 ${labels.unitPlural} pour Gold` :
                  "Niveau maximum atteint !"}
               </p>
             </div>
