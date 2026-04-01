@@ -1,7 +1,7 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
   LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine, MessageSquare,
-  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target,
+  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target, Wand2,
 } from "lucide-react";
 
 export interface SidebarItem {
@@ -64,4 +64,5 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: Tag, label: "Plans & Tarifs", path: "/admin/plans" },
   { icon: Mail, label: "Emails programmés", path: "/admin/digest" },
   { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
+  { icon: Wand2, label: "Démo Generator", path: "/admin/demos" },
 ];

@@ -30,6 +30,7 @@ import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminDemoGenerator from "./pages/admin/AdminDemoGenerator";
 import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
 import SetupWizard from "./pages/SetupWizard";
@@ -39,6 +40,7 @@ import ContactPage from "./pages/ContactPage";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 import VitrinePage from "./pages/public/VitrinePage";
+import DemoPage from "./pages/public/DemoPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -88,8 +90,10 @@ const App = () => (
             <Route path="/admin/digest" element={<AdminEmailDigest />} />
             <Route path="/admin/plans" element={<AdminPlans />} />
             <Route path="/admin/messages" element={<AdminMessages />} />
+            <Route path="/admin/demos" element={<AdminDemoGenerator />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
+            <Route path="/demo/:slug" element={<DemoPage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="/tarifs" element={<Tarifs />} />
             <Route path="/faq" element={<FaqPage />} />
