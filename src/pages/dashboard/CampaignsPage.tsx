@@ -724,7 +724,7 @@ const CampaignsPage = () => {
                 </div>
 
                 {/* ── Action buttons ────────────────────────────────────── */}
-                <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 border-t border-border/40">
                   <Button
                     variant="outline"
                     onClick={saveDraft}
