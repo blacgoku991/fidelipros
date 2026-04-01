@@ -380,10 +380,10 @@ const CampaignsPage = () => {
 
   return (
     <DashboardLayout title="Campagnes" subtitle="Envoyez des notifications ciblées à vos clients">
-      <div className="flex gap-5 h-[calc(100vh-9rem)]">
+      <div className="flex flex-col lg:flex-row gap-5 lg:h-[calc(100vh-9rem)]">
 
         {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
-        <aside className="w-[300px] shrink-0 flex flex-col gap-3 overflow-hidden">
+        <aside className="w-full lg:w-[300px] shrink-0 flex flex-col gap-3 lg:overflow-hidden">
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
