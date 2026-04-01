@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
 
     const act = action_type || "test";
 
+    // ── Fetch old field values BEFORE update for changeMessage validation ──
+    let oldFieldValues: Record<string, any> = {};
+
     // ── Resolve target serial numbers ─────────────────────────────
     let serialQuery = supabase
       .from("wallet_registrations")
@@ -114,25 +117,37 @@ Deno.serve(async (req) => {
       let cardUpdate: Record<string, any> = {};
       let effectiveMessage = change_message || "🔔 Mise à jour Wallet";
 
+      // Fetch old values BEFORE update for changeMessage validation
+      const { data: cardData } = await supabase
+        .from("customer_cards")
+        .select("current_points, max_points, wallet_change_message")
+        .eq("id", sn)
+        .single();
+
+      const oldPts = cardData?.current_points || 0;
+      const maxPts = cardData?.max_points || 10;
+      const oldChangeMessage = cardData?.wallet_change_message || "";
+      let newPts = oldPts;
+      let fieldValueActuallyChanged = false;
+
       if (act === "points_increment" || act === "full_test" || act === "send_test_notification") {
         // Actually increment points — the VALUE must change for visible notification
-        const { data: cardData } = await supabase
-          .from("customer_cards")
-          .select("current_points, max_points")
-          .eq("id", sn)
-          .single();
-
-        const oldPts = cardData?.current_points || 0;
-        const maxPts = cardData?.max_points || 10;
-        const newPts = Math.min(oldPts + 1, maxPts);
-
+        newPts = Math.min(oldPts + 1, maxPts);
         cardUpdate.current_points = newPts;
         effectiveMessage = change_message || `☕ +1 point ajouté ! ${newPts}/${maxPts}`;
-
-        console.log(`[Wallet Push] Points ${oldPts} → ${newPts} for card ${sn}`);
+        fieldValueActuallyChanged = newPts !== oldPts;
+        console.log(`[Wallet Push] Points ${oldPts} → ${newPts} for card ${sn} (changed=${fieldValueActuallyChanged})`);
       }
 
-      // Always set a unique wallet_change_message so the field value changes
+      // Always set a unique wallet_change_message so the "offer" field value changes
+      // WARNING: if the message is identical to old value, iOS won't show a changeMessage notification
+      if (effectiveMessage === oldChangeMessage) {
+        // Append timestamp to force a unique value
+        effectiveMessage = `${effectiveMessage} (${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
+        console.log(`[Wallet Push] ⚠ Message was identical to previous — appended timestamp to force change`);
+      }
+      fieldValueActuallyChanged = true; // offer field will always change now
+
       cardUpdate.wallet_change_message = effectiveMessage;
       cardUpdate.updated_at = now;
 
@@ -146,6 +161,13 @@ Deno.serve(async (req) => {
         action: act,
         updated: !updateErr,
         message: effectiveMessage,
+        field_value_changed: fieldValueActuallyChanged,
+        old_points: oldPts,
+        new_points: newPts,
+        old_change_message: oldChangeMessage,
+        new_change_message: effectiveMessage,
+        changeMessage_on_points: "Vous avez gagné %@ points !",
+        changeMessage_on_offer: "%@",
         ...(updateErr ? { error: updateErr.message } : {}),
       });
 

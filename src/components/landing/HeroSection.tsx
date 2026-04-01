@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Sparkles, Award, TrendingUp, MapPin, Gift } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { ArrowRight, Sparkles, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -78,18 +78,10 @@ const DEMO_CARDS = [
   },
 ] as const;
 
-/* ─── Notification definitions (iOS-style, shown at TOP) ─── */
+/* ─── Notification definitions ─── */
 const NOTIFICATIONS = [
-  {
-    title: "FidéliPro",
-    text: "📍 Vous êtes à proximité !",
-    sub: "Boutique FidéliPro · 50m",
-  },
-  {
-    title: "FidéliPro",
-    text: "🎁 Offre spéciale disponible !",
-    sub: "-20% aujourd'hui seulement",
-  },
+  { title: "FidéliPro", text: "📍 Vous êtes à proximité !", sub: "Boutique FidéliPro · 50m" },
+  { title: "FidéliPro", text: "🎁 Offre spéciale disponible !", sub: "-20% aujourd'hui seulement" },
 ];
 
 /* ═══════════════════ HERO ═══════════════════ */
@@ -97,14 +89,18 @@ export function HeroSection() {
   const { data: settings } = useSiteSettings();
   const [activeIndex, setActiveIndex] = useState(0);
   const [notifIndex, setNotifIndex] = useState(0);
+  const [direction, setDirection] = useState(1); // 1=right, -1=left
 
+  // Auto-rotate cards
   useEffect(() => {
     const interval = setInterval(() => {
+      setDirection(1);
       setActiveIndex((prev) => (prev + 1) % DEMO_CARDS.length);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-rotate notifications
   useEffect(() => {
     const interval = setInterval(() => {
       setNotifIndex((prev) => (prev + 1) % NOTIFICATIONS.length);
@@ -115,9 +111,7 @@ export function HeroSection() {
   const { data: businessCount } = useQuery({
     queryKey: ["business-count"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("businesses")
-        .select("*", { count: "exact", head: true });
+      const { count, error } = await supabase.from("businesses").select("*", { count: "exact", head: true });
       if (error) throw error;
       return count ?? 0;
     },
@@ -138,7 +132,34 @@ export function HeroSection() {
   const activeCard = DEMO_CARDS[activeIndex];
   const currentNotif = NOTIFICATIONS[notifIndex];
 
-  /* iOS-style notification banner rendered inside iPhone, under dynamic island */
+  const goToCard = (i: number) => {
+    setDirection(i > activeIndex ? 1 : -1);
+    setActiveIndex(i);
+  };
+
+  /* Swipe variants — Apple Wallet style: cards slide with depth */
+  const swipeVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 200 : -200,
+      scale: 0.85,
+      opacity: 0,
+      rotateY: dir > 0 ? 8 : -8,
+    }),
+    center: {
+      x: 0,
+      scale: 1,
+      opacity: 1,
+      rotateY: 0,
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? -200 : 200,
+      scale: 0.85,
+      opacity: 0,
+      rotateY: dir > 0 ? -8 : 8,
+    }),
+  };
+
+  /* iOS notification banner */
   const iosNotification = (
     <AnimatePresence mode="wait">
       <motion.div
@@ -160,7 +181,6 @@ export function HeroSection() {
           boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
         }}
       >
-        {/* App icon */}
         <div style={{
           width: "32px", height: "32px", borderRadius: "8px",
           background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
@@ -187,7 +207,7 @@ export function HeroSection() {
 
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden">
-      {/* Mesh gradient background */}
+      {/* Background */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0" style={{
         background: [
@@ -281,7 +301,7 @@ export function HeroSection() {
             </div>
           </motion.div>
 
-          {/* ─── Right — iPhone mockup with REAL PassKit card ─── */}
+          {/* ─── Right — iPhone with Apple Wallet swipe ─── */}
           <motion.div
             initial={{ opacity: 0, x: 48 }}
             animate={{ opacity: 1, x: 0 }}
@@ -333,58 +353,84 @@ export function HeroSection() {
               <span className="text-xs font-bold">+1 pt</span>
             </motion.div>
 
-            {/* iPhone with REAL Apple Wallet card */}
+            {/* iPhone with Apple Wallet-style card swipe */}
             <motion.div
               className="relative z-10"
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             >
               <IPhoneMockup width={300} notification={iosNotification}>
-                {/* Card type tabs */}
-                <div className="flex gap-1 mb-2 px-1">
+                {/* Card type selector dots */}
+                <div className="flex justify-center gap-1.5 mb-2">
                   {DEMO_CARDS.map((card, i) => (
                     <button
                       key={card.id}
-                      onClick={() => setActiveIndex(i)}
-                      className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold transition-all ${
-                        activeIndex === i
-                          ? "text-white shadow-sm"
-                          : "text-gray-400 hover:text-gray-200"
-                      }`}
-                      style={activeIndex === i ? { background: card.bg } : undefined}
-                    >
-                      {card.label}
-                    </button>
+                      onClick={() => goToCard(i)}
+                      className="transition-all"
+                      style={{
+                        width: activeIndex === i ? "20px" : "6px",
+                        height: "6px",
+                        borderRadius: "3px",
+                        background: activeIndex === i ? card.bg : "rgba(255,255,255,0.2)",
+                        transition: "all 0.3s ease",
+                      }}
+                    />
                   ))}
                 </div>
 
-                {/* The REAL PassKit card */}
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeCard.id}
-                    initial={{ opacity: 0, x: 20, scale: 0.98 }}
-                    animate={{ opacity: 1, x: 0, scale: 1 }}
-                    exit={{ opacity: 0, x: -20, scale: 0.98 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                  >
-                    <AppleWalletPass
-                      backgroundColor={activeCard.bg}
-                      logoText="FidéliPro"
-                      stripImageUrl={fideliproBanner}
-                      headerFields={[...activeCard.headerFields]}
-                      primaryFields={[...activeCard.primaryFields]}
-                      secondaryFields={[...activeCard.secondaryFields]}
-                      auxiliaryFields={[...activeCard.auxiliaryFields]}
-                      barcodeValue="FIDELIPRO-DEMO-001"
-                      footerText="FIDELIPRO-001"
-                      width={270}
+                {/* Apple Wallet swipe animation — 3D perspective */}
+                <div style={{ perspective: "800px", overflow: "hidden" }}>
+                  <AnimatePresence mode="wait" custom={direction}>
+                    <motion.div
+                      key={activeCard.id}
+                      custom={direction}
+                      variants={swipeVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{
+                        x: { type: "spring", stiffness: 280, damping: 30 },
+                        opacity: { duration: 0.25 },
+                        scale: { duration: 0.35 },
+                        rotateY: { duration: 0.4 },
+                      }}
+                      style={{ transformStyle: "preserve-3d" }}
                     >
-                      {"stamps" in activeCard && activeCard.stamps ? (
-                        <StampGrid filled={activeCard.stamps.filled} total={activeCard.stamps.total} s={270 / 320} />
-                      ) : null}
-                    </AppleWalletPass>
-                  </motion.div>
-                </AnimatePresence>
+                      <AppleWalletPass
+                        backgroundColor={activeCard.bg}
+                        logoText="FidéliPro"
+                        stripImageUrl={fideliproBanner}
+                        headerFields={[...activeCard.headerFields]}
+                        primaryFields={[...activeCard.primaryFields]}
+                        secondaryFields={[...activeCard.secondaryFields]}
+                        auxiliaryFields={[...activeCard.auxiliaryFields]}
+                        barcodeValue="FIDELIPRO-DEMO-001"
+                        footerText="FIDELIPRO-001"
+                        width={270}
+                      >
+                        {"stamps" in activeCard && activeCard.stamps ? (
+                          <StampGrid filled={activeCard.stamps.filled} total={activeCard.stamps.total} s={270 / 320} />
+                        ) : null}
+                      </AppleWalletPass>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                {/* Card type label */}
+                <div className="flex justify-center mt-2">
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={activeCard.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      className="text-[10px] font-semibold px-3 py-1 rounded-full"
+                      style={{ background: activeCard.bg, color: "#fff" }}
+                    >
+                      {activeCard.label}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
               </IPhoneMockup>
             </motion.div>
           </motion.div>
