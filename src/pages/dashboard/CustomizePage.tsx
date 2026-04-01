@@ -484,7 +484,7 @@ const CustomizePage = () => {
                   { key: "show_qr_code" as const, label: "QR Code (barcode)" },
                   { key: "show_points" as const, label: "Points (headerFields)" },
                   { key: "show_expiration" as const, label: "Date d'expiration (auxiliaryFields)" },
-                  { key: "show_rewards_preview" as const, label: "Récompense (promoText)" },
+                  { key: "show_rewards_preview" as const, label: "Récompense (secondaryFields)" },
                 ].map((item) => (
                   <div key={item.key} className="flex items-center justify-between py-0.5">
                     <span className="text-sm">{item.label}</span>
