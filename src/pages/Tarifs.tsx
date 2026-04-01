@@ -188,8 +188,21 @@ const Tarifs = () => {
 
       {/* Comparison table */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
-        <h2 className="text-2xl font-display font-bold text-center mb-8">Comparatif détaillé</h2>
-        <div className="rounded-2xl border border-border/50 overflow-hidden bg-card">
+        <motion.h2
+          className="text-2xl font-display font-bold text-center mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Comparatif détaillé
+        </motion.h2>
+        <motion.div
+          className="rounded-2xl border border-border/50 overflow-hidden bg-card"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
@@ -203,15 +216,22 @@ const Tarifs = () => {
             </thead>
             <tbody>
               {comparison.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                <motion.tr
+                  key={row.feature}
+                  className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/20"}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.03 }}
+                >
                   <td className="p-4 text-muted-foreground">{row.feature}</td>
                   <td className="p-4 text-center"><Cell value={row.starter} /></td>
                   <td className={`p-4 text-center ${plans[1].popular ? "bg-primary/5" : ""}`}><Cell value={row.pro} /></td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </motion.div>
       </section>
 
       {/* FAQ */}
