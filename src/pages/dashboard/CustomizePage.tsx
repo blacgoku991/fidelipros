@@ -377,6 +377,56 @@ const CustomizePage = () => {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Strip/Banner image upload */}
+              {form.card_bg_type === "image" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Image bannière (strip)</Label>
+                  {stripImageUrl ? (
+                    <div className="relative group">
+                      <img src={stripImageUrl} alt="Strip" className="w-full h-20 object-cover rounded-xl border border-border/50" />
+                      <button
+                        onClick={async () => {
+                          setStripImageUrl(null);
+                          if (business) {
+                            await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
+                          }
+                        }}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => stripFileRef.current?.click()}
+                      className="w-full h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                    >
+                      <span className="text-xs text-muted-foreground">+ Ajouter une image</span>
+                    </button>
+                  )}
+                  <input
+                    ref={stripFileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !business) return;
+                      if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
+                      const ext = file.name.split(".").pop();
+                      const path = `${business.id}/strip.${ext}`;
+                      const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
+                      if (error) { toast.error("Erreur upload"); return; }
+                      const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
+                      const url = `${publicUrl}?t=${Date.now()}`;
+                      setStripImageUrl(url);
+                      await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
+                      toast.success("Image bannière mise à jour !");
+                    }}
+                  />
+                  <p className="text-[10px] text-muted-foreground">Idéal : 640×200px · PNG/JPG · max 2 Mo</p>
+                </div>
+              )}
               <div className="space-y-2.5">
                 <h3 className="text-xs font-medium text-muted-foreground">Éléments visibles</h3>
                 {[
