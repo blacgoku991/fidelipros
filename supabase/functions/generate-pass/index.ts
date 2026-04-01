@@ -136,10 +136,8 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/vnd.apple.pkpass",
-        "Content-Disposition": 'attachment; filename="loyalty.pkpass"',
         "Content-Length": String(pkpassBuffer.byteLength),
-        "Access-Control-Expose-Headers": "Content-Disposition, Content-Length",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "no-cache, no-store",
       },
     });
   } catch (err: any) {
