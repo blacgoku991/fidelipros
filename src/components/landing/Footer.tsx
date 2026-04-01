@@ -72,7 +72,7 @@ export function Footer() {
               <li><a href="/#testimonials" className="text-sm text-muted-foreground hover:text-primary transition-colors">Témoignages</a></li>
               <li><a href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
             </ul>
-        </motion.div>
+        </div>
 
           {/* Entreprise */}
           <div>
