@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Bell, Award, TrendingUp } from "lucide-react";
+import { ArrowRight, Sparkles, Bell, Award, TrendingUp, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import fideliproBanner from "@/assets/fidelipro-banner.jpg";
 
 export function HeroSection() {
   const { data: settings } = useSiteSettings();
@@ -119,7 +120,7 @@ export function HeroSection() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full sm:w-auto rounded-xl px-8 h-13 text-base border-border/60 hover:border-primary/30 hover:bg-primary/5">
-                <a href="#pricing">{ctaSecondary}</a>
+                <a href="/tarifs">{ctaSecondary}</a>
               </Button>
             </div>
 
@@ -191,41 +192,47 @@ export function HeroSection() {
               <span className="text-xs font-bold">+1 pt</span>
             </motion.div>
 
-            {/* iPhone mockup */}
+            {/* iPhone 17 Pro Max mockup — realistic 6.9" proportions */}
             <motion.div
-              className="relative z-10 w-[280px] sm:w-[300px]"
+              className="relative z-10"
+              style={{ width: 260 }}
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
             >
-              {/* iPhone frame */}
-              <div className="relative rounded-[44px] bg-[#1a1a2e] p-[10px] shadow-2xl shadow-black/30">
-                {/* Notch / Dynamic Island */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[100px] h-[28px] bg-[#1a1a2e] rounded-b-2xl" />
+              {/* iPhone frame — 19.5:9 aspect ratio */}
+              <div className="relative rounded-[48px] bg-[#1a1a2e] p-[10px] shadow-2xl shadow-black/30" style={{ aspectRatio: "9 / 19.5" }}>
+                {/* Dynamic Island */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[90px] h-[26px] bg-[#1a1a2e] rounded-b-[18px]" />
+                {/* Side buttons */}
+                <div className="absolute top-[110px] -right-[2px] w-[3px] h-[50px] rounded-r bg-[#2a2a3e]" />
+                <div className="absolute top-[80px] -left-[2px] w-[3px] h-[28px] rounded-l bg-[#2a2a3e]" />
+                <div className="absolute top-[120px] -left-[2px] w-[3px] h-[42px] rounded-l bg-[#2a2a3e]" />
+                <div className="absolute top-[170px] -left-[2px] w-[3px] h-[42px] rounded-l bg-[#2a2a3e]" />
 
                 {/* Screen */}
-                <div className="rounded-[34px] overflow-hidden bg-[#f2f2f7] dark:bg-[#1c1c1e]">
+                <div className="rounded-[38px] overflow-hidden bg-[#f2f2f7] dark:bg-[#1c1c1e] h-full flex flex-col">
                   {/* Status bar */}
-                  <div className="flex items-center justify-between px-6 pt-3 pb-1">
+                  <div className="flex items-center justify-between px-7 pt-3.5 pb-1 shrink-0">
                     <span className="text-[11px] font-semibold text-foreground/80">19:24</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-foreground/60">📶</span>
-                      <span className="text-[10px] text-foreground/60">🔋</span>
+                      <svg className="w-3.5 h-3.5 text-foreground/60" viewBox="0 0 24 24" fill="currentColor"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+                      <svg className="w-3.5 h-3.5 text-foreground/60" viewBox="0 0 24 24" fill="currentColor"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
                     </div>
                   </div>
 
                   {/* Wallet header */}
-                  <div className="px-5 pt-2 pb-3">
+                  <div className="px-5 pt-1 pb-2 shrink-0">
                     <h3 className="text-lg font-bold text-foreground">Wallet</h3>
                   </div>
 
                   {/* Stacked cards */}
-                  <div className="px-4 pb-6 space-y-[-40px]">
-                    {/* Background card 1 - generic */}
+                  <div className="flex-1 px-4 pb-8 flex flex-col justify-start gap-0">
+                    {/* Bank card 1 */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5, duration: 0.6 }}
-                      className="relative z-[1] rounded-xl h-[70px] bg-gradient-to-r from-blue-600 to-blue-800 shadow-md px-4 py-3"
+                      className="relative z-[1] rounded-xl h-[60px] bg-gradient-to-r from-blue-600 to-blue-800 shadow-md px-4 py-3 shrink-0"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-semibold text-white/90">💳 Ma Banque</span>
@@ -233,12 +240,12 @@ export function HeroSection() {
                       </div>
                     </motion.div>
 
-                    {/* Background card 2 - generic */}
+                    {/* Bank card 2 */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.7, duration: 0.6 }}
-                      className="relative z-[2] rounded-xl h-[70px] bg-gradient-to-r from-gray-400 to-gray-600 shadow-md px-4 py-3"
+                      className="relative z-[2] -mt-[36px] rounded-xl h-[60px] bg-gradient-to-r from-gray-400 to-gray-600 shadow-md px-4 py-3 shrink-0"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-semibold text-white/90">🏦 Revolut</span>
@@ -246,53 +253,69 @@ export function HeroSection() {
                       </div>
                     </motion.div>
 
-                    {/* Main loyalty card - highlighted */}
+                    {/* FidéliPro loyalty card */}
                     <motion.div
                       initial={{ opacity: 0, y: 30, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       transition={{ delay: 0.9, duration: 0.7, ease: "easeOut" }}
-                      className="relative z-[3] rounded-2xl overflow-hidden shadow-xl shadow-amber-500/20"
+                      className="relative z-[3] -mt-[36px] rounded-2xl overflow-hidden shadow-xl shadow-primary/20"
                     >
-                      {/* Card with gradient */}
-                      <div className="bg-gradient-to-br from-amber-100 via-orange-50 to-amber-200 dark:from-amber-900/80 dark:via-orange-900/60 dark:to-amber-800/80 p-4">
-                        {/* Banner area with food imagery feel */}
-                        <div className="flex items-center justify-between mb-3">
+                      <div className="bg-gradient-to-br from-[hsl(245,58%,51%)] via-[hsl(270,65%,45%)] to-[hsl(245,58%,35%)] p-3.5">
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-2.5">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                              🍔
+                            <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                              <CreditCard className="w-4 h-4 text-white" />
                             </div>
-                            <span className="text-sm font-bold text-amber-900 dark:text-amber-100">Tasty Bites</span>
+                            <span className="text-[13px] font-bold text-white">FidéliPro</span>
                           </div>
                           <div className="text-right">
-                            <p className="text-[9px] uppercase tracking-wider text-amber-700/70 dark:text-amber-300/70 font-semibold">Points</p>
+                            <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Stamps</p>
                             <motion.p
-                              className="text-lg font-extrabold text-amber-800 dark:text-amber-100"
+                              className="text-base font-extrabold text-white leading-none"
                               animate={{ scale: [1, 1.08, 1] }}
                               transition={{ duration: 2, repeat: Infinity, delay: 2 }}
                             >
-                              200
+                              7
                             </motion.p>
                           </div>
                         </div>
 
-                        {/* Strip image area */}
-                        <div className="rounded-xl overflow-hidden mb-3 h-[80px] bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 flex items-center justify-center relative">
-                          <div className="absolute inset-0 bg-black/10" />
-                          <span className="text-3xl">🥗🍕🍔🌮🥐</span>
+                        {/* Banner */}
+                        <div className="rounded-xl overflow-hidden mb-2.5" style={{ aspectRatio: "3.2 / 1" }}>
+                          <img src={fideliproBanner} alt="" className="w-full h-full object-cover" />
                         </div>
 
-                        {/* Member info */}
-                        <div>
-                          <p className="text-[9px] uppercase tracking-wider text-amber-700/60 dark:text-amber-300/60 font-semibold">Member</p>
-                          <p className="text-sm font-bold text-amber-900 dark:text-amber-100">Carol Danvers</p>
+                        {/* Member + Reward */}
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Member</p>
+                            <p className="text-[12px] font-bold text-white">Marie Dupont</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Reward</p>
+                            <p className="text-[12px] font-bold text-white">3</p>
+                          </div>
+                        </div>
+
+                        {/* QR */}
+                        <div className="flex flex-col items-center pt-1 pb-0.5">
+                          <div className="rounded-lg p-1.5 bg-white shadow-sm">
+                            <div className="w-[52px] h-[52px] bg-foreground/10 rounded grid grid-cols-5 grid-rows-5 gap-px p-1">
+                              {Array.from({ length: 25 }).map((_, i) => (
+                                <div key={i} className={`rounded-[1px] ${[0,1,2,4,5,6,10,14,18,20,21,22,24,3,8,12,16,9,13,17,11,23].includes(i) ? 'bg-foreground/80' : 'bg-transparent'}`} />
+                              ))}
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-mono tracking-wider text-white/35 mt-1">a8f4bc01</span>
                         </div>
                       </div>
                     </motion.div>
                   </div>
 
-                  {/* Dashed line pointing to card */}
+                  {/* Label */}
                   <motion.div
-                    className="flex items-center justify-center pb-4"
+                    className="flex items-center justify-center pb-4 shrink-0"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 1.5 }}
@@ -304,8 +327,8 @@ export function HeroSection() {
                 </div>
               </div>
 
-              {/* iPhone bottom bar */}
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[100px] h-[4px] rounded-full bg-white/30" />
+              {/* Home indicator */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[90px] h-[4px] rounded-full bg-white/30" />
             </motion.div>
           </motion.div>
         </div>
