@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
 
-const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
+const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.fidelispro";
 
 // Apple Worldwide Developer Relations Certification Authority G4
 // Source officielle : https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer
