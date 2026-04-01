@@ -125,7 +125,7 @@ const CheckoutPage = () => {
     return () => clearTimeout(timer);
   }, [checkoutStarted]);
 
-  // ── Lancer le checkout Stripe hosted ───────────────────────────────────
+  // ── Lancer le checkout Stripe hosted (ou changement de plan) ─────────
   const startCheckout = async (plan: PlanKey) => {
     setError(null);
     setRedirecting(plan);
@@ -137,6 +137,14 @@ const CheckoutPage = () => {
         body: { plan, origin: window.location.origin },
       });
       if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
+
+      // Plan switch (no redirect needed)
+      if (data?.updated) {
+        toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
+        setTimeout(() => window.location.replace("/dashboard"), 1200);
+        return;
+      }
+
       if (!data?.url) throw new Error("URL de paiement manquante");
       window.location.href = data.url;
     } catch (err: any) {
@@ -289,29 +297,19 @@ const CheckoutPage = () => {
     >
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* Already subscribed banner */}
+        {/* Already subscribed info */}
         {isActive && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
           >
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-              <p className="text-sm font-medium">
-                Vous êtes déjà abonné au plan{" "}
-                <span className="font-bold">{currentPlan ? pricingPlans[currentPlan]?.name : "actif"}</span>.
-                Pour modifier votre abonnement, utilisez le portail Stripe.
-              </p>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => window.location.replace("/dashboard")}
-              className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl gap-2"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              Dashboard
-            </Button>
+            <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+            <p className="text-sm font-medium">
+              Vous êtes abonné au plan{" "}
+              <span className="font-bold">{currentPlan ? pricingPlans[currentPlan]?.name : "actif"}</span>.
+              Sélectionnez un autre plan pour changer — le prorata sera appliqué automatiquement.
+            </p>
           </motion.div>
         )}
 
@@ -383,11 +381,11 @@ const CheckoutPage = () => {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: key === "starter" ? 0 : 0.07 }}
-                      onClick={() => { if (!isActive) setSelectedPlan(key); }}
+                      onClick={() => { if (!isCurrent) setSelectedPlan(key); }}
                       className={[
                         "relative rounded-2xl border-2 p-6 transition-all duration-200",
-                        !isActive ? "cursor-pointer" : "cursor-default",
-                        isSelected && !isActive
+                        !isCurrent ? "cursor-pointer" : "cursor-default",
+                        isSelected && !isCurrent
                           ? "border-violet-500 bg-violet-500/5 shadow-lg shadow-violet-500/10"
                           : "border-border/50 bg-card hover:border-border",
                         isCurrent ? "ring-2 ring-emerald-500/30" : "",
@@ -446,33 +444,12 @@ const CheckoutPage = () => {
                       </ul>
 
                       {/* CTA */}
-                      {isActive ? (
-                        isCurrent ? (
-                          <Button disabled variant="outline"
-                            className="w-full rounded-xl h-11 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" /> Abonnement actif
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => openPortal(key === "pro" ? "subscription_update" : undefined)}
-                            disabled={portalLoading}
-                            className={`w-full rounded-xl h-11 ${
-                              key === "pro"
-                                ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white hover:opacity-90 border-0"
-                                : "border border-border"
-                            }`}
-                            variant={key === "pro" ? "default" : "outline"}
-                          >
-                            {portalLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : key === "pro" ? (
-                              <><span>Passer au plan Pro</span><ArrowRight className="w-4 h-4 ml-2" /></>
-                            ) : (
-                              "Réduire au Starter"
-                            )}
-                          </Button>
-                        )
+                      {isCurrent ? (
+                        <Button disabled variant="outline"
+                          className="w-full rounded-xl h-11 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" /> Plan actuel
+                        </Button>
                       ) : (
                         <Button
                           onClick={(e) => { e.stopPropagation(); startCheckout(key); }}
@@ -485,7 +462,9 @@ const CheckoutPage = () => {
                           variant={isSelected ? "default" : "outline"}
                         >
                           {redirecting === key ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirection…</>
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Changement…</>
+                          ) : isActive ? (
+                            <><span>{key === "pro" ? "Passer au Pro" : "Passer au Starter"}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : isSelected ? (
                             <><span>Continuer avec {plan.name}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : (

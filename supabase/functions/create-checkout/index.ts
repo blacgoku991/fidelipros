@@ -46,7 +46,6 @@ serve(async (req) => {
     const plan = body?.plan;
     if (!plan || typeof plan !== "string") throw new Error("Plan non spécifié");
 
-    // Dynamic origin from client or fallback
     const origin = body?.origin || req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
 
     // Read Price ID from site_settings first
@@ -62,16 +61,64 @@ serve(async (req) => {
 
     if (!priceId) throw new Error(`Plan invalide: ${plan}`);
 
-    console.log(`[CHECKOUT] Creating session for plan=${plan}, priceId=${priceId}, email=${user.email}`);
-
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Find or create Stripe customer
+    // Find existing Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
     }
+
+    // Check if user has an active subscription — if so, update it directly (plan switch)
+    if (customerId) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customerId,
+        status: "active",
+        limit: 1,
+      });
+
+      if (subscriptions.data.length > 0) {
+        const sub = subscriptions.data[0];
+        const currentPriceId = sub.items.data[0]?.price?.id;
+
+        if (currentPriceId === priceId) {
+          throw new Error("Vous êtes déjà abonné à ce plan");
+        }
+
+        console.log(`[CHECKOUT] Switching plan: ${currentPriceId} → ${priceId} for sub ${sub.id}`);
+
+        // Update subscription with proration
+        const updated = await stripe.subscriptions.update(sub.id, {
+          items: [{ id: sub.items.data[0].id, price: priceId }],
+          proration_behavior: "create_prorations",
+          metadata: { user_id: user.id, plan },
+        });
+
+        console.log(`[CHECKOUT] Subscription updated: ${updated.id}, status: ${updated.status}`);
+
+        // Update business in DB
+        await supabaseAdmin
+          .from("businesses")
+          .update({
+            subscription_plan: plan,
+            subscription_status: updated.status === "active" ? "active" : updated.status,
+          })
+          .eq("owner_id", user.id);
+
+        return new Response(JSON.stringify({ 
+          updated: true, 
+          plan,
+          message: `Plan mis à jour vers ${plan}` 
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+    }
+
+    // No active subscription — create a new checkout session
+    console.log(`[CHECKOUT] Creating session for plan=${plan}, priceId=${priceId}, email=${user.email}`);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
