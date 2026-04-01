@@ -295,14 +295,14 @@ export function HeroSection() {
               animate={{ y: [0, -8, 0] }}
               transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
             >
-              <IPhoneMockup width={278}>
-                {/* Card type tabs (outside the pass, as a Wallet-level UI) */}
-                <div className="flex gap-1 mb-2 px-1">
+              <IPhoneMockup width={340}>
+                {/* Card type tabs */}
+                <div className="flex gap-1 mb-3 px-1">
                   {DEMO_CARDS.map((card, i) => (
                     <button
                       key={card.id}
                       onClick={() => setActiveIndex(i)}
-                      className={`flex-1 py-1.5 rounded-lg text-[8px] font-bold transition-all ${
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold transition-all ${
                         activeIndex === i
                           ? "text-white shadow-sm"
                           : "text-gray-400 hover:text-gray-200"
@@ -314,7 +314,7 @@ export function HeroSection() {
                   ))}
                 </div>
 
-                {/* The REAL PassKit card — same component used everywhere */}
+                {/* The REAL PassKit card */}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeCard.id}
@@ -333,13 +333,17 @@ export function HeroSection() {
                       auxiliaryFields={[...activeCard.auxiliaryFields]}
                       barcodeValue="FIDELIPRO-DEMO-001"
                       footerText="FIDELIPRO-001"
-                      width={246}
-                    />
+                      width={308}
+                    >
+                      {"stamps" in activeCard && activeCard.stamps ? (
+                        <StampGrid filled={activeCard.stamps.filled} total={activeCard.stamps.total} s={308 / 320} />
+                      ) : null}
+                    </AppleWalletPass>
                   </motion.div>
                 </AnimatePresence>
 
                 {/* Smart notification */}
-                <div className="mt-2">
+                <div className="mt-3">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={notifIndex}
@@ -347,14 +351,14 @@ export function HeroSection() {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.96 }}
                       transition={{ duration: 0.3 }}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl ${currentNotif.bg} backdrop-blur-sm`}
+                      className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl ${currentNotif.bg} backdrop-blur-sm`}
                     >
-                      <div className={`w-6 h-6 rounded-lg ${currentNotif.iconBg} flex items-center justify-center shrink-0`}>
-                        <currentNotif.icon className="w-3 h-3 text-white" />
+                      <div className={`w-7 h-7 rounded-lg ${currentNotif.iconBg} flex items-center justify-center shrink-0`}>
+                        <currentNotif.icon className="w-3.5 h-3.5 text-white" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-[9px] font-bold text-white leading-none">{currentNotif.text}</p>
-                        <p className="text-[7px] text-white/60 mt-0.5">{currentNotif.sub}</p>
+                        <p className="text-[10px] font-bold text-white leading-none">{currentNotif.text}</p>
+                        <p className="text-[8px] text-white/60 mt-0.5">{currentNotif.sub}</p>
                       </div>
                     </motion.div>
                   </AnimatePresence>
