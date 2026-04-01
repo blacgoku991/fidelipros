@@ -229,6 +229,19 @@ const CustomizePage = () => {
       }
     >
       <div className="grid lg:grid-cols-[1fr,360px] gap-6">
+        {/* ─── MOBILE PREVIEW (visible on small screens only) ─── */}
+        <div className="lg:hidden">
+          <details className="rounded-2xl bg-card border border-border/50 overflow-hidden" open>
+            <summary className="p-4 cursor-pointer flex items-center justify-between font-display font-semibold text-sm">
+              <span className="flex items-center gap-2">👁️ Aperçu carte en temps réel</span>
+              <Badge variant="outline" className="text-[9px] text-emerald-600 border-emerald-300">Live</Badge>
+            </summary>
+            <div className="flex justify-center pb-4 px-4">
+              {walletPassElement}
+            </div>
+          </details>
+        </div>
+
         {/* ─── LEFT: Configuration accordion ─── */}
         <div className="space-y-4">
           <Tabs defaultValue="branding" className="space-y-4">
