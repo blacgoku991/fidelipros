@@ -301,9 +301,9 @@ export function HeroSection() {
                         {/* QR */}
                         <div className="flex flex-col items-center pt-1 pb-0.5">
                           <div className="rounded-lg p-1.5 bg-white shadow-sm">
-                            <div className="w-[52px] h-[52px] bg-foreground/10 rounded grid grid-cols-5 grid-rows-5 gap-px p-1">
+                            <div className="w-[52px] h-[52px] bg-gray-100 rounded grid grid-cols-5 grid-rows-5 gap-px p-1">
                               {Array.from({ length: 25 }).map((_, i) => (
-                                <div key={i} className={`rounded-[1px] ${[0,1,2,4,5,6,10,14,18,20,21,22,24,3,8,12,16,9,13,17,11,23].includes(i) ? 'bg-foreground/80' : 'bg-transparent'}`} />
+                                <div key={i} className={`rounded-[1px] ${[0,1,2,4,5,6,10,14,18,20,21,22,24,3,8,12,16,9,13,17,11,23].includes(i) ? 'bg-gray-800' : 'bg-transparent'}`} />
                               ))}
                             </div>
                           </div>
