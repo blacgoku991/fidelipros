@@ -82,15 +82,25 @@ export function Navbar() {
               </SheetHeader>
 
               <nav className="flex flex-col gap-1">
-                {navLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    href={link.href}
-                    className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                ))}
+                {navLinks.map((link) =>
+                  link.isPage ? (
+                    <Link
+                      key={link.label}
+                      to={link.href}
+                      className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  )
+                )}
                 <div className="mt-4 space-y-2">
                   <Button asChild variant="outline" className="w-full justify-center rounded-xl h-11">
                     <Link to="/login">Se connecter</Link>
