@@ -184,7 +184,7 @@ const CardViewPage = () => {
           auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
           barcodeValue={card.card_code || card.id}
           footerText={(card.card_code || card.id).slice(0, 12)}
-          promoText={business.reward_description}
+          
           width={320}
         />
 
