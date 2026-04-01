@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import forge from "npm:node-forge@1.3.1";
 import JSZip from "npm:jszip@3.10.1";
 
-const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
+const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.fidelispro";
 
 // Apple Worldwide Developer Relations Certification Authority G4
 // Source officielle : https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer
@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Startup secret validation ──────────────────────────────────────────────
-  const REQUIRED_SECRETS = ["APPLE_TEAM_ID", "APPLE_PASS_TYPE_ID", "APPLE_P12_BASE64", "APPLE_P12_PASSWORD"];
+  const REQUIRED_SECRETS = ["APPLE_TEAM_ID", "APPLE_PASS_CERTIFICATE", "APPLE_PASS_PASSWORD"];
   const missingSecrets = REQUIRED_SECRETS.filter((s) => !Deno.env.get(s));
   if (missingSecrets.length > 0) {
     console.error("[generate-pass] ❌ MISSING SECRETS:", missingSecrets.join(", "));
@@ -164,8 +164,8 @@ export async function buildPkpass(
   rewards: any[] = []
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
-  const p12Base64 = requireEnv("APPLE_P12_BASE64");
-  const p12Password = requireEnv("APPLE_P12_PASSWORD");
+  const p12Base64 = requireEnv("APPLE_PASS_CERTIFICATE");
+  const p12Password = requireEnv("APPLE_PASS_PASSWORD");
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
   const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);

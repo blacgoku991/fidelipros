@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString(),
       PASS_TYPE_ID,
       SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
-      has_p12: !!Deno.env.get("APPLE_P12_BASE64"),
+      has_p12: !!Deno.env.get("APPLE_PASS_CERTIFICATE"),
       has_team_id: !!Deno.env.get("APPLE_TEAM_ID"),
       has_service_role: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
       webServiceURL_expected: `${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-webservice`,
@@ -329,8 +329,8 @@ async function buildPkpassForUpdate(
   authToken: string
 ): Promise<Uint8Array> {
   const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
-  const p12Base64 = Deno.env.get("APPLE_P12_BASE64")!;
-  const p12Password = Deno.env.get("APPLE_P12_PASSWORD")!;
+  const p12Base64 = Deno.env.get("APPLE_PASS_CERTIFICATE")!;
+  const p12Password = Deno.env.get("APPLE_PASS_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
 
