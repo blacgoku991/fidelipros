@@ -4,22 +4,49 @@ import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-
-interface SidebarItem {
-  icon: React.ElementType;
-  label: string;
-  path: string;
-}
+import type { SidebarItem, SidebarGroup } from "@/lib/sidebarItems";
 
 interface DashboardSidebarProps {
   items: SidebarItem[];
+  groups?: SidebarGroup[];
   onLogout: () => void;
 }
 
-export function DashboardSidebar({ items, onLogout }: DashboardSidebarProps) {
+export function DashboardSidebar({ items, groups, onLogout }: DashboardSidebarProps) {
   const { role } = useAuth();
   const isAdmin = role === "super_admin";
   const isAdminPanel = items.some(i => i.path.startsWith("/admin"));
+
+  const renderItem = (item: SidebarItem) => (
+    <NavLink
+      key={item.path}
+      to={item.path}
+      end={item.path === "/admin" || item.path === "/dashboard"}
+      className={({ isActive }) =>
+        cn(
+          "w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-sm font-medium transition-all duration-200 relative",
+          isActive
+            ? isAdminPanel
+              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold"
+              : "bg-primary/10 text-primary font-semibold shadow-sm"
+            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+        )
+      }
+    >
+      {({ isActive }) => (
+        <>
+          {isActive && (
+            <div className={cn(
+              "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full",
+              isAdminPanel ? "bg-purple-500" : "bg-primary"
+            )} />
+          )}
+          <item.icon className="w-[18px] h-[18px]" />
+          {item.label}
+        </>
+      )}
+    </NavLink>
+  );
 
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border/40 hidden lg:flex flex-col z-50">
@@ -42,37 +69,23 @@ export function DashboardSidebar({ items, onLogout }: DashboardSidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        {items.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            end={item.path === "/admin" || item.path === "/dashboard"}
-            className={({ isActive }) =>
-              cn(
-                "w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 relative",
-                isActive
-                  ? isAdminPanel
-                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 font-semibold"
-                    : "bg-primary/10 text-primary font-semibold shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                {isActive && (
-                  <div className={cn(
-                    "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full",
-                    isAdminPanel ? "bg-purple-500" : "bg-primary"
-                  )} />
-                )}
-                <item.icon className="w-[18px] h-[18px]" />
-                {item.label}
-              </>
-            )}
-          </NavLink>
-        ))}
+      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+        {groups && !isAdminPanel ? (
+          groups.map((group, gi) => (
+            <div key={gi} className={cn(group.label && "mt-4 first:mt-0")}>
+              {group.label && (
+                <p className="px-3.5 mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {group.label}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map(renderItem)}
+              </div>
+            </div>
+          ))
+        ) : (
+          items.map(renderItem)
+        )}
 
         {/* Switch between admin and merchant panels */}
         {isAdmin && !isAdminPanel && (

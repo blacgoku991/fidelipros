@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
-import { businessSidebarItems } from "@/lib/sidebarItems";
+import { businessSidebarItems, businessSidebarGroups } from "@/lib/sidebarItems";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -24,9 +24,9 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={businessSidebarItems} onLogout={logout} />
+      <DashboardSidebar items={businessSidebarItems} groups={businessSidebarGroups} onLogout={logout} />
       <main className="lg:ml-64 min-h-screen flex flex-col">
-        <MobileHeader onLogout={logout} items={businessSidebarItems} />
+        <MobileHeader onLogout={logout} items={businessSidebarItems} groups={businessSidebarGroups} />
 
         {/* Page header */}
         <div className="sticky top-0 lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-4">
