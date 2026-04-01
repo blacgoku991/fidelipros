@@ -353,9 +353,13 @@ async function createApnsJwt(
     .replace(/-----END PRIVATE KEY-----/g, "")
     .replace(/[\s\r\n]+/g, "");                     // strip all whitespace
 
+  console.log(`[APNs JWT] Cleaned PEM length: ${pemContent.length} chars`);
+
   // Decode base64 (support both standard and base64url variants)
   const std = pemContent.replace(/-/g, "+").replace(/_/g, "/");
-  const bin = Uint8Array.from(atob(std), (c) => c.charCodeAt(0));
+  // Add padding if needed
+  const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+  const bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
