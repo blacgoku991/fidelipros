@@ -219,10 +219,10 @@ export async function buildPkpass(
       headerFields: [
         {
           key: "points",
-          label: "POINTS",
-          value: pointsCurrent,
+          label: business.loyalty_type === "stamps" ? "TAMPONS" : business.loyalty_type === "cashback" ? "CAGNOTTE" : "POINTS",
+          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          changeMessage: "%@ points !",
+          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : business.loyalty_type === "cashback" ? "%@ de cagnotte !" : "%@ points !",
         },
       ],
       primaryFields: [

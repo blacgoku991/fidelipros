@@ -73,8 +73,9 @@ serve(async (req) => {
   const missing = REQUIRED_SECRETS.filter((s) => !Deno.env.get(s));
   if (missing.length > 0) {
     console.error("[GOOGLE-PASS] Missing secrets:", missing);
-    return new Response(JSON.stringify({ error: `Missing secrets: ${missing.join(", ")}` }), {
-      status: 503,
+    // Return a clean response — never expose secret names to public users
+    return new Response(JSON.stringify({ unavailable: true, error: "Google Wallet n'est pas encore configuré pour ce commerce." }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
