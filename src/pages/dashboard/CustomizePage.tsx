@@ -246,7 +246,7 @@ const CustomizePage = () => {
         <div className="space-y-4">
           <Tabs defaultValue="branding" className="space-y-4">
             <TabsList className="bg-card border border-border/40 rounded-xl p-1 h-auto flex-wrap">
-              <TabsTrigger value="branding" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Palette className="w-3.5 h-3.5" /> Identité</TabsTrigger>
+              <TabsTrigger value="branding" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Palette className="w-3.5 h-3.5" /> Identité & Logo</TabsTrigger>
               <TabsTrigger value="type" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Zap className="w-3.5 h-3.5" /> Type</TabsTrigger>
               <TabsTrigger value="design" className="rounded-lg text-xs gap-1.5 px-3 py-2"><CreditCard className="w-3.5 h-3.5" /> Design</TabsTrigger>
               <TabsTrigger value="fields" className="rounded-lg text-xs gap-1.5 px-3 py-2"><Eye className="w-3.5 h-3.5" /> Champs</TabsTrigger>
