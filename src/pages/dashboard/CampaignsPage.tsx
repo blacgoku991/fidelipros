@@ -419,7 +419,7 @@ const CampaignsPage = () => {
           </Button>
 
           {/* Campaign list */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
+          <div className="flex-1 lg:overflow-y-auto max-h-[40vh] lg:max-h-none space-y-2 pr-0.5">
             {campaignSummaries.length === 0 && !creating ? (
               <div className="text-center py-10">
                 <Megaphone className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
