@@ -14,24 +14,33 @@ import { Footer } from "@/components/landing/Footer";
 const Index = () => {
   const navigate = useNavigate();
 
-  // Redirect authenticated users to dashboard (e.g. after Google OAuth callback)
+  // Redirect authenticated users to dashboard (including after Google OAuth callback)
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Check if super_admin
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-        if (roles?.some((r) => r.role === "super_admin")) {
-          navigate("/admin", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
+    const redirectIfAuthenticated = async (userId: string) => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      if (roles?.some((r) => r.role === "super_admin")) {
+        navigate("/admin", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
       }
     };
-    checkAuth();
+
+    // Check existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) redirectIfAuthenticated(session.user.id);
+    });
+
+    // Listen for OAuth callback (SIGNED_IN event fires after redirect)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        redirectIfAuthenticated(session.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
   return (
