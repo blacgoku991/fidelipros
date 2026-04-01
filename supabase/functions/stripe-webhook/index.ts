@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -15,7 +15,7 @@ serve(async (req) => {
   const stripeKey = Deno.env.get("STRIPE_SECRET_KEY") ?? "";
   const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") ?? "";
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+  const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -39,7 +39,6 @@ serve(async (req) => {
 
   try {
     switch (event.type) {
-      // New subscription created — immediately reflect active/trialing status
       case "customer.subscription.created": {
         const sub = event.data.object as Stripe.Subscription;
         const userId = sub.metadata?.user_id;
@@ -96,7 +95,6 @@ serve(async (req) => {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = invoice.customer as string;
         if (customerId) {
-          // Find user by stripe_customer_id
           const { data: biz } = await supabase
             .from("businesses")
             .select("id, owner_id")
@@ -108,7 +106,6 @@ serve(async (req) => {
               subscription_status: "past_due",
             }).eq("id", biz.id);
           } else {
-            // Fallback: find via customer email
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             if (customer.email) {
               const { data: user } = await supabase.auth.admin.getUserByEmail(customer.email);
@@ -128,7 +125,6 @@ serve(async (req) => {
         const customerId = invoice.customer as string;
         const subscriptionId = invoice.subscription as string;
 
-        // Find business by stripe_customer_id or subscription metadata
         let bizId: string | null = null;
         let userId: string | null = null;
 
@@ -158,12 +154,10 @@ serve(async (req) => {
         }
 
         if (bizId) {
-          // Get plan from subscription
           let plan: string | null = null;
           if (subscriptionId) {
             const sub = await stripe.subscriptions.retrieve(subscriptionId);
             plan = sub.metadata?.plan ?? null;
-            // Store stripe_customer_id and stripe_subscription_id
             await supabase.from("businesses").update({
               subscription_status: "active",
               ...(plan ? { subscription_plan: plan } : {}),
@@ -174,18 +168,6 @@ serve(async (req) => {
             await supabase.from("businesses").update({
               subscription_status: "active",
             }).eq("id", bizId);
-          }
-
-          // Send confirmation email
-          if (userId) {
-            await supabase.functions.invoke("send-email", {
-              body: {
-                type: "payment_succeeded",
-                user_id: userId,
-                plan,
-                amount: invoice.amount_paid ? invoice.amount_paid / 100 : null,
-              },
-            });
           }
         }
         break;

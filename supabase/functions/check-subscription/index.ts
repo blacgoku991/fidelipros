@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -40,20 +40,20 @@ serve(async (req) => {
     const user = userData.user;
     log("User authenticated", { email: user.email });
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2024-12-18.acacia" as any });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Lire session_id depuis le body (optionnel)
+    // Read session_id from body (optional)
     let sessionId: string | null = null;
     try {
       const body = await req.json();
       sessionId = body?.session_id ?? null;
-    } catch { /* pas de body */ }
+    } catch { /* no body */ }
 
     let customerId: string | null = null;
     let activeSub: Stripe.Subscription | null = null;
     let plan: string | null = null;
 
-    // ── Voie 1 : résolution directe via checkout session_id ───────────────
+    // Path 1: resolve via checkout session_id
     if (sessionId) {
       log("Looking up checkout session", { sessionId });
       try {
@@ -67,15 +67,13 @@ serve(async (req) => {
           const productId = sub.items.data[0]?.price?.product as string;
           plan = PRODUCT_TO_PLAN[productId] ?? sub.metadata?.plan ?? "starter";
           log("Active sub via session", { subId: sub.id, plan, status: sub.status });
-        } else {
-          log("Session sub not active yet", { status: sub?.status });
         }
       } catch (err) {
         log("Session lookup failed", { err: String(err) });
       }
     }
 
-    // ── Voie 2 : lookup par email client ─────────────────────────────────
+    // Path 2: lookup by customer email
     if (!activeSub) {
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
       if (customers.data.length === 0) {
@@ -88,9 +86,8 @@ serve(async (req) => {
       customerId = customers.data[0].id;
       log("Found customer", { customerId });
 
-      // Vérifier active ET trialing
       const [activeSubs, trialSubs] = await Promise.all([
-        stripe.subscriptions.list({ customer: customerId, status: "active",   limit: 1 }),
+        stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
         stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
       ]);
 
@@ -103,7 +100,7 @@ serve(async (req) => {
       }
     }
 
-    // ── Si abonnement actif trouvé → sync DB immédiatement ───────────────
+    // If active subscription found → sync DB
     if (activeSub && customerId) {
       const { data: bizData } = await supabaseAdmin
         .from("businesses")
@@ -136,7 +133,7 @@ serve(async (req) => {
       });
     }
 
-    // ── Pas d'abonnement actif — vérifier past_due ────────────────────────
+    // Check past_due
     if (customerId) {
       const pastDueSubs = await stripe.subscriptions.list({
         customer: customerId, status: "past_due", limit: 1,
