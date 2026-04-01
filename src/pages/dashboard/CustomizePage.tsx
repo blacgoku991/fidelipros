@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { IPhoneMockup } from "@/components/IPhoneMockup";
+import { SamsungMockup } from "@/components/SamsungMockup";
 import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
