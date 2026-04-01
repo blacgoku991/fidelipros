@@ -72,6 +72,7 @@ const CustomizePage = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [stripImageUrl, setStripImageUrl] = useState<string | null>(null);
   const stripFileRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
 
   const geocodeAddress = async (address: string) => {
