@@ -444,33 +444,12 @@ const CheckoutPage = () => {
                       </ul>
 
                       {/* CTA */}
-                      {isActive ? (
-                        isCurrent ? (
-                          <Button disabled variant="outline"
-                            className="w-full rounded-xl h-11 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-2" /> Abonnement actif
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => openPortal(key === "pro" ? "subscription_update" : undefined)}
-                            disabled={portalLoading}
-                            className={`w-full rounded-xl h-11 ${
-                              key === "pro"
-                                ? "bg-gradient-to-r from-amber-400 to-orange-500 text-white hover:opacity-90 border-0"
-                                : "border border-border"
-                            }`}
-                            variant={key === "pro" ? "default" : "outline"}
-                          >
-                            {portalLoading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : key === "pro" ? (
-                              <><span>Passer au plan Pro</span><ArrowRight className="w-4 h-4 ml-2" /></>
-                            ) : (
-                              "Réduire au Starter"
-                            )}
-                          </Button>
-                        )
+                      {isCurrent ? (
+                        <Button disabled variant="outline"
+                          className="w-full rounded-xl h-11 bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" /> Plan actuel
+                        </Button>
                       ) : (
                         <Button
                           onClick={(e) => { e.stopPropagation(); startCheckout(key); }}
@@ -483,7 +462,9 @@ const CheckoutPage = () => {
                           variant={isSelected ? "default" : "outline"}
                         >
                           {redirecting === key ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Redirection…</>
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Changement…</>
+                          ) : isActive ? (
+                            <><span>{key === "pro" ? "Passer au Pro" : "Passer au Starter"}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : isSelected ? (
                             <><span>Continuer avec {plan.name}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : (
