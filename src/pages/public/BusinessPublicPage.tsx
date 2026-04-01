@@ -397,13 +397,19 @@ const BusinessPublicPage = () => {
               backgroundColor={business.primary_color || "#6B46C1"}
               logoUrl={business.logo_url || undefined}
               logoText={business.name}
-              headerFields={[{ key: "points", label: "Points", value: String(card.current_points || 0) }]}
-              primaryFields={[{ key: "member", label: "Membre", value: customer.full_name || "Client" }]}
-              secondaryFields={[{ key: "progress", label: "Objectif", value: `${card.current_points || 0} / ${card.max_points || 10}` }]}
-              auxiliaryFields={[{ key: "tier", label: "Niveau", value: (customer.level || "bronze").charAt(0).toUpperCase() + (customer.level || "bronze").slice(1) }]}
-              barcodeValue={card.card_code || card.id}
-              footerText={(card.card_code || card.id).slice(0, 12)}
-              
+              {...(() => {
+                const config = buildCardConfig(business);
+                const cData = buildCustomerData(card, customer);
+                const fields = buildApplePassFields(config, cData);
+                return {
+                  headerFields: fields.headerFields,
+                  primaryFields: fields.primaryFields,
+                  secondaryFields: fields.secondaryFields,
+                  auxiliaryFields: fields.auxiliaryFields,
+                  barcodeValue: config.showQrCode ? cData.cardCode : undefined,
+                  footerText: cData.cardCode.slice(0, 12),
+                };
+              })()}
               width={320}
             />
 
