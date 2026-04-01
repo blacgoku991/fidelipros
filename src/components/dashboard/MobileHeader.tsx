@@ -87,6 +87,29 @@ export function MobileHeader({ onLogout, items = [], groups }: MobileHeaderProps
                 ) : (
                   items.map(renderItem)
                 )}
+                {/* Switch admin / merchant */}
+                {isAdmin && !isAdminPanel && (
+                  <div className="pt-3 mt-3 border-t border-border/30">
+                    <SheetClose asChild>
+                      <NavLink to="/admin" onClick={() => setOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-purple-500 hover:bg-purple-500/10 transition-colors">
+                        <Shield className="w-[18px] h-[18px]" />
+                        Panel Admin
+                      </NavLink>
+                    </SheetClose>
+                  </div>
+                )}
+                {isAdminPanel && (
+                  <div className="pt-3 mt-3 border-t border-border/30">
+                    <SheetClose asChild>
+                      <NavLink to="/dashboard" onClick={() => setOpen(false)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-primary hover:bg-primary/10 transition-colors">
+                        <CreditCard className="w-[18px] h-[18px]" />
+                        Panel Commerçant
+                      </NavLink>
+                    </SheetClose>
+                  </div>
+                )}
               </nav>
 
               <div className="p-4 border-t border-border/40 space-y-1">
