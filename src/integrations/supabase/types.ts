@@ -99,6 +99,7 @@ export type Database = {
           geofence_time_end: string | null
           geofence_time_start: string | null
           id: string
+          is_demo: boolean
           latitude: number | null
           logo_url: string | null
           longitude: number | null
@@ -180,6 +181,7 @@ export type Database = {
           geofence_time_end?: string | null
           geofence_time_start?: string | null
           id?: string
+          is_demo?: boolean
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
@@ -261,6 +263,7 @@ export type Database = {
           geofence_time_end?: string | null
           geofence_time_start?: string | null
           id?: string
+          is_demo?: boolean
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
