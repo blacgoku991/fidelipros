@@ -735,7 +735,7 @@ const CampaignsPage = () => {
                   <Button
                     onClick={handleSend}
                     disabled={sending || !message.trim() || targetCount === 0}
-                    className="ml-auto bg-gradient-primary text-primary-foreground rounded-xl gap-2 px-6 font-semibold h-11"
+                    className="sm:ml-auto bg-gradient-primary text-primary-foreground rounded-xl gap-2 px-6 font-semibold h-11 w-full sm:w-auto"
                   >
                     {sending ? (
                       <><Bell className="w-4 h-4 animate-bounce" /> Envoi en cours…</>
