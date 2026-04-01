@@ -109,6 +109,7 @@ export function Navbar() {
                     <a
                       key={link.label}
                       href={link.href}
+                      onClick={(e) => handleAnchorClick(e, link.href)}
                       className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
                     >
                       {link.label}
