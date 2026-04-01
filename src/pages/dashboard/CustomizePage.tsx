@@ -328,50 +328,46 @@ const CustomizePage = () => {
                 </div>
               </div>
 
-              {/* Live preview */}
+              {/* Device preview */}
               <div className="p-5 rounded-2xl bg-card border border-border/50">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🍎</span>
-                    <h2 className="font-display font-semibold text-sm">Aperçu Apple Wallet</h2>
+                  <h2 className="font-display font-semibold text-sm">Aperçu réel</h2>
+                  <div className="flex rounded-lg bg-secondary/60 p-0.5">
+                    <button
+                      onClick={() => setPreviewDevice("iphone")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        previewDevice === "iphone"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🍎 iPhone
+                    </button>
+                    <button
+                      onClick={() => setPreviewDevice("samsung")}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        previewDevice === "samsung"
+                          ? "bg-card text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🤖 Samsung
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setShowIPhoneMockup(!showIPhoneMockup)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      showIPhoneMockup
-                        ? "bg-primary/10 text-primary border border-primary/20"
-                        : "bg-secondary text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Smartphone className="w-3.5 h-3.5" />
-                    {showIPhoneMockup ? "Vue iPhone" : "Vue carte"}
-                  </button>
                 </div>
                 <div className="flex justify-center">
-                  {showIPhoneMockup ? (
-                    <IPhoneMockup width={290}>
-                      <AppleWalletPass
-                        backgroundColor={form.primary_color}
-                        foregroundColor={form.foreground_color || undefined}
-                        labelColor={form.label_color || undefined}
-                        logoUrl={logoUrl || undefined}
-                        logoText={form.name || "Mon Commerce"}
-                        stripImageUrl={stripImageUrl || undefined}
-                        headerFields={headerFields}
-                        primaryFields={primaryFields}
-                        secondaryFields={secondaryFields}
-                        auxiliaryFields={auxiliaryFields}
-                        barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
-                        footerText={cardPreviewId.slice(0, 12)}
-                        width={258}
-                      />
+                  {previewDevice === "iphone" ? (
+                    <IPhoneMockup width={280}>
+                      {walletPassElement}
                     </IPhoneMockup>
                   ) : (
-                    walletPassElement
+                    <SamsungMockup width={280}>
+                      {walletPassElement}
+                    </SamsungMockup>
                   )}
                 </div>
                 <p className="text-center text-[10px] text-muted-foreground mt-3">
-                  ✅ Ce que vous voyez = ce que vos clients verront dans leur Wallet
+                  ✅ Rendu identique au {previewDevice === "iphone" ? "Apple" : "Google"} Wallet réel
                 </p>
               </div>
             </div>
