@@ -93,6 +93,7 @@ const App = () => (
             <Route path="/admin/demos" element={<AdminDemoGenerator />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
+            <Route path="/demo/:slug" element={<DemoPage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="/tarifs" element={<Tarifs />} />
             <Route path="/faq" element={<FaqPage />} />
