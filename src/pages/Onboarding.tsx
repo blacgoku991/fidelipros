@@ -87,9 +87,9 @@ const Onboarding = () => {
       category: form.category,
       address: form.address.trim() || null,
       phone: form.phone.trim() || null,
-      subscription_status: "inactive",
-      subscription_plan: plan,
-    });
+      subscription_status: "inactive" as any,
+      subscription_plan: plan as any,
+    } as any);
 
     if (error) {
       toast.error("Erreur lors de la création du commerce");

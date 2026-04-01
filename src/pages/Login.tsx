@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,9 +39,8 @@ const Login = () => {
   };
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/onboarding` },
+    await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
   };
 

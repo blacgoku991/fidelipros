@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,14 +38,11 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sentToEmail, setSentToEmail] = useState("");
+  const [emailAlreadyUsed, setEmailAlreadyUsed] = useState(false);
 
   const handleGoogleRegister = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/onboarding?plan=${selectedPlan}`,
-        queryParams: { plan: selectedPlan },
-      },
+    await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
     });
   };
 

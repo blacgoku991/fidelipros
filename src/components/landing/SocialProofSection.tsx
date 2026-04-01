@@ -30,7 +30,6 @@ export function SocialProofSection() {
       const { data, error } = await supabase
         .from("testimonials")
         .select("*")
-        .eq("is_visible", true)
         .order("sort_order");
       if (error) throw error;
       return data as any[];

@@ -15,7 +15,6 @@ export function FaqSection() {
       const { data, error } = await supabase
         .from("faq_items")
         .select("*")
-        .eq("is_visible", true)
         .order("sort_order");
       if (error) throw error;
       return data as any[];
