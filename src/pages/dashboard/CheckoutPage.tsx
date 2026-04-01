@@ -134,7 +134,7 @@ const CheckoutPage = () => {
     setCheckoutStarted(true);
     try {
       const { data, error: fnErr } = await supabase.functions.invoke("create-checkout", {
-        body: { plan },
+        body: { plan, origin: window.location.origin },
       });
       if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
       if (!data?.url) throw new Error("URL de paiement manquante");
