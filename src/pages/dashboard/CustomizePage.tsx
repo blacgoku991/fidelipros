@@ -321,8 +321,8 @@ const CustomizePage = () => {
 
                   {/* Strip image */}
                   <div className="mx-3 rounded-xl overflow-hidden" style={{ aspectRatio: "3.2 / 1" }}>
-                    {form.card_bg_image_url ? (
-                      <img src={form.card_bg_image_url} alt="" className="w-full h-full object-cover" />
+                    {stripImageUrl ? (
+                      <img src={stripImageUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full bg-white/10 flex items-center justify-center">
                         <span className="text-white/30 text-xs">Bannière</span>
