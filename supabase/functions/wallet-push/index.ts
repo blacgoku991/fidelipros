@@ -3,7 +3,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.fidelispro";
+const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -346,18 +346,35 @@ async function createApnsJwt(
   keyId: string,
   p8Key: string
 ): Promise<string> {
-  // Clean the P8 key
+  // Clean the P8 key — handle literal "\n", PEM headers, and whitespace
   const pemContent = p8Key
+    .replace(/\\n/g, "\n")                          // literal backslash-n → real newline
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s+/g, "");
+    .replace(/[\s\r\n]+/g, "");                     // strip all whitespace
 
-  const keyData = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0));
+  console.log(`[APNs JWT] Cleaned PEM length: ${pemContent.length} chars, first 20: "${pemContent.substring(0, 20)}", last 20: "${pemContent.substring(pemContent.length - 20)}"`);
+
+  // Decode base64 — try standard atob first, fall back to manual
+  let bin: Uint8Array;
+  try {
+    const std = pemContent.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = std + "=".repeat((4 - (std.length % 4)) % 4);
+    bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  } catch (e) {
+    // If atob still fails, the key might have been double-encoded or contain invalid chars
+    console.error(`[APNs JWT] atob failed, attempting manual decode. Error: ${e}`);
+    // Try removing any non-base64 characters
+    const cleaned = pemContent.replace(/[^A-Za-z0-9+/=]/g, "");
+    console.log(`[APNs JWT] After extra cleaning: ${cleaned.length} chars`);
+    const padded = cleaned + "=".repeat((4 - (cleaned.length % 4)) % 4);
+    bin = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  }
 
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    keyData,
+    bin,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
