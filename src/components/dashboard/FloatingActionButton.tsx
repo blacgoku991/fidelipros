@@ -17,14 +17,15 @@ export function FloatingActionButton({ onAddClient }: FloatingActionButtonProps)
       color: "bg-violet-600 hover:bg-violet-700",
       onClick: () => { setOpen(false); },
       as: "link" as const,
-      to: "/dashboard",
+      to: "/dashboard/scanner",
     },
     {
       icon: UserPlus,
       label: "Ajouter un client",
       color: "bg-emerald-600 hover:bg-emerald-700",
-      onClick: () => { setOpen(false); onAddClient?.(); },
-      as: "button" as const,
+      onClick: () => { setOpen(false); },
+      as: "link" as const,
+      to: "/dashboard/clients",
     },
     {
       icon: Send,

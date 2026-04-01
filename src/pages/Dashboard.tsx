@@ -740,9 +740,7 @@ const Dashboard = () => {
       />
 
       {/* Floating action button */}
-      <FloatingActionButton onAddClient={() => {
-        // Trigger add client dialog via URL param or simple approach
-      }} />
+      <FloatingActionButton />
     </DashboardLayout>
   );
 };
