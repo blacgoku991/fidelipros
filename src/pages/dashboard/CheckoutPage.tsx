@@ -125,7 +125,7 @@ const CheckoutPage = () => {
     return () => clearTimeout(timer);
   }, [checkoutStarted]);
 
-  // ── Lancer le checkout Stripe hosted ───────────────────────────────────
+  // ── Lancer le checkout Stripe hosted (ou changement de plan) ─────────
   const startCheckout = async (plan: PlanKey) => {
     setError(null);
     setRedirecting(plan);
@@ -137,6 +137,14 @@ const CheckoutPage = () => {
         body: { plan, origin: window.location.origin },
       });
       if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
+
+      // Plan switch (no redirect needed)
+      if (data?.updated) {
+        toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
+        setTimeout(() => window.location.replace("/dashboard"), 1200);
+        return;
+      }
+
       if (!data?.url) throw new Error("URL de paiement manquante");
       window.location.href = data.url;
     } catch (err: any) {
