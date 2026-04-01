@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { lovable } from "@/integrations/lovable/index";
+import { AuthNavbar } from "@/components/AuthNavbar";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -89,7 +90,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex pt-14">
+      <AuthNavbar backTo="register" />
       {/* Left panel — gradient illustration */}
       <div className="hidden lg:flex lg:w-[52%] bg-gradient-card items-center justify-center p-14 relative overflow-hidden">
         {/* Orb decorations */}
