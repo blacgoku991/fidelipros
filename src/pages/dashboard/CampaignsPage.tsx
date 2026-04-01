@@ -583,7 +583,7 @@ const CampaignsPage = () => {
                     </div>
 
                     {/* iPhone preview */}
-                    <div className="shrink-0 hidden lg:block">
+                    <div className="shrink-0 hidden sm:block">
                       <IPhonePreview
                         title={title || businessName}
                         message={message || "Votre message apparaîtra ici…"}
