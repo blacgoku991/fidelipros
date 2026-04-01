@@ -16,7 +16,7 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY not set");
 
-    const supabaseClient = createClient(
+    const supabase = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
@@ -26,14 +26,21 @@ serve(async (req) => {
     if (!authHeader) throw new Error("Non authentifié");
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !userData.user?.email) throw new Error("Utilisateur non authentifié");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData.user) throw new Error("Utilisateur non authentifié");
+
+    console.log("[customer-portal] user:", userData.user.email);
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const customers = await stripe.customers.list({ email: userData.user.email, limit: 1 });
+
+    // Find Stripe customer
+    const customers = await stripe.customers.list({ email: userData.user.email!, limit: 1 });
     if (customers.data.length === 0) throw new Error("Aucun client Stripe trouvé. Souscrivez d'abord un abonnement.");
 
-    // Optional flow_data for subscription upgrade/downgrade
+    const customerId = customers.data[0].id;
+    console.log("[customer-portal] customerId:", customerId);
+
+    // Parse optional body
     let flow: string | undefined;
     try {
       const body = await req.json();
@@ -41,23 +48,21 @@ serve(async (req) => {
     } catch { /* no body */ }
 
     const origin = req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
-    const sessionParams: any = {
-      customer: customers.data[0].id,
-      return_url: `${origin}/dashboard/settings`,
-    };
-    if (flow === "subscription_update") {
-      sessionParams.flow_data = {
-        type: "subscription_update",
-        subscription_update: { default_allowed_updates: ["price"] },
-      };
-    }
-    const portalSession = await stripe.billingPortal.sessions.create(sessionParams);
+
+    // Simple portal session — let Stripe handle plan changes natively
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${origin}/dashboard/abonnement`,
+    });
+
+    console.log("[customer-portal] portal session created:", portalSession.id);
 
     return new Response(JSON.stringify({ url: portalSession.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    console.error("[customer-portal] ERROR:", msg);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
