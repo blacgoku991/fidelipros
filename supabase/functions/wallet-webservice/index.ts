@@ -237,9 +237,13 @@ async function handleGetSerialNumbers(
     return new Response(null, { status: 204 });
   }
 
+  // Use the max updated_at from results as the update tag (not current time)
+  // This prevents the device from missing updates that happen between query and response
+  const maxUpdated = data.reduce((max, r) => (r.updated_at > max ? r.updated_at : max), data[0].updated_at);
+
   const response = {
     serialNumbers: data.map((r) => r.serial_number),
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: maxUpdated,
   };
 
   console.log(`[PassKit WS] Returning ${data.length} serial(s) → 200`, response);
