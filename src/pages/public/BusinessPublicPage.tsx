@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
+import { buildCardConfig, buildCustomerData, buildApplePassFields, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X } from "lucide-react";
 import { toast } from "sonner";
