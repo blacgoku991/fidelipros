@@ -67,6 +67,7 @@ export function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-2">
+          <ThemeToggle />
           <Button asChild variant="ghost" size="sm" className="text-sm text-muted-foreground hover:text-foreground rounded-lg">
             <Link to="/login">Se connecter</Link>
           </Button>
