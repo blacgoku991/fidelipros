@@ -11,9 +11,9 @@ import {
 
 const navLinks = [
   { label: "Fonctionnalités", href: "#features" },
-  { label: "Témoignages", href: "#testimonials" },
-  { label: "Tarifs", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Comment ça marche", href: "#how-it-works" },
+  { label: "Tarifs", href: "/tarifs", isPage: true },
+  { label: "FAQ", href: "/faq", isPage: true },
 ];
 
 export function Navbar() {
