@@ -42,7 +42,7 @@ const AbonnementPage = () => {
   const planData = plan ? STRIPE_PLANS[plan] : null;
   const statusInfo = status ? (statusConfig[status] || statusConfig.inactive) : statusConfig.inactive;
   const Icon = plan ? (planIcons[plan] || CreditCard) : CreditCard;
-  const gradient = plan ? (planGradients[plan] || "from-muted to-muted") : "from-muted to-muted";
+  const gradient = plan ? (planGradients[plan] || "from-primary to-primary/70") : "from-primary to-primary/70";
 
   const openPortal = async () => {
     setPortalLoading(true);
