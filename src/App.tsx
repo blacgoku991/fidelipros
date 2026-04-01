@@ -73,7 +73,8 @@ const App = () => (
             <Route path="/dashboard/settings" element={<SettingsPage />} />
             <Route path="/dashboard/checkout" element={<CheckoutPage />} />
             <Route path="/dashboard/abonnement" element={<AbonnementPage />} />
-            {/* Alias /payment → /dashboard/checkout */}
+            <Route path="/dashboard/automations" element={<AutomationsPage />} />
+            <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
             <Route path="/payment" element={<CheckoutPage />} />
             {/* Redirects for removed pages */}
             <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />
