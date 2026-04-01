@@ -18,6 +18,9 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ onLogout, items = [], groups }: MobileHeaderProps) {
   const [open, setOpen] = useState(false);
+  const { role } = useAuth();
+  const isAdmin = role === "super_admin";
+  const isAdminPanel = items.some(i => i.path.startsWith("/admin"));
 
   const renderItem = (item: SidebarItem) => (
     <SheetClose asChild key={item.path}>
