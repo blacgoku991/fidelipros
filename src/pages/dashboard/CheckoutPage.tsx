@@ -138,10 +138,14 @@ const CheckoutPage = () => {
       });
       if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
 
-      // Plan switch (no redirect needed)
+      // Plan switch scheduled at end of period (no redirect needed)
       if (data?.updated) {
-        toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
-        setTimeout(() => window.location.replace("/dashboard"), 1200);
+        if (data?.scheduled) {
+          toast.success(data.message || `Votre plan changera à la fin de la période en cours`);
+        } else {
+          toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
+        }
+        setTimeout(() => window.location.replace("/dashboard"), 1500);
         return;
       }
 

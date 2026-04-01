@@ -86,30 +86,27 @@ serve(async (req) => {
           throw new Error("Vous êtes déjà abonné à ce plan");
         }
 
-        console.log(`[CHECKOUT] Switching plan: ${currentPriceId} → ${priceId} for sub ${sub.id}`);
+        console.log(`[CHECKOUT] Scheduling plan switch: ${currentPriceId} → ${priceId} for sub ${sub.id} at period end`);
 
-        // Update subscription with proration
+        // Schedule the plan change at the end of the current billing period
         const updated = await stripe.subscriptions.update(sub.id, {
           items: [{ id: sub.items.data[0].id, price: priceId }],
-          proration_behavior: "create_prorations",
+          proration_behavior: "none",
+          billing_cycle_anchor: "unchanged",
           metadata: { user_id: user.id, plan },
         });
 
-        console.log(`[CHECKOUT] Subscription updated: ${updated.id}, status: ${updated.status}`);
+        // Calculate when the current period ends
+        const periodEnd = new Date(sub.current_period_end * 1000).toLocaleDateString("fr-FR");
 
-        // Update business in DB
-        await supabaseAdmin
-          .from("businesses")
-          .update({
-            subscription_plan: plan,
-            subscription_status: updated.status === "active" ? "active" : updated.status,
-          })
-          .eq("owner_id", user.id);
+        console.log(`[CHECKOUT] Plan switch scheduled for ${periodEnd}, sub: ${updated.id}`);
 
         return new Response(JSON.stringify({ 
           updated: true, 
+          scheduled: true,
           plan,
-          message: `Plan mis à jour vers ${plan}` 
+          period_end: periodEnd,
+          message: `Votre plan passera à ${plan} le ${periodEnd}` 
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
