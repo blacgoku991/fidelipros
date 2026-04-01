@@ -471,6 +471,7 @@ const CustomizePage = () => {
                     showRewardsPreview={form.show_rewards_preview}
                     cardStyle={form.card_style}
                     cardBgType={form.card_bg_type}
+                    cardBgImageUrl={stripImageUrl || undefined}
                   />
                 </div>
               </div>
