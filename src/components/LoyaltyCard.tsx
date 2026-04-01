@@ -56,14 +56,12 @@ export function LoyaltyCard({
   const secondary = secondaryColor || darken(primaryColor, 30);
   const hasStripImage = cardBgType === "image" && !!cardBgImageUrl;
 
-  // Determine text color based on background brightness
   const bgBrightness = hexBrightness(primaryColor);
   const textOnBg = bgBrightness > 160 ? "#1a1a1a" : "#ffffff";
   const textMuted = bgBrightness > 160 ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.6)";
-  const qrBg = bgBrightness > 160 ? "#ffffff" : "#ffffff";
+  const qrBg = "#ffffff";
   const qrFg = "#1a1a1a";
 
-  // Card background
   const cardBg = `linear-gradient(135deg, ${primaryColor}, ${secondary})`;
 
   return (
@@ -79,14 +77,14 @@ export function LoyaltyCard({
     >
       {/* ── HEADER: Logo + Business Name + Points ── */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           {logoUrl ? (
-            <div className="w-8 h-8 rounded-lg overflow-hidden border border-white/20 shrink-0 bg-white/10">
+            <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/20 shrink-0 bg-white/10">
               <img src={logoUrl} alt={businessName} className="w-full h-full object-cover" />
             </div>
           ) : (
             <div
-              className="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center border border-white/20"
+              className="w-9 h-9 rounded-lg shrink-0 flex items-center justify-center border border-white/20"
               style={{ background: "rgba(255,255,255,0.15)" }}
             >
               <span style={{ color: textOnBg }} className="font-bold text-sm">
@@ -103,10 +101,10 @@ export function LoyaltyCard({
         </div>
         {showPoints && (
           <div className="text-right shrink-0">
-            <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
+            <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
               Points
             </p>
-            <p className="text-lg font-bold leading-none" style={{ color: textOnBg }}>
+            <p className="text-xl font-bold leading-none" style={{ color: textOnBg }}>
               {points}
             </p>
           </div>
@@ -124,11 +122,11 @@ export function LoyaltyCard({
         </div>
       )}
 
-      {/* ── MEMBER INFO ── */}
+      {/* ── MEMBER + TIER ── */}
       <div className="px-4 pt-3 flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-            Membre
+          <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
+            Member
           </p>
           {showCustomerName && (
             <p className="text-base font-bold truncate" style={{ color: textOnBg }}>
@@ -137,10 +135,10 @@ export function LoyaltyCard({
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-            {showRewardsPreview ? "Niveau" : ""}
+          <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
+            Tier
           </p>
-          <p className="text-sm font-bold" style={{ color: textOnBg }}>
+          <p className="text-base font-bold" style={{ color: textOnBg }}>
             {levelLabels[level] || "Bronze"}
           </p>
         </div>
