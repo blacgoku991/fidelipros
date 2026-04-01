@@ -2,23 +2,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 /**
  * Apple Wallet Store Card — pixel-perfect PassKit replica.
- *
- * Follows the REAL Apple PassKit Store Card layout:
- *   ┌──────────────────────────────────┐
- *   │  logo  logoText    headerFields  │
- *   ├──────────────────────────────────┤
- *   │         STRIP IMAGE              │
- *   ├──────────────────────────────────┤
- *   │  primaryFields                   │
- *   │  secondaryFields                 │
- *   │  auxiliaryFields                 │
- *   ├──────────────────────────────────┤
- *   │           [QR CODE]              │
- *   │          footer text             │
- *   └──────────────────────────────────┘
- *
- * NO custom UI elements, NO tabs, NO overlays.
- * Only what Apple allows in a real .pkpass.
+ * FIXED HEIGHT: all card types use the same dimensions.
  */
 
 export interface PassField {
@@ -28,33 +12,19 @@ export interface PassField {
 }
 
 export interface AppleWalletPassProps {
-  /** Pass background color (hex). Maps to pass.json backgroundColor */
   backgroundColor?: string;
-  /** Text color (hex). Maps to pass.json foregroundColor */
   foregroundColor?: string;
-  /** Label text color (hex). Maps to pass.json labelColor */
   labelColor?: string;
-  /** Logo image URL (top-left, ~29×29pt) */
   logoUrl?: string;
-  /** Text next to logo. Maps to pass.json logoText */
   logoText?: string;
-  /** Strip image URL (full-width banner). Maps to strip.png / strip@2x.png */
   stripImageUrl?: string;
-  /** Top-right value fields (e.g. points counter) */
   headerFields?: PassField[];
-  /** Large prominent field (e.g. member name) */
   primaryFields?: PassField[];
-  /** Mid-level fields (e.g. progress, reward) */
   secondaryFields?: PassField[];
-  /** Lower fields (e.g. tier, expiry) */
   auxiliaryFields?: PassField[];
-  /** QR/barcode value string */
   barcodeValue?: string;
-  /** Text under QR code */
   footerText?: string;
-  /** Rendered width in px (default 320, Apple standard ~320pt) */
   width?: number;
-  /** Custom content inserted after auxiliary fields (e.g. stamp grid) */
   children?: React.ReactNode;
 }
 
@@ -77,15 +47,16 @@ export function AppleWalletPass({
   const bgBrightness = hexBrightness(backgroundColor);
   const fg = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
   const lbl = labelColor || (bgBrightness > 160 ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)");
-
-  // Apple Wallet uses a fixed aspect ratio for store cards.
-  // Scale everything proportionally from the 320pt base.
   const s = width / 320;
+
+  // FIXED card height — same for all loyalty types
+  const CARD_HEIGHT = Math.round(440 * s);
 
   return (
     <div
       style={{
         width: `${width}px`,
+        height: `${CARD_HEIGHT}px`,
         borderRadius: `${14 * s}px`,
         background: backgroundColor,
         overflow: "hidden",
@@ -93,6 +64,8 @@ export function AppleWalletPass({
         boxShadow: `0 ${8 * s}px ${32 * s}px -${6 * s}px rgba(0,0,0,0.35)`,
         fontFamily: "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
         userSelect: "none",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {/* ── HEADER ROW ── */}
@@ -102,9 +75,9 @@ export function AppleWalletPass({
           alignItems: "center",
           justifyContent: "space-between",
           padding: `${12 * s}px ${16 * s}px ${8 * s}px`,
+          flexShrink: 0,
         }}
       >
-        {/* Logo + logoText (left) */}
         <div style={{ display: "flex", alignItems: "center", gap: `${8 * s}px`, minWidth: 0 }}>
           {logoUrl ? (
             <img
@@ -152,7 +125,6 @@ export function AppleWalletPass({
           </span>
         </div>
 
-        {/* headerFields (right) */}
         {headerFields.length > 0 && (
           <div style={{ display: "flex", gap: `${12 * s}px`, flexShrink: 0 }}>
             {headerFields.map((f) => (
@@ -167,7 +139,7 @@ export function AppleWalletPass({
 
       {/* ── STRIP IMAGE ── */}
       {stripImageUrl && (
-        <div style={{ width: "100%", aspectRatio: "3.2 / 1", overflow: "hidden" }}>
+        <div style={{ width: "100%", height: `${Math.round(100 * s)}px`, overflow: "hidden", flexShrink: 0 }}>
           <img
             src={stripImageUrl}
             alt=""
@@ -176,67 +148,65 @@ export function AppleWalletPass({
         </div>
       )}
 
-      {/* ── PRIMARY FIELDS ── */}
-      {primaryFields.length > 0 && (
-        <FieldRow fields={primaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={16} padTop={12} padBottom={2} />
-      )}
+      {/* ── FIELDS AREA — flex-grow to fill remaining space ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 0 }}>
+        <div>
+          {primaryFields.length > 0 && (
+            <FieldRow fields={primaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={16} padTop={10} padBottom={2} />
+          )}
+          {secondaryFields.length > 0 && (
+            <FieldRow fields={secondaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={13} padTop={6} padBottom={2} />
+          )}
+          {auxiliaryFields.length > 0 && (
+            <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={4} />
+          )}
+          {children}
+        </div>
 
-      {/* ── SECONDARY FIELDS ── */}
-      {secondaryFields.length > 0 && (
-        <FieldRow fields={secondaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={13} padTop={6} padBottom={2} />
-      )}
-
-      {/* ── AUXILIARY FIELDS ── */}
-      {auxiliaryFields.length > 0 && (
-        <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={8} />
-      )}
-
-      {/* ── CUSTOM CONTENT (e.g. stamp grid) ── */}
-      {children}
-
-      {/* ── BARCODE ── */}
-      {barcodeValue && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            padding: `${10 * s}px 0 ${10 * s}px`,
-          }}
-        >
+        {/* ── BARCODE — always anchored at bottom ── */}
+        {barcodeValue && (
           <div
             style={{
-              background: "#ffffff",
-              borderRadius: `${8 * s}px`,
-              padding: `${6 * s}px`,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              padding: `${6 * s}px 0 ${10 * s}px`,
+              flexShrink: 0,
             }}
           >
-            <QRCodeSVG
-              value={barcodeValue}
-              size={Math.round(90 * s)}
-              bgColor="#ffffff"
-              fgColor="#1a1a1a"
-              level="M"
-            />
-          </div>
-          {footerText && (
-            <p
+            <div
               style={{
-                color: lbl,
-                fontSize: `${9 * s}px`,
-                fontFamily: "'SF Mono', 'Menlo', monospace",
-                letterSpacing: "0.05em",
-                marginTop: `${5 * s}px`,
+                background: "#ffffff",
+                borderRadius: `${8 * s}px`,
+                padding: `${5 * s}px`,
               }}
             >
-              {footerText}
-            </p>
-          )}
-        </div>
-      )}
+              <QRCodeSVG
+                value={barcodeValue}
+                size={Math.round(72 * s)}
+                bgColor="#ffffff"
+                fgColor="#1a1a1a"
+                level="M"
+              />
+            </div>
+            {footerText && (
+              <p
+                style={{
+                  color: lbl,
+                  fontSize: `${8 * s}px`,
+                  fontFamily: "'SF Mono', 'Menlo', monospace",
+                  letterSpacing: "0.05em",
+                  marginTop: `${3 * s}px`,
+                }}
+              >
+                {footerText}
+              </p>
+            )}
+          </div>
+        )}
 
-      {/* Bottom pad when no barcode */}
-      {!barcodeValue && <div style={{ height: `${14 * s}px` }} />}
+        {!barcodeValue && <div style={{ height: `${14 * s}px` }} />}
+      </div>
 
       {/* Apple-style top highlight */}
       <div
@@ -290,21 +260,10 @@ function FieldValue({ children, s, color, size }: { children: React.ReactNode; s
 }
 
 function FieldRow({
-  fields,
-  s,
-  fg,
-  lbl,
-  valueFontSize,
-  padTop,
-  padBottom,
+  fields, s, fg, lbl, valueFontSize, padTop, padBottom,
 }: {
-  fields: PassField[];
-  s: number;
-  fg: string;
-  lbl: string;
-  valueFontSize: number;
-  padTop: number;
-  padBottom: number;
+  fields: PassField[]; s: number; fg: string; lbl: string;
+  valueFontSize: number; padTop: number; padBottom: number;
 }) {
   return (
     <div

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Sparkles, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,18 @@ import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { IPhoneMockup } from "@/components/IPhoneMockup";
 import fideliproBanner from "@/assets/fidelipro-banner.jpg";
 
-/* ─── Stamp grid component ─── */
+/* ─── Stamp grid ─── */
 function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?: number }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(5, 1fr)`, gap: `${6 * s}px`, padding: `${10 * s}px ${16 * s}px` }}>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(5, 1fr)`, gap: `${5 * s}px`, padding: `${8 * s}px ${16 * s}px` }}>
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
           style={{
-            width: `${28 * s}px`,
-            height: `${28 * s}px`,
+            width: `${24 * s}px`, height: `${24 * s}px`,
             borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: `${14 * s}px`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: `${12 * s}px`,
             background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
             border: `${1.5 * s}px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
             color: "#fff",
@@ -37,74 +34,98 @@ function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?
   );
 }
 
-/* ─── Card type data for the hero demo ─── */
+/* ─── Points progress bar ─── */
+function PointsProgress({ current, max, s = 1 }: { current: number; max: number; s?: number }) {
+  const pct = Math.min(100, (current / max) * 100);
+  return (
+    <div style={{ padding: `${8 * s}px ${16 * s}px` }}>
+      <div style={{
+        width: "100%", height: `${8 * s}px`,
+        borderRadius: `${4 * s}px`,
+        background: "rgba(255,255,255,0.15)",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          width: `${pct}%`, height: "100%",
+          borderRadius: `${4 * s}px`,
+          background: "rgba(255,255,255,0.6)",
+          transition: "width 0.5s ease",
+        }} />
+      </div>
+      <p style={{
+        color: "rgba(255,255,255,0.5)",
+        fontSize: `${9 * s}px`,
+        marginTop: `${3 * s}px`,
+        textAlign: "center",
+      }}>
+        {current} / {max} points
+      </p>
+    </div>
+  );
+}
+
+/* ─── Card type data ─── */
 const DEMO_CARDS = [
   {
     id: "stamps",
     label: "Tampons",
     bg: "#7c3aed",
-    headerFields: [{ key: "stamps", label: "Tampons", value: "7 / 10" }],
-    primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [],
-    auxiliaryFields: [],
-    stamps: { filled: 7, total: 10 },
+    headerFields: [{ key: "stamps", label: "TAMPONS", value: "7 / 10" }],
+    primaryFields: [{ key: "member", label: "MEMBRE", value: "Marie Dupont" }],
+    secondaryFields: [{ key: "reward", label: "RÉCOMPENSE", value: "Café offert" }],
+    auxiliaryFields: [{ key: "next", label: "PROCHAIN", value: "3 tampons restants" }],
   },
   {
     id: "points",
     label: "Points",
     bg: "#2563eb",
-    headerFields: [{ key: "points", label: "Points", value: "120" }],
-    primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "progress", label: "Objectif", value: "120 / 200" }],
-    auxiliaryFields: [],
+    headerFields: [{ key: "points", label: "POINTS", value: "120" }],
+    primaryFields: [{ key: "member", label: "MEMBRE", value: "Marie Dupont" }],
+    secondaryFields: [{ key: "level", label: "STATUT", value: "🥈 SILVER" }],
+    auxiliaryFields: [{ key: "next", label: "PROCHAIN PALIER", value: "80 pts restants" }],
   },
   {
     id: "cashback",
     label: "Cagnotte",
     bg: "#059669",
-    headerFields: [{ key: "balance", label: "Cagnotte", value: "24,50 €" }],
-    primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [],
-    auxiliaryFields: [],
+    headerFields: [{ key: "balance", label: "CAGNOTTE", value: "24,50 €" }],
+    primaryFields: [{ key: "member", label: "MEMBRE", value: "Marie Dupont" }],
+    secondaryFields: [{ key: "earned", label: "GAGNÉ CE MOIS", value: "+4,20 €" }],
+    auxiliaryFields: [{ key: "rate", label: "TAUX", value: "5% de cashback" }],
   },
   {
     id: "subscription",
     label: "Abonnement",
     bg: "#d97706",
-    headerFields: [{ key: "plan", label: "Plan", value: "Premium ✓" }],
-    primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [],
-    auxiliaryFields: [],
+    headerFields: [{ key: "plan", label: "PLAN", value: "Premium ✓" }],
+    primaryFields: [{ key: "member", label: "MEMBRE", value: "Marie Dupont" }],
+    secondaryFields: [{ key: "status", label: "STATUT", value: "Actif" }],
+    auxiliaryFields: [{ key: "renew", label: "RENOUVELLEMENT", value: "15 avr. 2026" }],
   },
-] as const;
+];
 
-/* ─── Notification definitions ─── */
+/* ─── Notifications ─── */
 const NOTIFICATIONS = [
   { title: "FidéliPro", text: "📍 Vous êtes à proximité !", sub: "Boutique FidéliPro · 50m" },
   { title: "FidéliPro", text: "🎁 Offre spéciale disponible !", sub: "-20% aujourd'hui seulement" },
 ];
+
+const CARD_WIDTH = 270;
+const SCALE = CARD_WIDTH / 320;
 
 /* ═══════════════════ HERO ═══════════════════ */
 export function HeroSection() {
   const { data: settings } = useSiteSettings();
   const [activeIndex, setActiveIndex] = useState(0);
   const [notifIndex, setNotifIndex] = useState(0);
-  const [direction, setDirection] = useState(1); // 1=right, -1=left
 
-  // Auto-rotate cards
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDirection(1);
-      setActiveIndex((prev) => (prev + 1) % DEMO_CARDS.length);
-    }, 5000);
+    const interval = setInterval(() => setActiveIndex((p) => (p + 1) % DEMO_CARDS.length), 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-rotate notifications
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifIndex((prev) => (prev + 1) % NOTIFICATIONS.length);
-    }, 6000);
+    const interval = setInterval(() => setNotifIndex((p) => (p + 1) % NOTIFICATIONS.length), 6000);
     return () => clearInterval(interval);
   }, []);
 
@@ -127,39 +148,11 @@ export function HeroSection() {
   const stat1 = settings?.hero_stat_1 || "⭐ 4.9/5";
   const stat2 = settings?.hero_stat_2 || "📲 50 000 cartes générées";
   const stat3 = settings?.hero_stat_3 || "🚀 Sans engagement";
-  const liveMerchantCount = businessCount ?? 0;
 
   const activeCard = DEMO_CARDS[activeIndex];
   const currentNotif = NOTIFICATIONS[notifIndex];
 
-  const goToCard = (i: number) => {
-    setDirection(i > activeIndex ? 1 : -1);
-    setActiveIndex(i);
-  };
-
-  /* Swipe variants — Apple Wallet style: cards slide with depth */
-  const swipeVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 200 : -200,
-      scale: 0.85,
-      opacity: 0,
-      rotateY: dir > 0 ? 8 : -8,
-    }),
-    center: {
-      x: 0,
-      scale: 1,
-      opacity: 1,
-      rotateY: 0,
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -200 : 200,
-      scale: 0.85,
-      opacity: 0,
-      rotateY: dir > 0 ? -8 : 8,
-    }),
-  };
-
-  /* iOS notification banner */
+  /* iOS notification */
   const iosNotification = (
     <AnimatePresence mode="wait">
       <motion.div
@@ -174,9 +167,7 @@ export function HeroSection() {
           WebkitBackdropFilter: "blur(20px)",
           borderRadius: "14px",
           padding: "10px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
+          display: "flex", alignItems: "center", gap: "10px",
           border: "1px solid rgba(255,255,255,0.08)",
           boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
         }}
@@ -186,28 +177,31 @@ export function HeroSection() {
           background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0, fontSize: "14px", fontWeight: 700, color: "#fff",
-        }}>
-          F
-        </div>
+        }}>F</div>
         <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px", fontWeight: 600, lineHeight: 1.2 }}>
-            {currentNotif.title}
-          </p>
-          <p style={{ color: "#fff", fontSize: "11px", fontWeight: 600, lineHeight: 1.3, marginTop: "1px" }}>
-            {currentNotif.text}
-          </p>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "9px", lineHeight: 1.2, marginTop: "1px" }}>
-            {currentNotif.sub}
-          </p>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "10px", fontWeight: 600, lineHeight: 1.2 }}>{currentNotif.title}</p>
+          <p style={{ color: "#fff", fontSize: "11px", fontWeight: 600, lineHeight: 1.3, marginTop: "1px" }}>{currentNotif.text}</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "9px", lineHeight: 1.2, marginTop: "1px" }}>{currentNotif.sub}</p>
         </div>
         <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "9px", flexShrink: 0 }}>now</span>
       </motion.div>
     </AnimatePresence>
   );
 
+  /* Card-specific children content */
+  const renderCardContent = () => {
+    switch (activeCard.id) {
+      case "stamps":
+        return <StampGrid filled={7} total={10} s={SCALE} />;
+      case "points":
+        return <PointsProgress current={120} max={200} s={SCALE} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden">
-      {/* Background */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0" style={{
         background: [
@@ -224,56 +218,28 @@ export function HeroSection() {
 
       <div className="container relative z-10 py-16 sm:py-20 lg:py-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* ─── Left column ─── */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="text-center sm:text-left"
-          >
+          {/* Left */}
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-semibold mb-6">
               <Sparkles className="w-4 h-4" />
               {badge}
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-              className="flex items-center gap-2 mb-5 justify-center sm:justify-start"
-            >
+            <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3, duration: 0.5 }} className="flex items-center gap-2 mb-5 justify-center sm:justify-start">
               <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
-                <motion.span
-                  className="w-2 h-2 rounded-full bg-emerald-500"
-                  animate={{ opacity: [1, 0.4, 1] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                />
-                🟢 {liveMerchantCount} commerçants actifs
+                <motion.span className="w-2 h-2 rounded-full bg-emerald-500" animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1.5, repeat: Infinity }} />
+                🟢 {businessCount ?? 0} commerçants actifs
               </span>
             </motion.div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-extrabold leading-[1.05] tracking-tight">
-              {headline}{" "}
-              <span className="text-gradient">{headlineGradient}</span>
+              {headline} <span className="text-gradient">{headlineGradient}</span>
             </h1>
-            <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">
-              {subtitle}
-            </p>
+            <p className="mt-6 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-lg">{subtitle}</p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45, duration: 0.5 }}
-              className="mt-6 flex flex-wrap items-center justify-center sm:justify-start gap-3"
-            >
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.5 }} className="mt-6 flex flex-wrap items-center justify-center sm:justify-start gap-3">
               {[stat1, stat2, stat3].map((stat, i) => (
-                <motion.span
-                  key={i}
-                  className="px-3 py-1.5 rounded-full bg-card border border-border/60 text-xs font-semibold shadow-sm"
-                  initial={{ opacity: 0, scale: 0.88 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.55 + i * 0.1 }}
-                >
+                <motion.span key={i} className="px-3 py-1.5 rounded-full bg-card border border-border/60 text-xs font-semibold shadow-sm" initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.55 + i * 0.1 }}>
                   {stat}
                 </motion.span>
               ))}
@@ -281,10 +247,7 @@ export function HeroSection() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Button asChild size="lg" className="w-full sm:w-auto bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90 transition-opacity rounded-xl px-8 h-13 text-base font-bold">
-                <Link to="/register">
-                  {ctaPrimary}
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Link>
+                <Link to="/register">{ctaPrimary}<ArrowRight className="w-5 h-5 ml-2" /></Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full sm:w-auto rounded-xl px-8 h-13 text-base border-border/60 hover:border-primary/30 hover:bg-primary/5">
                 <a href="/tarifs">{ctaSecondary}</a>
@@ -301,136 +264,57 @@ export function HeroSection() {
             </div>
           </motion.div>
 
-          {/* ─── Right — iPhone with Apple Wallet swipe ─── */}
-          <motion.div
-            initial={{ opacity: 0, x: 48 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.9, delay: 0.2 }}
-            className="flex justify-center items-center relative"
-          >
-            {/* Glow orbs */}
+          {/* Right — iPhone */}
+          <motion.div initial={{ opacity: 0, x: 48 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.9, delay: 0.2 }} className="flex justify-center items-center relative">
+            {/* Glow */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <motion.div
-                className="w-80 h-80 rounded-full bg-primary/12 blur-3xl"
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-              />
+              <motion.div className="w-80 h-80 rounded-full bg-primary/12 blur-3xl" animate={{ scale: [1, 1.08, 1] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} />
             </div>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <motion.div
-                className="w-56 h-56 rounded-full bg-amber-400/10 blur-2xl"
-                animate={{ scale: [1, 1.12, 1] }}
-                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              />
+              <motion.div className="w-56 h-56 rounded-full bg-amber-400/10 blur-2xl" animate={{ scale: [1, 1.12, 1] }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }} />
             </div>
 
             {/* Floating badges */}
-            <motion.div
-              className="absolute top-4 left-0 z-20 px-3 py-2 rounded-xl bg-card/90 backdrop-blur-sm border border-border/60 shadow-xl flex items-center gap-2"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity, delay: 1 }}>
-                <Award className="w-4 h-4 text-amber-500" />
-              </motion.div>
+            <motion.div className="absolute top-4 left-0 z-20 px-3 py-2 rounded-xl bg-card/90 backdrop-blur-sm border border-border/60 shadow-xl flex items-center gap-2" animate={{ y: [0, -8, 0] }} transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}>
+              <Award className="w-4 h-4 text-amber-500" />
               <span className="text-xs font-bold">Bronze → Silver 🎉</span>
             </motion.div>
-
-            <motion.div
-              className="absolute top-1/4 -right-4 z-20 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 shadow-xl flex items-center gap-2"
-              animate={{ y: [0, -6, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-            >
+            <motion.div className="absolute top-1/4 -right-4 z-20 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 shadow-xl flex items-center gap-2" animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}>
               <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">+23% CA</span>
             </motion.div>
-
-            <motion.div
-              className="absolute bottom-1/3 -left-4 z-20 px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl shadow-amber-500/30"
-              animate={{ scale: [1, 1.12, 1], y: [0, -4, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            >
+            <motion.div className="absolute bottom-1/3 -left-4 z-20 px-3 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xl shadow-amber-500/30" animate={{ scale: [1, 1.12, 1], y: [0, -4, 0] }} transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}>
               <span className="text-xs font-bold">+1 pt</span>
             </motion.div>
 
-            {/* iPhone with Apple Wallet-style card swipe */}
-            <motion.div
-              className="relative z-10"
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            >
+            {/* iPhone */}
+            <motion.div className="relative z-10" animate={{ y: [0, -8, 0] }} transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}>
               <IPhoneMockup width={300} notification={iosNotification}>
-                {/* Card type selector dots */}
-                <div className="flex justify-center gap-1.5 mb-2">
-                  {DEMO_CARDS.map((card, i) => (
-                    <button
-                      key={card.id}
-                      onClick={() => goToCard(i)}
-                      className="transition-all"
-                      style={{
-                        width: activeIndex === i ? "20px" : "6px",
-                        height: "6px",
-                        borderRadius: "3px",
-                        background: activeIndex === i ? card.bg : "rgba(255,255,255,0.2)",
-                        transition: "all 0.3s ease",
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Apple Wallet swipe animation — 3D perspective */}
-                <div style={{ perspective: "800px", overflow: "hidden" }}>
-                  <AnimatePresence mode="wait" custom={direction}>
-                    <motion.div
-                      key={activeCard.id}
-                      custom={direction}
-                      variants={swipeVariants}
-                      initial="enter"
-                      animate="center"
-                      exit="exit"
-                      transition={{
-                        x: { type: "spring", stiffness: 280, damping: 30 },
-                        opacity: { duration: 0.25 },
-                        scale: { duration: 0.35 },
-                        rotateY: { duration: 0.4 },
-                      }}
-                      style={{ transformStyle: "preserve-3d" }}
+                {/* Fixed-size card container — NEVER changes dimensions */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeCard.id}
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.35, ease: "easeInOut" }}
+                  >
+                    <AppleWalletPass
+                      backgroundColor={activeCard.bg}
+                      logoText="FidéliPro"
+                      stripImageUrl={fideliproBanner}
+                      headerFields={[...activeCard.headerFields]}
+                      primaryFields={[...activeCard.primaryFields]}
+                      secondaryFields={[...activeCard.secondaryFields]}
+                      auxiliaryFields={[...activeCard.auxiliaryFields]}
+                      barcodeValue="FIDELIPRO-DEMO-001"
+                      footerText="FIDELIPRO-001"
+                      width={CARD_WIDTH}
                     >
-                      <AppleWalletPass
-                        backgroundColor={activeCard.bg}
-                        logoText="FidéliPro"
-                        stripImageUrl={fideliproBanner}
-                        headerFields={[...activeCard.headerFields]}
-                        primaryFields={[...activeCard.primaryFields]}
-                        secondaryFields={[...activeCard.secondaryFields]}
-                        auxiliaryFields={[...activeCard.auxiliaryFields]}
-                        barcodeValue="FIDELIPRO-DEMO-001"
-                        footerText="FIDELIPRO-001"
-                        width={270}
-                      >
-                        {"stamps" in activeCard && activeCard.stamps ? (
-                          <StampGrid filled={activeCard.stamps.filled} total={activeCard.stamps.total} s={270 / 320} />
-                        ) : null}
-                      </AppleWalletPass>
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-
-                {/* Card type label */}
-                <div className="flex justify-center mt-2">
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={activeCard.id}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      className="text-[10px] font-semibold px-3 py-1 rounded-full"
-                      style={{ background: activeCard.bg, color: "#fff" }}
-                    >
-                      {activeCard.label}
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
+                      {renderCardContent()}
+                    </AppleWalletPass>
+                  </motion.div>
+                </AnimatePresence>
               </IPhoneMockup>
             </motion.div>
           </motion.div>
