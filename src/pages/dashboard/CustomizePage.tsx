@@ -215,7 +215,7 @@ const CustomizePage = () => {
       auxiliaryFields={auxiliaryFields}
       barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
       footerText={cardPreviewId.slice(0, 12)}
-      width={280}
+      width={248}
     />
   );
 
