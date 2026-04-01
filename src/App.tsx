@@ -88,6 +88,7 @@ const App = () => (
             <Route path="/card/:cardCode" element={<CardViewPage />} />
             <Route path="/tarifs" element={<Tarifs />} />
             <Route path="/faq" element={<FaqPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
