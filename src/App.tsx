@@ -82,6 +82,7 @@ const App = () => (
             <Route path="/admin/landing" element={<AdminLandingContent />} />
             <Route path="/admin/digest" element={<AdminEmailDigest />} />
             <Route path="/admin/plans" element={<AdminPlans />} />
+            <Route path="/admin/messages" element={<AdminMessages />} />
             <Route path="/b/:businessId" element={<BusinessPublicPage />} />
             <Route path="/vitrine/:slug" element={<VitrinePage />} />
             <Route path="/card/:cardCode" element={<CardViewPage />} />
