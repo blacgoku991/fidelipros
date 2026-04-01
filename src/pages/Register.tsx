@@ -119,7 +119,8 @@ const Register = () => {
   // ── Écran confirmation email ──────────────────────────────────────────
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 pt-20">
+        <AuthNavbar backTo="login" />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
