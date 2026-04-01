@@ -346,13 +346,16 @@ async function createApnsJwt(
   keyId: string,
   p8Key: string
 ): Promise<string> {
-  // Clean the P8 key
+  // Clean the P8 key — handle literal "\n", PEM headers, and whitespace
   const pemContent = p8Key
+    .replace(/\\n/g, "\n")                          // literal backslash-n → real newline
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s+/g, "");
+    .replace(/[\s\r\n]+/g, "");                     // strip all whitespace
 
-  const keyData = Uint8Array.from(atob(pemContent), (c) => c.charCodeAt(0));
+  // Decode base64 (support both standard and base64url variants)
+  const std = pemContent.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = Uint8Array.from(atob(std), (c) => c.charCodeAt(0));
 
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
