@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
-  LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine,
+  LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine, MessageSquare,
 } from "lucide-react";
 
 export const businessSidebarItems = [
