@@ -93,7 +93,7 @@ export function Footer() {
               <li><span className="text-xs text-muted-foreground/60">Conforme RGPD</span></li>
             </ul>
           </div>
-        </div>
+        </motion.div>
 
         <div className="mt-14 pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
