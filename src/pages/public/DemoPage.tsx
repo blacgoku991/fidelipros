@@ -263,7 +263,7 @@ export default function DemoPage() {
                   backgroundColor={color}
                   logoText={business.name}
                   headerFields={[{ key: "level", label: "NIVEAU", value: "Silver ⭐" }]}
-                  primaryFields={[{ key: "pts", label: labels.unitLabel.toUpperCase(), value: `6 / ${maxPts}` }]}
+                  primaryFields={[{ key: "pts", label: labels.pointsLabel, value: `6 / ${maxPts}` }]}
                   secondaryFields={[
                     { key: "name", label: "CLIENT", value: "Marie Dupont" },
                     { key: "reward", label: "RÉCOMPENSE", value: rewards[0]?.title ?? "Offre spéciale" },
