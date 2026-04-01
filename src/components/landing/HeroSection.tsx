@@ -10,6 +10,32 @@ import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { IPhoneMockup } from "@/components/IPhoneMockup";
 import fideliproBanner from "@/assets/fidelipro-banner.jpg";
 
+/* ─── Stamp grid component ─── */
+function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?: number }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(5, 1fr)`, gap: `${6 * s}px`, padding: `${10 * s}px ${16 * s}px` }}>
+      {Array.from({ length: total }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            width: `${28 * s}px`,
+            height: `${28 * s}px`,
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: `${14 * s}px`,
+            background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
+            border: `${1.5 * s}px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
+          }}
+        >
+          {i < filled ? "✓" : ""}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Card type data for the hero demo ─── */
 const DEMO_CARDS = [
   {
@@ -18,11 +44,9 @@ const DEMO_CARDS = [
     bg: "#7c3aed",
     headerFields: [{ key: "stamps", label: "Tampons", value: "7 / 10" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "reward", label: "Récompense", value: "Café offert ☕" }],
-    auxiliaryFields: [
-      { key: "tier", label: "Niveau", value: "Gold ⭐" },
-      { key: "visits", label: "Visites", value: "32" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
+    stamps: { filled: 7, total: 10 },
   },
   {
     id: "points",
@@ -30,34 +54,26 @@ const DEMO_CARDS = [
     bg: "#2563eb",
     headerFields: [{ key: "points", label: "Points", value: "120" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [
-      { key: "progress", label: "Objectif", value: "120 / 200" },
-      { key: "reward", label: "Récompense", value: "Remise 15%" },
-    ],
-    auxiliaryFields: [{ key: "tier", label: "Niveau", value: "Gold ⭐" }],
+    secondaryFields: [{ key: "progress", label: "Objectif", value: "120 / 200" }],
+    auxiliaryFields: [],
   },
   {
     id: "cashback",
     label: "Cagnotte",
     bg: "#059669",
-    headerFields: [{ key: "balance", label: "Cagnotte", value: "24,50€" }],
+    headerFields: [{ key: "balance", label: "Cagnotte", value: "24,50 €" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "rate", label: "Taux", value: "5% cashback" }],
-    auxiliaryFields: [
-      { key: "status", label: "Statut", value: "Disponible ✓" },
-      { key: "tier", label: "Niveau", value: "Silver" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
   },
   {
     id: "subscription",
     label: "Abonnement",
     bg: "#d97706",
-    headerFields: [{ key: "plan", label: "Plan", value: "Premium" }],
+    headerFields: [{ key: "plan", label: "Plan", value: "Premium ✓" }],
     primaryFields: [{ key: "member", label: "Membre", value: "Marie Dupont" }],
-    secondaryFields: [{ key: "status", label: "Statut", value: "Actif ✓" }],
-    auxiliaryFields: [
-      { key: "renewal", label: "Renouvellement", value: "15/01/2027" },
-    ],
+    secondaryFields: [],
+    auxiliaryFields: [],
   },
 ] as const;
 
