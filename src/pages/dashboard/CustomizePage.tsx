@@ -144,6 +144,7 @@ const CustomizePage = () => {
       geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
     });
     setLogoUrl(business.logo_url || null);
+    setStripImageUrl(business.card_bg_image_url || null);
   }, [business]);
 
   const handleSave = async () => {
