@@ -5,9 +5,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Trash2, Copy, ExternalLink, Plus, X, Wand2, Loader2 } from "lucide-react";
+import { Trash2, Copy, ExternalLink, Plus, X, Wand2, Loader2, BarChart3, Users, CheckCircle, CreditCard, Rocket } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const BUSINESS_TYPES = [
@@ -48,6 +49,41 @@ export default function AdminDemoGenerator() {
     },
   });
 
+  // Fetch demo session stats
+  const { data: sessionStats = {} } = useQuery({
+    queryKey: ["admin-demo-sessions"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("demo_sessions")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!data) return {};
+
+      const stats: Record<string, {
+        total: number;
+        installed: number;
+        demoStarted: number;
+        completed: number;
+        clickedSignup: number;
+        clickedPricing: number;
+        converted: number;
+      }> = {};
+
+      for (const s of data) {
+        const bid = s.business_id;
+        if (!stats[bid]) stats[bid] = { total: 0, installed: 0, demoStarted: 0, completed: 0, clickedSignup: 0, clickedPricing: 0, converted: 0 };
+        stats[bid].total++;
+        if (s.pass_installed) stats[bid].installed++;
+        if (s.demo_started) stats[bid].demoStarted++;
+        if (s.current_step >= 3) stats[bid].completed++;
+        if (s.clicked_signup) stats[bid].clickedSignup++;
+        if (s.clicked_pricing) stats[bid].clickedPricing++;
+        if (s.converted) stats[bid].converted++;
+      }
+      return stats;
+    },
+  });
+
   const handleTypeChange = (val: string) => {
     setType(val);
     const found = BUSINESS_TYPES.find((b) => b.value === val);
@@ -74,7 +110,6 @@ export default function AdminDemoGenerator() {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) throw new Error("Non authentifié");
 
-      // Create demo business
       const { data: biz, error: bizErr } = await supabase
         .from("businesses")
         .insert({
@@ -99,7 +134,6 @@ export default function AdminDemoGenerator() {
 
       if (bizErr) throw bizErr;
 
-      // Create rewards
       for (let i = 0; i < rewards.length; i++) {
         await supabase.from("rewards").insert({
           business_id: biz.id,
@@ -110,7 +144,6 @@ export default function AdminDemoGenerator() {
         });
       }
 
-      // Create sample customer with points
       const { data: cust } = await supabase
         .from("customers")
         .insert({
@@ -147,6 +180,7 @@ export default function AdminDemoGenerator() {
 
   const deleteDemo = useMutation({
     mutationFn: async (bizId: string) => {
+      await supabase.from("demo_sessions").delete().eq("business_id", bizId);
       await supabase.from("rewards").delete().eq("business_id", bizId);
       await supabase.from("customer_cards").delete().eq("business_id", bizId);
       await supabase.from("customers").delete().eq("business_id", bizId);
@@ -155,13 +189,14 @@ export default function AdminDemoGenerator() {
     onSuccess: () => {
       toast({ title: "Démo supprimée" });
       queryClient.invalidateQueries({ queryKey: ["admin-demos"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-demo-sessions"] });
     },
   });
 
   const appBase = window.location.origin;
 
   return (
-    <AdminLayout title="Générateur de démos" subtitle="Créer des expériences de démonstration en quelques secondes">
+    <AdminLayout title="Générateur de démos" subtitle="Créer des expériences de démonstration avec funnel de conversion">
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Generator form */}
         <Card>
@@ -170,7 +205,7 @@ export default function AdminDemoGenerator() {
               <Wand2 className="h-5 w-5 text-primary" />
               Nouvelle démo
             </CardTitle>
-            <CardDescription>Remplissez le formulaire pour générer une démo complète</CardDescription>
+            <CardDescription>Remplissez le formulaire pour générer une démo complète avec funnel de conversion</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -181,9 +216,7 @@ export default function AdminDemoGenerator() {
             <div className="space-y-2">
               <Label>Type de commerce</Label>
               <Select value={type} onValueChange={handleTypeChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {BUSINESS_TYPES.map((bt) => (
                     <SelectItem key={bt.value} value={bt.value}>
@@ -231,7 +264,10 @@ export default function AdminDemoGenerator() {
         {/* Existing demos */}
         <Card>
           <CardHeader>
-            <CardTitle>Démos existantes</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Démos & Conversions
+            </CardTitle>
             <CardDescription>{demos.length} démo(s) créée(s)</CardDescription>
           </CardHeader>
           <CardContent>
@@ -242,31 +278,86 @@ export default function AdminDemoGenerator() {
             ) : demos.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Aucune démo créée</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {demos.map((d: any) => {
                   const demoUrl = `${appBase}/demo/${d.slug}`;
+                  const stats = (sessionStats as any)[d.id];
                   return (
-                    <div key={d.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-muted/30">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.primary_color }} />
-                          <span className="font-medium text-sm truncate">{d.name}</span>
+                    <div key={d.id} className="p-4 rounded-xl border bg-card space-y-3">
+                      {/* Header */}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.primary_color }} />
+                            <span className="font-medium text-sm truncate">{d.name}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">/demo/{d.slug}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">/demo/{d.slug}</p>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(demoUrl); toast({ title: "Lien copié !" }); }}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" asChild>
+                            <a href={`/demo/${d.slug}`} target="_blank" rel="noopener">
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDemo.mutate(d.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" onClick={() => { navigator.clipboard.writeText(demoUrl); toast({ title: "Lien copié !" }); }}>
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" asChild>
-                          <a href={`/demo/${d.slug}`} target="_blank" rel="noopener">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDemo.mutate(d.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+
+                      {/* Funnel stats */}
+                      {stats && stats.total > 0 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          <div className="text-center p-2 rounded-lg bg-muted/50">
+                            <p className="text-lg font-bold">{stats.total}</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <Users className="w-3 h-3" /> Visiteurs
+                            </p>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-muted/50">
+                            <p className="text-lg font-bold">{stats.installed}</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <CreditCard className="w-3 h-3" /> Pass ajouté
+                            </p>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-muted/50">
+                            <p className="text-lg font-bold">{stats.completed}</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Démo finie
+                            </p>
+                          </div>
+                          <div className="text-center p-2 rounded-lg bg-muted/50">
+                            <p className="text-lg font-bold">{stats.clickedSignup + stats.clickedPricing}</p>
+                            <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                              <Rocket className="w-3 h-3" /> CTA clics
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Conversion badges */}
+                      {stats && stats.total > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {stats.installed > 0 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {Math.round((stats.installed / stats.total) * 100)}% install
+                            </Badge>
+                          )}
+                          {stats.completed > 0 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {Math.round((stats.completed / stats.total) * 100)}% démo complète
+                            </Badge>
+                          )}
+                          {(stats.clickedSignup + stats.clickedPricing) > 0 && (
+                            <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                              {Math.round(((stats.clickedSignup + stats.clickedPricing) / stats.total) * 100)}% intéressés
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

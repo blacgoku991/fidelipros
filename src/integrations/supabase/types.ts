@@ -534,6 +534,78 @@ export type Database = {
           },
         ]
       }
+      demo_sessions: {
+        Row: {
+          business_id: string
+          card_id: string | null
+          clicked_pricing: boolean
+          clicked_signup: boolean
+          converted: boolean
+          created_at: string
+          cta_shown_at: string | null
+          current_step: number
+          demo_started: boolean
+          id: string
+          pass_installed: boolean
+          slug: string
+          step1_at: string | null
+          step2_at: string | null
+          step3_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          card_id?: string | null
+          clicked_pricing?: boolean
+          clicked_signup?: boolean
+          converted?: boolean
+          created_at?: string
+          cta_shown_at?: string | null
+          current_step?: number
+          demo_started?: boolean
+          id?: string
+          pass_installed?: boolean
+          slug: string
+          step1_at?: string | null
+          step2_at?: string | null
+          step3_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          card_id?: string | null
+          clicked_pricing?: boolean
+          clicked_signup?: boolean
+          converted?: boolean
+          created_at?: string
+          cta_shown_at?: string | null
+          current_step?: number
+          demo_started?: boolean
+          id?: string
+          pass_installed?: boolean
+          slug?: string
+          step1_at?: string | null
+          step2_at?: string | null
+          step3_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_sessions_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_sessions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digest_logs: {
         Row: {
           data: Json
