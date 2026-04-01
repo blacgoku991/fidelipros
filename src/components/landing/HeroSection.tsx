@@ -2,11 +2,25 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Bell, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function HeroSection() {
   const { data: settings } = useSiteSettings();
+
+  // Fetch real business count
+  const { data: businessCount } = useQuery({
+    queryKey: ["business-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("businesses")
+        .select("*", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const headline = settings?.hero_headline || "Vos clients reviennent.";
   const headlineGradient = settings?.hero_headline_gradient || "Encore et encore.";
@@ -17,7 +31,7 @@ export function HeroSection() {
   const stat1 = settings?.hero_stat_1 || "⭐ 4.9/5";
   const stat2 = settings?.hero_stat_2 || "📲 50 000 cartes générées";
   const stat3 = settings?.hero_stat_3 || "🚀 Activation immédiate";
-  const liveMerchantCount = parseInt((settings as any)?.live_merchant_count) || 247;
+  const liveMerchantCount = businessCount ?? 0;
 
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden">
