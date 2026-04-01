@@ -156,8 +156,8 @@ const AdminPlans = () => {
     }
   };
 
-  const starterHasStripe = !!(cfg?.stripe_price_starter);
-  const proHasStripe     = !!(cfg?.stripe_price_pro);
+  const starterHasStripe = !!((cfg as any)?.stripe_price_starter);
+  const proHasStripe     = !!((cfg as any)?.stripe_price_pro);
 
   return (
     <AdminLayout
