@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Zap, Crown, ArrowRight, ChevronDown } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Navbar } from "@/components/landing/Navbar";
 import { Footer } from "@/components/landing/Footer";
@@ -103,13 +103,25 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         className="w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-secondary/40 transition-colors"
       >
         <span className="font-medium text-sm">{q}</span>
-        <ChevronDown className={`w-4 h-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+        </motion.div>
       </button>
-      {open && (
-        <div className="px-5 pb-5">
-          <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5">
+              <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -188,8 +200,21 @@ const Tarifs = () => {
 
       {/* Comparison table */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
-        <h2 className="text-2xl font-display font-bold text-center mb-8">Comparatif détaillé</h2>
-        <div className="rounded-2xl border border-border/50 overflow-hidden bg-card">
+        <motion.h2
+          className="text-2xl font-display font-bold text-center mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Comparatif détaillé
+        </motion.h2>
+        <motion.div
+          className="rounded-2xl border border-border/50 overflow-hidden bg-card"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1 }}
+        >
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/50 bg-muted/30">
@@ -203,33 +228,69 @@ const Tarifs = () => {
             </thead>
             <tbody>
               {comparison.map((row, i) => (
-                <tr key={row.feature} className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                <motion.tr
+                  key={row.feature}
+                  className={`border-b border-border/40 ${i % 2 === 0 ? "" : "bg-muted/20"}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.03 }}
+                >
                   <td className="p-4 text-muted-foreground">{row.feature}</td>
                   <td className="p-4 text-center"><Cell value={row.starter} /></td>
                   <td className={`p-4 text-center ${plans[1].popular ? "bg-primary/5" : ""}`}><Cell value={row.pro} /></td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </motion.div>
       </section>
 
       {/* FAQ */}
       <section className="max-w-2xl mx-auto px-4 pb-24">
-        <h2 className="text-2xl font-display font-bold text-center mb-8">Questions fréquentes</h2>
+        <motion.h2
+          className="text-2xl font-display font-bold text-center mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Questions fréquentes
+        </motion.h2>
         <div className="space-y-3">
-          {faqs.map(faq => <FaqItem key={faq.q} {...faq} />)}
+          {faqs.map((faq, i) => (
+            <motion.div
+              key={faq.q}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <FaqItem {...faq} />
+            </motion.div>
+          ))}
         </div>
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-card py-16 text-center px-4 mb-0">
-        <h2 className="text-3xl font-display font-bold text-primary-foreground mb-3">Prêt à fidéliser vos clients ?</h2>
+      <motion.section
+        className="bg-gradient-card py-16 text-center px-4 mb-0"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+      >
+        <motion.h2
+          className="text-3xl font-display font-bold text-primary-foreground mb-3"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Prêt à fidéliser vos clients ?
+        </motion.h2>
         <p className="text-primary-foreground/70 mb-6">Commencez dès aujourd'hui et fidélisez vos clients.</p>
         <Button asChild size="lg" className="bg-white text-primary font-bold rounded-xl gap-2 hover:bg-white/90">
           <Link to="/register">Créer mon compte <ArrowRight className="w-4 h-4" /></Link>
         </Button>
-      </section>
+      </motion.section>
 
       <Footer />
     </div>

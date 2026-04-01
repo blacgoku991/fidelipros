@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { CreditCard, Menu, Zap } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Sheet,
   SheetContent,
@@ -66,6 +67,7 @@ export function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-2">
+          <ThemeToggle />
           <Button asChild variant="ghost" size="sm" className="text-sm text-muted-foreground hover:text-foreground rounded-lg">
             <Link to="/login">Se connecter</Link>
           </Button>
@@ -117,6 +119,10 @@ export function Navbar() {
                   )
                 )}
                 <div className="mt-4 space-y-2">
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-sm text-muted-foreground">Thème</span>
+                    <ThemeToggle />
+                  </div>
                   <Button asChild variant="outline" className="w-full justify-center rounded-xl h-11">
                     <Link to="/login">Se connecter</Link>
                   </Button>

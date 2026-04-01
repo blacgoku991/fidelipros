@@ -1,4 +1,5 @@
 import { CreditCard } from "lucide-react";
+import { motion } from "framer-motion";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function Footer() {
@@ -14,7 +15,13 @@ export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-secondary/20" id="contact">
       <div className="container py-16">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <motion.div
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
@@ -65,7 +72,7 @@ export function Footer() {
               <li><a href="/#testimonials" className="text-sm text-muted-foreground hover:text-primary transition-colors">Témoignages</a></li>
               <li><a href="/faq" className="text-sm text-muted-foreground hover:text-primary transition-colors">FAQ</a></li>
             </ul>
-          </div>
+        </div>
 
           {/* Entreprise */}
           <div>
@@ -86,7 +93,7 @@ export function Footer() {
               <li><span className="text-xs text-muted-foreground/60">Conforme RGPD</span></li>
             </ul>
           </div>
-        </div>
+        </motion.div>
 
         <div className="mt-14 pt-6 border-t border-border/30 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">

@@ -1,4 +1,5 @@
 import { CreditCard, LogOut, Shield } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,7 +96,11 @@ export function DashboardSidebar({ items, onLogout }: DashboardSidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t border-border/40">
+      <div className="px-3 py-4 border-t border-border/40 space-y-1">
+        <div className="flex items-center justify-between px-3.5 py-1">
+          <span className="text-xs text-muted-foreground">Thème</span>
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           onClick={onLogout}

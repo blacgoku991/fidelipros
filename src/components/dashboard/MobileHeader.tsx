@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CreditCard, LogOut, Menu, X } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link, NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,7 +77,11 @@ export function MobileHeader({ onLogout, items = [] }: MobileHeaderProps) {
                 ))}
               </nav>
 
-              <div className="p-4 border-t border-border/40">
+              <div className="p-4 border-t border-border/40 space-y-1">
+                <div className="flex items-center justify-between px-3 py-1">
+                  <span className="text-xs text-muted-foreground">Thème</span>
+                  <ThemeToggle />
+                </div>
                 <Button
                   variant="ghost"
                   onClick={() => { setOpen(false); onLogout(); }}
