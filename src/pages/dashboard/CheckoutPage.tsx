@@ -297,29 +297,19 @@ const CheckoutPage = () => {
     >
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* Already subscribed banner */}
+        {/* Already subscribed info */}
         {isActive && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
           >
-            <div className="flex items-center gap-3">
-              <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
-              <p className="text-sm font-medium">
-                Vous êtes déjà abonné au plan{" "}
-                <span className="font-bold">{currentPlan ? pricingPlans[currentPlan]?.name : "actif"}</span>.
-                Pour modifier votre abonnement, utilisez le portail Stripe.
-              </p>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => window.location.replace("/dashboard")}
-              className="shrink-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl gap-2"
-            >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              Dashboard
-            </Button>
+            <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+            <p className="text-sm font-medium">
+              Vous êtes abonné au plan{" "}
+              <span className="font-bold">{currentPlan ? pricingPlans[currentPlan]?.name : "actif"}</span>.
+              Sélectionnez un autre plan pour changer — le prorata sera appliqué automatiquement.
+            </p>
           </motion.div>
         )}
 
