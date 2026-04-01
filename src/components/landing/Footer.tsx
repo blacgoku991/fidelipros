@@ -15,7 +15,13 @@ export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-secondary/20" id="contact">
       <div className="container py-16">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <motion.div
+          className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
           {/* Brand */}
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
