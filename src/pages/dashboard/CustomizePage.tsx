@@ -297,7 +297,7 @@ const CustomizePage = () => {
                 <div
                   className="mx-auto rounded-2xl overflow-hidden shadow-xl"
                   style={{
-                    background: `linear-gradient(145deg, ${form.primary_color || "#6B46C1"}, ${form.secondary_color || darkenHex(form.primary_color || "#6B46C1", 30)})`,
+                    background: `linear-gradient(145deg, ${form.primary_color || "#6B46C1"}, ${form.secondary_color || "#4c2d8a"})`,
                     width: "260px",
                   }}
                 >
