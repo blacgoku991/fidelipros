@@ -236,9 +236,26 @@ const Tarifs = () => {
 
       {/* FAQ */}
       <section className="max-w-2xl mx-auto px-4 pb-24">
-        <h2 className="text-2xl font-display font-bold text-center mb-8">Questions fréquentes</h2>
+        <motion.h2
+          className="text-2xl font-display font-bold text-center mb-8"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Questions fréquentes
+        </motion.h2>
         <div className="space-y-3">
-          {faqs.map(faq => <FaqItem key={faq.q} {...faq} />)}
+          {faqs.map((faq, i) => (
+            <motion.div
+              key={faq.q}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <FaqItem {...faq} />
+            </motion.div>
+          ))}
         </div>
       </section>
 
