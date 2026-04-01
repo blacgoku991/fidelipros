@@ -72,6 +72,7 @@ export function AppleWalletPass({
   barcodeValue,
   footerText,
   width = 320,
+  children,
 }: AppleWalletPassProps) {
   const bgBrightness = hexBrightness(backgroundColor);
   const fg = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
