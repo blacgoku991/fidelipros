@@ -176,7 +176,7 @@ export async function buildPkpass(
   // Fetch business logo for icons (square) and logo (rectangular)
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
@@ -545,9 +545,26 @@ function deflateRaw(data: Uint8Array): Uint8Array {
   return new Uint8Array(blocks);
 }
 
-// ── Strip image generation ────────────────────────────────────────
+// ── Strip image (banner) — use card_bg_image_url if available ─────
 
-function generateStripImages(hexColor: string): { stripPng: Uint8Array; strip2xPng: Uint8Array } {
+async function fetchOrGenerateStrip(business: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
+  if (business.card_bg_image_url) {
+    try {
+      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const response = await fetch(imgUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        if (imageBytes.byteLength <= 60_000) {
+          console.log("[Pass] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.log(`[Pass] Strip image too large (${imageBytes.byteLength} bytes), using generated`);
+      }
+    } catch (err) {
+      console.error("[Pass] Failed to fetch strip image:", err);
+    }
+  }
+  const hexColor = business.primary_color || "#6B46C1";
   const stripPng = generateStripPng(320, 123, hexColor);
   const strip2xPng = generateStripPng(640, 246, hexColor);
   return { stripPng, strip2xPng };
