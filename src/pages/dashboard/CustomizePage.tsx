@@ -65,40 +65,33 @@ const presetThemes = [
   { label: "Coloré", emoji: "🎨", primary: "#059669", secondary: "#3b82f6", style: "restaurant" },
 ];
 
-/** Build PassKit field arrays from form state */
+/** Build PassKit field arrays from form state using unified config */
 function buildPassFields(form: any) {
-  const headerFields = form.show_points
-    ? [{ key: "points", label: form.loyalty_type === "stamps" ? "Tampons" : form.loyalty_type === "cashback" ? "Cagnotte" : form.loyalty_type === "subscription" ? "Plan" : "Points", value: form.loyalty_type === "cashback" ? "24,50 €" : form.loyalty_type === "subscription" ? "Premium ✓" : "7" }]
-    : [];
-
-  const primaryFields = form.show_customer_name
-    ? [{ key: "member", label: "Membre", value: "Marie Dupont" }]
-    : [];
-
-  const secondaryFields = [];
-  if (form.loyalty_type === "cashback") {
-    secondaryFields.push({ key: "balance", label: "Cagnotte", value: "24,50 €" });
-  } else if (form.loyalty_type === "subscription") {
-    secondaryFields.push({ key: "status", label: "Statut", value: "Actif" });
-  } else {
-    secondaryFields.push({
-      key: "progress",
-      label: form.loyalty_type === "stamps" ? "Progression" : "Objectif",
-      value: `7 / ${form.max_points_per_card}`,
-    });
-  }
-  if (form.reward_description) {
-    secondaryFields.push({ key: "reward", label: "Récompense", value: form.reward_description });
-  }
-
-  const auxiliaryFields = [
-    { key: "tier", label: "Niveau", value: "Gold ⭐" },
-  ];
-  if (form.show_expiration) {
-    auxiliaryFields.push({ key: "expiry", label: "Expire", value: "31/12/2026" });
-  }
-
-  return { headerFields, primaryFields, secondaryFields, auxiliaryFields };
+  // Build a pseudo-business object from form to use unified config
+  const pseudoBusiness = {
+    id: "preview",
+    name: form.name,
+    logo_url: null,
+    card_bg_image_url: null,
+    loyalty_type: form.loyalty_type,
+    max_points_per_card: form.max_points_per_card,
+    points_per_visit: form.points_per_visit,
+    points_per_euro: form.points_per_euro,
+    reward_description: form.reward_description,
+    primary_color: form.primary_color,
+    foreground_color: form.foreground_color,
+    label_color: form.label_color,
+    show_customer_name: form.show_customer_name,
+    show_qr_code: form.show_qr_code,
+    show_points: form.show_points,
+    show_expiration: form.show_expiration,
+    show_rewards_preview: form.show_rewards_preview,
+    card_style: form.card_style,
+    card_bg_type: form.card_bg_type,
+  };
+  const config = buildCardConfig(pseudoBusiness);
+  const demoCustomer = buildDemoCustomer(config);
+  return buildApplePassFields(config, demoCustomer);
 }
 
 const CustomizePage = () => {
