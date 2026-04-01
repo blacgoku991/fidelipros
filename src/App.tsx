@@ -20,6 +20,8 @@ import CheckoutPage from "./pages/dashboard/CheckoutPage";
 import RewardsPage from "./pages/dashboard/RewardsPage";
 import CampaignsPage from "./pages/dashboard/CampaignsPage";
 import AbonnementPage from "./pages/dashboard/AbonnementPage";
+import AutomationsPage from "./pages/dashboard/AutomationsPage";
+import AnalyticsPage from "./pages/dashboard/AnalyticsPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminBusinesses from "./pages/admin/AdminBusinesses";
 import AdminBusinessDetail from "./pages/admin/AdminBusinessDetail";
