@@ -54,6 +54,8 @@ export interface AppleWalletPassProps {
   footerText?: string;
   /** Rendered width in px (default 320, Apple standard ~320pt) */
   width?: number;
+  /** Custom content inserted after auxiliary fields (e.g. stamp grid) */
+  children?: React.ReactNode;
 }
 
 export function AppleWalletPass({
