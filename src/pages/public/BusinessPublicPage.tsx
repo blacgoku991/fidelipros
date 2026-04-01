@@ -307,7 +307,13 @@ const BusinessPublicPage = () => {
             <div className="p-6 rounded-2xl bg-card border border-border/50 text-left space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Star className="w-4 h-4 text-accent" />
-                <span>Gagnez des points à chaque visite</span>
+                <span>
+                  {business.loyalty_type === "stamps"
+                    ? "Gagnez des tampons à chaque visite"
+                    : business.loyalty_type === "cashback"
+                      ? "Cumulez du cashback sur vos achats"
+                      : "Gagnez des points à chaque visite"}
+                </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <CreditCard className="w-4 h-4 text-primary" />
