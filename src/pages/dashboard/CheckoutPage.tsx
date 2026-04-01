@@ -381,11 +381,11 @@ const CheckoutPage = () => {
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: key === "starter" ? 0 : 0.07 }}
-                      onClick={() => { if (!isActive) setSelectedPlan(key); }}
+                      onClick={() => { if (!isCurrent) setSelectedPlan(key); }}
                       className={[
                         "relative rounded-2xl border-2 p-6 transition-all duration-200",
-                        !isActive ? "cursor-pointer" : "cursor-default",
-                        isSelected && !isActive
+                        !isCurrent ? "cursor-pointer" : "cursor-default",
+                        isSelected && !isCurrent
                           ? "border-violet-500 bg-violet-500/5 shadow-lg shadow-violet-500/10"
                           : "border-border/50 bg-card hover:border-border",
                         isCurrent ? "ring-2 ring-emerald-500/30" : "",
