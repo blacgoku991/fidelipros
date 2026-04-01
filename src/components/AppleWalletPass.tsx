@@ -191,6 +191,9 @@ export function AppleWalletPass({
         <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={8} />
       )}
 
+      {/* ── CUSTOM CONTENT (e.g. stamp grid) ── */}
+      {children}
+
       {/* ── BARCODE ── */}
       {barcodeValue && (
         <div
