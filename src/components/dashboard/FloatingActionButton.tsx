@@ -3,11 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, QrCode, UserPlus, Send, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
-interface FloatingActionButtonProps {
-  onAddClient?: () => void;
-}
-
-export function FloatingActionButton({ onAddClient }: FloatingActionButtonProps) {
+export function FloatingActionButton() {
   const [open, setOpen] = useState(false);
 
   const actions = [
