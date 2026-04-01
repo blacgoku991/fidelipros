@@ -380,10 +380,10 @@ const CampaignsPage = () => {
 
   return (
     <DashboardLayout title="Campagnes" subtitle="Envoyez des notifications ciblées à vos clients">
-      <div className="flex gap-5 h-[calc(100vh-9rem)]">
+      <div className="flex flex-col lg:flex-row gap-5 lg:h-[calc(100vh-9rem)]">
 
         {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
-        <aside className="w-[300px] shrink-0 flex flex-col gap-3 overflow-hidden">
+        <aside className="w-full lg:w-[300px] shrink-0 flex flex-col gap-3 lg:overflow-hidden">
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2">
@@ -419,7 +419,7 @@ const CampaignsPage = () => {
           </Button>
 
           {/* Campaign list */}
-          <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
+          <div className="flex-1 lg:overflow-y-auto max-h-[40vh] lg:max-h-none space-y-2 pr-0.5">
             {campaignSummaries.length === 0 && !creating ? (
               <div className="text-center py-10">
                 <Megaphone className="w-7 h-7 mx-auto mb-2 text-muted-foreground/30" />
@@ -457,7 +457,7 @@ const CampaignsPage = () => {
         </aside>
 
         {/* ── RIGHT PANEL ──────────────────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto rounded-2xl">
+        <main className="flex-1 overflow-y-auto rounded-2xl min-w-0">
           <AnimatePresence mode="wait">
 
             {/* Empty state */}
@@ -541,7 +541,7 @@ const CampaignsPage = () => {
                     <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground">1</div>
                     <h3 className="text-sm font-semibold">Message</h3>
                   </div>
-                  <div className="flex gap-6">
+                  <div className="flex flex-col sm:flex-row gap-6">
                     {/* Fields */}
                     <div className="flex-1 space-y-4">
                       <div className="space-y-2">
@@ -583,7 +583,7 @@ const CampaignsPage = () => {
                     </div>
 
                     {/* iPhone preview */}
-                    <div className="shrink-0 hidden lg:block">
+                    <div className="shrink-0 hidden sm:block">
                       <IPhonePreview
                         title={title || businessName}
                         message={message || "Votre message apparaîtra ici…"}
@@ -724,7 +724,7 @@ const CampaignsPage = () => {
                 </div>
 
                 {/* ── Action buttons ────────────────────────────────────── */}
-                <div className="flex items-center gap-3 pt-2 border-t border-border/40">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 border-t border-border/40">
                   <Button
                     variant="outline"
                     onClick={saveDraft}
@@ -735,7 +735,7 @@ const CampaignsPage = () => {
                   <Button
                     onClick={handleSend}
                     disabled={sending || !message.trim() || targetCount === 0}
-                    className="ml-auto bg-gradient-primary text-primary-foreground rounded-xl gap-2 px-6 font-semibold h-11"
+                    className="sm:ml-auto bg-gradient-primary text-primary-foreground rounded-xl gap-2 px-6 font-semibold h-11 w-full sm:w-auto"
                   >
                     {sending ? (
                       <><Bell className="w-4 h-4 animate-bounce" /> Envoi en cours…</>
