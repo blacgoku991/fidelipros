@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Bell, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LoyaltyCard } from "@/components/LoyaltyCard";
+
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function HeroSection() {
@@ -126,14 +126,14 @@ export function HeroSection() {
             </div>
           </motion.div>
 
-          {/* Right - Floating card */}
+          {/* Right - iPhone mockup with Wallet */}
           <motion.div
             initial={{ opacity: 0, x: 48 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.9, delay: 0.2 }}
-            className="flex justify-center items-center relative px-8 py-14"
+            className="flex justify-center items-center relative"
           >
-            {/* Glow orb behind card */}
+            {/* Glow orbs */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
             </div>
@@ -141,9 +141,9 @@ export function HeroSection() {
               <div className="w-48 h-48 rounded-full bg-amber-400/10 blur-2xl" />
             </div>
 
-            {/* Floating badge: level up */}
+            {/* Floating badges */}
             <motion.div
-              className="absolute top-4 left-0 z-20 px-3 py-2 rounded-xl bg-card border border-border/60 shadow-lg flex items-center gap-2"
+              className="absolute top-8 left-0 z-20 px-3 py-2 rounded-xl bg-card border border-border/60 shadow-lg flex items-center gap-2"
               animate={{ y: [0, -7, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
             >
@@ -151,7 +151,6 @@ export function HeroSection() {
               <span className="text-xs font-bold">Bronze → Silver 🎉</span>
             </motion.div>
 
-            {/* Floating revenue badge */}
             <motion.div
               className="absolute top-1/4 -right-2 z-20 px-3 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 shadow-lg flex items-center gap-2"
               animate={{ y: [0, -5, 0] }}
@@ -161,9 +160,8 @@ export function HeroSection() {
               <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">+23% CA</span>
             </motion.div>
 
-            {/* Floating notification */}
             <motion.div
-              className="absolute bottom-4 right-0 z-20 px-3 py-2 rounded-xl bg-card border border-border/60 shadow-lg flex items-center gap-2 max-w-[190px]"
+              className="absolute bottom-12 right-0 z-20 px-3 py-2 rounded-xl bg-card border border-border/60 shadow-lg flex items-center gap-2 max-w-[190px]"
               animate={{ y: [0, 7, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
             >
@@ -171,7 +169,6 @@ export function HeroSection() {
               <span className="text-xs text-muted-foreground truncate">Récompense disponible !</span>
             </motion.div>
 
-            {/* Points badge */}
             <motion.div
               className="absolute bottom-1/3 -left-2 z-20 px-2.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30"
               animate={{ scale: [1, 1.14, 1] }}
@@ -180,17 +177,122 @@ export function HeroSection() {
               <span className="text-xs font-bold">+1 pt</span>
             </motion.div>
 
-            {/* Card wrapper */}
-            <div className="animate-float w-full max-w-[360px] relative z-10">
-              <LoyaltyCard
-                businessName="Boucherie Laurent"
-                customerName="Marie Dupont"
-                points={7}
-                maxPoints={10}
-                level="gold"
-                cardId="demo-card-001"
-              />
-            </div>
+            {/* iPhone mockup */}
+            <motion.div
+              className="relative z-10 w-[280px] sm:w-[300px]"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              {/* iPhone frame */}
+              <div className="relative rounded-[44px] bg-[#1a1a2e] p-[10px] shadow-2xl shadow-black/30">
+                {/* Notch / Dynamic Island */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-[100px] h-[28px] bg-[#1a1a2e] rounded-b-2xl" />
+
+                {/* Screen */}
+                <div className="rounded-[34px] overflow-hidden bg-[#f2f2f7] dark:bg-[#1c1c1e]">
+                  {/* Status bar */}
+                  <div className="flex items-center justify-between px-6 pt-3 pb-1">
+                    <span className="text-[11px] font-semibold text-foreground/80">19:24</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-foreground/60">📶</span>
+                      <span className="text-[10px] text-foreground/60">🔋</span>
+                    </div>
+                  </div>
+
+                  {/* Wallet header */}
+                  <div className="px-5 pt-2 pb-3">
+                    <h3 className="text-lg font-bold text-foreground">Wallet</h3>
+                  </div>
+
+                  {/* Stacked cards */}
+                  <div className="px-4 pb-6 space-y-[-40px]">
+                    {/* Background card 1 - generic */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5, duration: 0.6 }}
+                      className="relative z-[1] rounded-xl h-[70px] bg-gradient-to-r from-blue-600 to-blue-800 shadow-md px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-white/90">💳 Ma Banque</span>
+                        <span className="text-[9px] text-white/50">•••• 4242</span>
+                      </div>
+                    </motion.div>
+
+                    {/* Background card 2 - generic */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7, duration: 0.6 }}
+                      className="relative z-[2] rounded-xl h-[70px] bg-gradient-to-r from-gray-400 to-gray-600 shadow-md px-4 py-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-white/90">🏦 Revolut</span>
+                        <span className="text-[9px] text-white/50">•••• 3669</span>
+                      </div>
+                    </motion.div>
+
+                    {/* Main loyalty card - highlighted */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: 0.9, duration: 0.7, ease: "easeOut" }}
+                      className="relative z-[3] rounded-2xl overflow-hidden shadow-xl shadow-amber-500/20"
+                    >
+                      {/* Card with gradient */}
+                      <div className="bg-gradient-to-br from-amber-100 via-orange-50 to-amber-200 dark:from-amber-900/80 dark:via-orange-900/60 dark:to-amber-800/80 p-4">
+                        {/* Banner area with food imagery feel */}
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                              🍔
+                            </div>
+                            <span className="text-sm font-bold text-amber-900 dark:text-amber-100">Tasty Bites</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] uppercase tracking-wider text-amber-700/70 dark:text-amber-300/70 font-semibold">Points</p>
+                            <motion.p
+                              className="text-lg font-extrabold text-amber-800 dark:text-amber-100"
+                              animate={{ scale: [1, 1.08, 1] }}
+                              transition={{ duration: 2, repeat: Infinity, delay: 2 }}
+                            >
+                              200
+                            </motion.p>
+                          </div>
+                        </div>
+
+                        {/* Strip image area */}
+                        <div className="rounded-xl overflow-hidden mb-3 h-[80px] bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 flex items-center justify-center relative">
+                          <div className="absolute inset-0 bg-black/10" />
+                          <span className="text-3xl">🥗🍕🍔🌮🥐</span>
+                        </div>
+
+                        {/* Member info */}
+                        <div>
+                          <p className="text-[9px] uppercase tracking-wider text-amber-700/60 dark:text-amber-300/60 font-semibold">Member</p>
+                          <p className="text-sm font-bold text-amber-900 dark:text-amber-100">Carol Danvers</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                  {/* Dashed line pointing to card */}
+                  <motion.div
+                    className="flex items-center justify-center pb-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1.5 }}
+                  >
+                    <span className="text-xs italic text-primary font-medium">
+                      ← Votre entreprise est ici
+                    </span>
+                  </motion.div>
+                </div>
+              </div>
+
+              {/* iPhone bottom bar */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-[100px] h-[4px] rounded-full bg-white/30" />
+            </motion.div>
           </motion.div>
         </div>
       </div>
