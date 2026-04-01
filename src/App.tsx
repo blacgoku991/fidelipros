@@ -40,6 +40,7 @@ import ContactPage from "./pages/ContactPage";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 import VitrinePage from "./pages/public/VitrinePage";
+import DemoPage from "./pages/public/DemoPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
