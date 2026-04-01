@@ -9,6 +9,7 @@ import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
+import { buildCardConfig, buildDemoCustomer, buildApplePassFields, getLoyaltyLabels, type UnifiedCardConfig } from "@/lib/cardConfig";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
