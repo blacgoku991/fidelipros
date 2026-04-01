@@ -85,7 +85,7 @@ const CustomizePage = () => {
   const stripFileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const [showIPhoneMockup, setShowIPhoneMockup] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"iphone" | "samsung">("iphone");
 
   const geocodeAddress = async (address: string) => {
     if (!address.trim()) { toast.error("Entrez une adresse d'abord"); return; }
