@@ -341,6 +341,15 @@ const Dashboard = () => {
         </motion.div>
       )}
 
+      {/* ── Quick Actions + Suggestions ── */}
+      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        <BusinessResults />
+        <div className="space-y-4">
+          <QuickActions />
+          <SmartSuggestions />
+        </div>
+      </div>
+
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map((stat, i) => {
