@@ -41,7 +41,6 @@ const Register = () => {
   const [emailAlreadyUsed, setEmailAlreadyUsed] = useState(false);
 
   const handleGoogleRegister = async () => {
-  const handleGoogleRegister = async () => {
     await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
     });
