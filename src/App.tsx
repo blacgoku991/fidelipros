@@ -30,6 +30,7 @@ import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
 import SetupWizard from "./pages/SetupWizard";
 import Tarifs from "./pages/Tarifs";
+import FaqPage from "./pages/FaqPage";
 import BusinessPublicPage from "./pages/public/BusinessPublicPage";
 import CardViewPage from "./pages/public/CardViewPage";
 import VitrinePage from "./pages/public/VitrinePage";
