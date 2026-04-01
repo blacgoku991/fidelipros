@@ -272,13 +272,25 @@ const Tarifs = () => {
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-card py-16 text-center px-4 mb-0">
-        <h2 className="text-3xl font-display font-bold text-primary-foreground mb-3">Prêt à fidéliser vos clients ?</h2>
+      <motion.section
+        className="bg-gradient-card py-16 text-center px-4 mb-0"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+      >
+        <motion.h2
+          className="text-3xl font-display font-bold text-primary-foreground mb-3"
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          Prêt à fidéliser vos clients ?
+        </motion.h2>
         <p className="text-primary-foreground/70 mb-6">Commencez dès aujourd'hui et fidélisez vos clients.</p>
         <Button asChild size="lg" className="bg-white text-primary font-bold rounded-xl gap-2 hover:bg-white/90">
           <Link to="/register">Créer mon compte <ArrowRight className="w-4 h-4" /></Link>
         </Button>
-      </section>
+      </motion.section>
 
       <Footer />
     </div>
