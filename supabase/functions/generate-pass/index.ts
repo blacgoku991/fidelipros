@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
   }
 
   // ── Startup secret validation ──────────────────────────────────────────────
-  const REQUIRED_SECRETS = ["APPLE_TEAM_ID", "APPLE_PASS_TYPE_ID", "APPLE_P12_BASE64", "APPLE_P12_PASSWORD"];
+  const REQUIRED_SECRETS = ["APPLE_TEAM_ID", "APPLE_PASS_CERTIFICATE", "APPLE_PASS_PASSWORD"];
   const missingSecrets = REQUIRED_SECRETS.filter((s) => !Deno.env.get(s));
   if (missingSecrets.length > 0) {
     console.error("[generate-pass] ❌ MISSING SECRETS:", missingSecrets.join(", "));
