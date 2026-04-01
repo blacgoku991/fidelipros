@@ -177,7 +177,8 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex pt-14">
+      <AuthNavbar backTo="login" />
       {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-card items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">

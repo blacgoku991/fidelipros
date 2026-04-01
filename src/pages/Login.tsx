@@ -90,7 +90,8 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex pt-14">
+      <AuthNavbar backTo="register" />
       {/* Left panel — gradient illustration */}
       <div className="hidden lg:flex lg:w-[52%] bg-gradient-card items-center justify-center p-14 relative overflow-hidden">
         {/* Orb decorations */}
