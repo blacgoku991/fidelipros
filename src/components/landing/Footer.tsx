@@ -1,4 +1,5 @@
 import { CreditCard } from "lucide-react";
+import { motion } from "framer-motion";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function Footer() {
