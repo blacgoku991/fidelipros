@@ -124,7 +124,7 @@ export function HeroSection() {
                 </Link>
               </Button>
               <Button asChild variant="outline" size="lg" className="w-full sm:w-auto rounded-xl px-8 h-13 text-base border-border/60 hover:border-primary/30 hover:bg-primary/5">
-                <a href="#pricing">{ctaSecondary}</a>
+                <a href="/tarifs">{ctaSecondary}</a>
               </Button>
             </div>
 
