@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Bell, Award, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { LoyaltyCard } from "@/components/LoyaltyCard";
+
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 export function HeroSection() {
