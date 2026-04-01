@@ -429,8 +429,8 @@ const BusinessPublicPage = () => {
               </button>
             )}
 
-            {/* Google Wallet */}
-            {!isAppleDevice && card.card_code && (
+            {/* Google Wallet — only if available */}
+            {!isAppleDevice && googleAvailable && card.card_code && (
               <button
                 onClick={() => handleAddToGoogleWallet(card.card_code)}
                 disabled={googleWalletLoading}
