@@ -176,7 +176,7 @@ export async function buildPkpass(
   // Fetch business logo for icons (square) and logo (rectangular)
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
