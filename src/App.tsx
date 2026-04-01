@@ -26,6 +26,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminLandingContent from "./pages/admin/AdminLandingContent";
 import AdminEmailDigest from "./pages/admin/AdminEmailDigest";
 import AdminPlans from "./pages/admin/AdminPlans";
+import AdminMessages from "./pages/admin/AdminMessages";
 import Onboarding from "./pages/Onboarding";
 import OnboardingBusiness from "./pages/OnboardingBusiness";
 import SetupWizard from "./pages/SetupWizard";
