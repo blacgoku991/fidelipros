@@ -457,7 +457,7 @@ const CampaignsPage = () => {
         </aside>
 
         {/* ── RIGHT PANEL ──────────────────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto rounded-2xl">
+        <main className="flex-1 overflow-y-auto rounded-2xl min-w-0">
           <AnimatePresence mode="wait">
 
             {/* Empty state */}
