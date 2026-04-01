@@ -1,4 +1,5 @@
 import { CreditCard, LogOut, Shield } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { NavLink } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
