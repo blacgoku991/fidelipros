@@ -293,33 +293,61 @@ const CustomizePage = () => {
               {/* Live Apple Wallet Preview */}
               <div className="p-5 rounded-2xl bg-card border border-border/50">
                 <h2 className="font-display font-semibold text-sm mb-3">Aperçu Apple Wallet</h2>
-                <div className="rounded-2xl overflow-hidden" style={{ background: form.primary_color || "#6B46C1" }}>
-                  <div className="p-4 text-white space-y-3">
-                    <div className="flex items-center gap-3">
+                {/* Realistic Apple Wallet pass — portrait ratio */}
+                <div
+                  className="mx-auto rounded-2xl overflow-hidden shadow-xl"
+                  style={{
+                    background: `linear-gradient(145deg, ${form.primary_color || "#6B46C1"}, ${form.secondary_color || "#4c2d8a"})`,
+                    width: "260px",
+                  }}
+                >
+                  {/* Header: logo + name + stamps */}
+                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       {logoUrl ? (
-                        <img src={logoUrl} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                        <img src={logoUrl} alt="" className="w-9 h-9 rounded-lg object-cover border border-white/20" />
                       ) : (
-                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center text-xs font-bold">{(form.name || "?").slice(0, 2).toUpperCase()}</div>
+                        <div className="w-9 h-9 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-xs font-bold text-white">
+                          {(form.name || "?").slice(0, 2).toUpperCase()}
+                        </div>
                       )}
-                      <div>
-                        <p className="font-bold text-sm">{form.name || "Mon Commerce"}</p>
-                        <p className="text-[10px] opacity-80">Carte de fidélité</p>
-                      </div>
+                      <span className="font-bold text-sm text-white truncate">{form.name || "Mon Commerce"}</span>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-white/20">
-                      <div>
-                        <p className="text-[10px] opacity-70 uppercase">Points</p>
-                        <p className="font-bold text-lg">7 / {form.max_points_per_card}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] opacity-70 uppercase">Niveau</p>
-                        <p className="font-bold text-sm">⭐ Gold</p>
-                      </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Stamps</p>
+                      <p className="text-lg font-bold text-white leading-none">7</p>
                     </div>
-                    <div className="pt-2 border-t border-white/20">
-                      <p className="text-[10px] opacity-70 uppercase">Récompense</p>
-                      <p className="text-xs">{form.reward_description || "Récompense offerte !"}</p>
+                  </div>
+
+                  {/* Strip image */}
+                  <div className="mx-3 rounded-xl overflow-hidden" style={{ aspectRatio: "3.2 / 1" }}>
+                    {stripImageUrl ? (
+                      <img src={stripImageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-white/10 flex items-center justify-center">
+                        <span className="text-white/30 text-xs">Bannière</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Member + Reward */}
+                  <div className="flex items-start justify-between px-4 pt-3 pb-1">
+                    <div className="min-w-0">
+                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Member</p>
+                      <p className="text-sm font-bold text-white truncate">Marie Dupont</p>
                     </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[8px] uppercase tracking-widest text-white/50 font-semibold">Reward</p>
+                      <p className="text-sm font-bold text-white">0</p>
+                    </div>
+                  </div>
+
+                  {/* QR Code */}
+                  <div className="flex flex-col items-center py-3 gap-1.5">
+                    <div className="rounded-xl p-2 bg-white shadow-sm">
+                      <QRCodeSVG value="demo-card-001" size={80} bgColor="#fff" fgColor="#1a1a1a" level="M" />
+                    </div>
+                    <span className="text-[10px] font-mono tracking-wider text-white/40">808f4ba8</span>
                   </div>
                 </div>
               </div>
