@@ -55,6 +55,9 @@ Deno.serve(async (req) => {
 
     const act = action_type || "test";
 
+    // ── Fetch old field values BEFORE update for changeMessage validation ──
+    let oldFieldValues: Record<string, any> = {};
+
     // ── Resolve target serial numbers ─────────────────────────────
     let serialQuery = supabase
       .from("wallet_registrations")
