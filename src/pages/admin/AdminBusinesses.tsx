@@ -150,7 +150,18 @@ const AdminBusinesses = () => {
     navigate("/dashboard");
   };
 
-  const stopImpersonation = () => {
+  const stopImpersonation = async () => {
+    const bizId = localStorage.getItem("impersonating_business");
+
+    // Write audit log for stop
+    if (user && bizId) {
+      await supabase.from("admin_audit_logs").insert({
+        admin_user_id: user.id,
+        action: "impersonation_stop",
+        target_business_id: bizId,
+      });
+    }
+
     localStorage.removeItem("impersonating_business");
     localStorage.removeItem("impersonating_business_name");
     setImpersonating(null);
