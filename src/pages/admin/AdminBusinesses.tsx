@@ -118,6 +118,7 @@ const AdminBusinesses = () => {
     }
   };
 
+  const impersonateBusiness = (biz: any) => {
     localStorage.setItem("impersonating_business", biz.id);
     localStorage.setItem("impersonating_business_name", biz.name);
     setImpersonating(biz.id);
