@@ -315,7 +315,7 @@ const CampaignsPage = () => {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           business_id: business.id,
-          title: title.trim() || businessName,
+          title: businessName,
           message: message.trim(),
           segment: segLabel,
           channels: { web_push: false, apple_wallet: true },
