@@ -79,12 +79,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!active) return;
 
-      setRole(rolesRes.data?.[0]?.role ?? null);
-      setBusiness(bizRes.data ?? null);
+      const userRole = rolesRes.data?.[0]?.role ?? null;
+      setRole(userRole);
+
+      // Admin impersonation: if super_admin has an impersonated business, load that instead
+      let resolvedBusiness = bizRes.data ?? null;
+      if (userRole === "super_admin") {
+        const impersonatedId = localStorage.getItem("impersonated_business_id");
+        if (impersonatedId) {
+          const { data: impBiz } = await supabase
+            .from("businesses")
+            .select("*")
+            .eq("id", impersonatedId)
+            .maybeSingle();
+          if (!active) return;
+          if (impBiz) {
+            resolvedBusiness = impBiz;
+          }
+        }
+      }
+
+      setBusiness(resolvedBusiness);
       setLoading(false);
 
       // Subscription gate: redirect unpaid users to checkout
-      const biz = bizRes.data;
+      const biz = resolvedBusiness;
       const path = window.location.pathname;
       const isExempt =
         path.startsWith("/dashboard/checkout") ||
