@@ -102,7 +102,7 @@ serve(async (req) => {
         if (!productId) {
           // Chercher un produit existant via list (evite l'API search qui peut échouer)
           const existing = await stripe.products.list({ limit: 100, active: true });
-          const found = existing.data.find(p => p.metadata?.plan === plan);
+          const found = existing.data.find((p: any) => p.metadata?.plan === plan);
           if (found) {
             productId = found.id;
           } else {

@@ -161,9 +161,10 @@ serve(async (req) => {
         } else {
           const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
           if (customer.email) {
-            const { data: authUser } = await supabase.auth.admin.getUserByEmail(customer.email);
-            if (authUser?.user) {
-              userId = authUser.user.id;
+            const { data: users } = await supabase.auth.admin.listUsers();
+            const authUser = users?.users?.find((u: any) => u.email === customer.email);
+            if (authUser) {
+              userId = authUser.id;
               const { data: foundBiz } = await supabase
                 .from("businesses")
                 .select("id")
