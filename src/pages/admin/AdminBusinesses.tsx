@@ -84,7 +84,40 @@ const AdminBusinesses = () => {
     fetchAll();
   };
 
-  const startImpersonation = (biz: any) => {
+  const handleDeleteBusiness = async (biz: any) => {
+    setDeleting(true);
+    try {
+      const bizId = biz.id;
+      // Delete all related data first
+      await Promise.all([
+        supabase.from("points_history").delete().eq("business_id", bizId),
+        supabase.from("customer_scores").delete().eq("business_id", bizId),
+        supabase.from("notifications_log").delete().eq("business_id", bizId),
+        supabase.from("notification_campaigns").delete().eq("business_id", bizId),
+        supabase.from("notification_templates").delete().eq("business_id", bizId),
+        supabase.from("automations").delete().eq("business_id", bizId),
+        supabase.from("special_events").delete().eq("business_id", bizId),
+        supabase.from("wallet_registrations").delete().eq("business_id", bizId),
+        supabase.from("digest_logs").delete().eq("merchant_id", bizId),
+        supabase.from("merchant_locations").delete().eq("business_id", bizId),
+        supabase.from("user_merchant_points").delete().eq("business_id", bizId),
+        supabase.from("demo_sessions").delete().eq("business_id", bizId),
+        supabase.from("rewards").delete().eq("business_id", bizId),
+      ]);
+      await supabase.from("customer_cards").delete().eq("business_id", bizId);
+      await supabase.from("customers").delete().eq("business_id", bizId);
+      await supabase.from("businesses").delete().eq("id", bizId);
+
+      toast.success(`Entreprise "${biz.name}" supprimée`);
+      setDeleteTarget(null);
+      fetchAll();
+    } catch (err) {
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
     localStorage.setItem("impersonating_business", biz.id);
     localStorage.setItem("impersonating_business_name", biz.name);
     setImpersonating(biz.id);
