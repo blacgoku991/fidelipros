@@ -174,6 +174,46 @@ serve(async (req) => {
       });
     }
 
+    // ── ACTION : synchroniser la souscription Stripe d'un business ────
+    if (action === "sync_subscription") {
+      const { business_id, new_plan } = body as { business_id: string; new_plan: "starter" | "pro" };
+      if (!business_id || !new_plan) throw new Error("business_id et new_plan requis");
+
+      // Get business
+      const { data: biz, error: bizErr } = await supabase
+        .from("businesses")
+        .select("stripe_subscription_id, stripe_customer_id, subscription_plan")
+        .eq("id", business_id)
+        .single();
+      if (bizErr || !biz) throw new Error("Business non trouvé");
+
+      // Get new price ID
+      const newPriceId = cfg[`stripe_price_${new_plan}`]?.trim();
+      if (!newPriceId) throw new Error(`Prix Stripe non configuré pour le plan ${new_plan}`);
+
+      if (biz.stripe_subscription_id) {
+        // Update existing Stripe subscription
+        const sub = await stripe.subscriptions.retrieve(biz.stripe_subscription_id);
+        const itemId = sub.items.data[0]?.id;
+        if (!itemId) throw new Error("Aucun item dans la souscription Stripe");
+
+        await stripe.subscriptions.update(biz.stripe_subscription_id, {
+          items: [{ id: itemId, price: newPriceId }],
+          proration_behavior: "none",
+        });
+        console.log(`[manage-stripe-plans] Subscription ${biz.stripe_subscription_id} updated to ${new_plan}`);
+      } else {
+        console.log(`[manage-stripe-plans] No Stripe subscription for business ${business_id}, DB-only change`);
+      }
+
+      // Update DB
+      await supabase.from("businesses").update({ subscription_plan: new_plan as any }).eq("id", business_id);
+
+      return new Response(JSON.stringify({ ok: true, synced: !!biz.stripe_subscription_id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     console.log("[manage-stripe-plans] action inconnue:", action);
     throw new Error(`Action inconnue : ${action}`);
 
