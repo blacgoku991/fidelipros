@@ -265,7 +265,7 @@ const SettingsPage = () => {
       .replace(/^-|-$/g, "");
 
   const handleSaveSlug = async () => {
-    if (!business || !slug.trim()) return;
+    if (!business || !slug.trim()) { if (!business) toast.error("Commerce non chargé"); return; }
     setSavingSlug(true);
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-|-$/g, "");
     setSlug(cleanSlug);
