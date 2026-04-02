@@ -12,6 +12,7 @@ interface AuthContextType {
   role: string | null;
   business: Business | null;
   logout: () => Promise<void>;
+  refreshBusiness: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -111,13 +112,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  const refreshBusiness = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("businesses").select("*").eq("owner_id", user.id).maybeSingle();
+    setBusiness(data ?? null);
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     navigate("/", { replace: true });
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, role, business, logout }}>
+    <AuthContext.Provider value={{ user, loading, role, business, logout, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );

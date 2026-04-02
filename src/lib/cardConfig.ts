@@ -142,6 +142,7 @@ export function buildApplePassFields(
 } {
   const labels = getLoyaltyLabels(config.loyaltyType);
 
+  // ── Header: top-right — adapted per loyalty type
   const headerFields: PassField[] = [];
   if (config.showPoints) {
     headerFields.push({
@@ -155,15 +156,17 @@ export function buildApplePassFields(
     });
   }
 
+  // ── Primary: just the name, no label
   const primaryFields: PassField[] = [];
   if (config.showCustomerName) {
     primaryFields.push({
       key: "member",
-      label: "Membre",
+      label: "",
       value: customer.fullName || "Client",
     });
   }
 
+  // ── Secondary: progression + reward
   const secondaryFields: PassField[] = [];
   if (config.loyaltyType === "cashback") {
     secondaryFields.push({ key: "balance", label: "Cagnotte", value: `${customer.currentPoints},00 €` });
@@ -180,6 +183,7 @@ export function buildApplePassFields(
     secondaryFields.push({ key: "reward", label: "Récompense", value: config.rewardDescription });
   }
 
+  // ── Auxiliary: level + expiry
   const auxiliaryFields: PassField[] = [];
   const levelEmoji = customer.level === "gold" ? "⭐" : customer.level === "silver" ? "🥈" : "🥉";
   auxiliaryFields.push({

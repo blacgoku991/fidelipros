@@ -125,9 +125,6 @@ export function LoyaltyCard({
       {/* ── MEMBER + TIER ── */}
       <div className="px-4 pt-3 flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-            Member
-          </p>
           {showCustomerName && (
             <p className="text-base font-bold truncate" style={{ color: textOnBg }}>
               {customerName || "Client"}
@@ -136,7 +133,7 @@ export function LoyaltyCard({
         </div>
         <div className="text-right shrink-0">
           <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-            Tier
+            Niveau
           </p>
           <p className="text-base font-bold" style={{ color: textOnBg }}>
             {levelLabels[level] || "Bronze"}

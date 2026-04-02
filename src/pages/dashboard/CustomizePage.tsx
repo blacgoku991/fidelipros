@@ -95,7 +95,7 @@ function buildPassFields(form: any) {
 }
 
 const CustomizePage = () => {
-  const { user, business } = useAuth();
+  const { user, business, refreshBusiness } = useAuth();
   const [form, setForm] = useState<BusinessConfig & { name: string; description: string; address: string; city: string; phone: string; website: string; latitude: number | null; longitude: number | null; geofence_message: string; foreground_color: string; label_color: string }>(
     { ...defaultConfig, name: "", description: "", address: "", city: "", phone: "", website: "", latitude: null, longitude: null, geofence_message: "Passez nous voir, on vous attend ! 🎉", foreground_color: "", label_color: "" }
   );
@@ -166,7 +166,10 @@ const CustomizePage = () => {
       ...config,
     } as any).eq("id", business.id);
     if (error) { console.error("Save error:", error); toast.error("Erreur de sauvegarde : " + error.message); }
-    else toast.success("Configuration sauvegardée !");
+    else {
+      toast.success("Configuration sauvegardée !");
+      await refreshBusiness();
+    }
     setSaving(false);
   };
 
