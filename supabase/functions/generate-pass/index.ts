@@ -276,12 +276,12 @@ export async function buildPkpass(
           value: `${card.rewards_earned || 0}`,
           textAlignment: "PKTextAlignmentRight",
         },
-        {
+        ...(latestOffer ? [{
           key: "offer",
           label: "",
-          value: latestOffer || " ",
+          value: latestOffer,
           changeMessage: "%@",
-        },
+        }] : []),
       ],
       backFields: [
         {
