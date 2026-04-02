@@ -44,12 +44,12 @@ const Onboarding = () => {
           .maybeSingle();
 
         if (business) {
-          const name = (business as any).name;
-          const status = (business as any).subscription_status;
+          const name = business.name;
+          const status = business.subscription_status;
           if (!name || name === "Mon Commerce") {
             navigate(`/onboarding-business?plan=${plan}`);
           } else if (status === "inactive") {
-            navigate(`/dashboard/checkout?plan=${(business as any).subscription_plan || plan}`);
+            navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`);
           } else {
             navigate("/dashboard");
           }

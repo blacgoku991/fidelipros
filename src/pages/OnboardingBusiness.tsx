@@ -41,13 +41,13 @@ const OnboardingBusiness = () => {
 
         if (error || !business) { navigate("/login"); return; }
 
-        const name = (business as any).name;
-        const status = (business as any).subscription_status;
+        const name = business.name;
+        const status = business.subscription_status;
 
         // Already onboarded, skip
         if (name && name !== "Mon Commerce") {
           if (status === "inactive") {
-            navigate(`/dashboard/checkout?plan=${plan || (business as any).subscription_plan || "pro"}`);
+            navigate(`/dashboard/checkout?plan=${plan || business.subscription_plan || "pro"}`);
           } else {
             navigate("/dashboard");
           }
