@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
@@ -20,13 +20,16 @@ const planLabels: Record<string, string> = {
   pro: "Pro — 59€/mois",
 };
 
-type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "abonnement" | "compte";
+type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "integrations" | "abonnement" | "compte";
 
 const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: "vitrine",         label: "Vitrine",          Icon: Store },
   { key: "widget",          label: "Widget",           Icon: QrCode },
   { key: "geofencing",      label: "Proximité",        Icon: Radar },
   { key: "automatisations", label: "Automatisations",  Icon: Zap },
+  { key: "etablissements",  label: "Établissements",   Icon: Building2 },
+  { key: "google-avis",     label: "Google Avis",      Icon: Star },
+  { key: "integrations",    label: "Intégrations",     Icon: Plug },
   { key: "abonnement",      label: "Abonnement",       Icon: Crown },
   { key: "compte",          label: "Compte",           Icon: Shield },
 ];
@@ -70,6 +73,27 @@ const SettingsPage = () => {
   const [savingGeo, setSavingGeo] = useState(false);
   const [satellitePoints, setSatellitePoints] = useState<{ lat: number; lng: number }[]>([]);
 
+  // Multi-locations
+  const [locations, setLocations] = useState<any[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(false);
+  const [newLocName, setNewLocName] = useState("");
+  const [newLocAddress, setNewLocAddress] = useState("");
+  const [newLocCity, setNewLocCity] = useState("");
+  const [addingLocation, setAddingLocation] = useState(false);
+
+  // Google Reviews
+  const [googlePlaceId, setGooglePlaceId] = useState("");
+  const [googleReviewEnabled, setGoogleReviewEnabled] = useState(false);
+  const [googleReviewThreshold, setGoogleReviewThreshold] = useState(5);
+  const [googleReviewMessage, setGoogleReviewMessage] = useState("Merci pour votre fidélité ! Votre avis Google nous aiderait beaucoup");
+  const [savingGoogle, setSavingGoogle] = useState(false);
+
+  // POS / Integrations
+  const [posEnabled, setPosEnabled] = useState(false);
+  const [posApiKey, setPosApiKey] = useState("");
+  const [posSystemType, setPosSystemType] = useState("generic");
+  const [savingPos, setSavingPos] = useState(false);
+
   // Autocomplete
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -106,6 +130,27 @@ const SettingsPage = () => {
       setVipAutoEnabled(business.vip_auto_enabled || false);
       setVipAutoThreshold(business.vip_auto_threshold || 50);
     }
+  }, [business]);
+
+  // Load Google Reviews & POS settings
+  useEffect(() => {
+    if (business) {
+      setGooglePlaceId((business as any).google_place_id || "");
+      setGoogleReviewEnabled((business as any).google_review_enabled || false);
+      setGoogleReviewThreshold((business as any).google_review_threshold || 5);
+      setGoogleReviewMessage((business as any).google_review_message || "Merci pour votre fidélité ! Votre avis Google nous aiderait beaucoup");
+      setPosEnabled((business as any).pos_enabled || false);
+      setPosApiKey((business as any).pos_api_key || "");
+      setPosSystemType((business as any).pos_system_type || "generic");
+    }
+  }, [business]);
+
+  // Load merchant locations
+  useEffect(() => {
+    if (!business) return;
+    setLoadingLocations(true);
+    supabase.from("merchant_locations").select("*").eq("business_id", business.id).order("created_at", { ascending: true })
+      .then(({ data }) => { setLocations(data || []); setLoadingLocations(false); });
   }, [business]);
 
   useEffect(() => {
@@ -256,6 +301,76 @@ const SettingsPage = () => {
     setSavingAuto(false);
     if (error) toast.error("Erreur de sauvegarde");
     else toast.success("Automatisations sauvegardées !");
+  };
+
+  // --- Multi-location handlers ---
+  const handleAddLocation = async () => {
+    if (!business || !newLocName.trim()) { toast.error("Nom d'établissement requis"); return; }
+    setAddingLocation(true);
+    const { data, error } = await supabase.from("merchant_locations").insert({
+      business_id: business.id,
+      name: newLocName.trim(),
+      address: newLocAddress.trim() || null,
+      city: newLocCity.trim() || null,
+    } as any).select().single();
+    setAddingLocation(false);
+    if (error) { toast.error("Erreur : " + error.message); return; }
+    setLocations((prev) => [...prev, data]);
+    setNewLocName(""); setNewLocAddress(""); setNewLocCity("");
+    toast.success("Établissement ajouté !");
+  };
+
+  const handleDeleteLocation = async (id: string) => {
+    const { error } = await supabase.from("merchant_locations").delete().eq("id", id);
+    if (error) { toast.error("Erreur de suppression"); return; }
+    setLocations((prev) => prev.filter((l) => l.id !== id));
+    toast.success("Établissement supprimé");
+  };
+
+  const handleToggleLocation = async (id: string, isActive: boolean) => {
+    const { error } = await supabase.from("merchant_locations").update({ is_active: !isActive } as any).eq("id", id);
+    if (error) { toast.error("Erreur"); return; }
+    setLocations((prev) => prev.map((l) => l.id === id ? { ...l, is_active: !isActive } : l));
+  };
+
+  // --- Google Reviews handler ---
+  const handleSaveGoogleReviews = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    setSavingGoogle(true);
+    const { error } = await supabase.from("businesses").update({
+      google_place_id: googlePlaceId || null,
+      google_review_enabled: googleReviewEnabled,
+      google_review_threshold: googleReviewThreshold,
+      google_review_message: googleReviewMessage,
+    } as any).eq("id", business.id);
+    setSavingGoogle(false);
+    if (error) toast.error("Erreur de sauvegarde");
+    else toast.success("Paramètres Google Avis sauvegardés !");
+  };
+
+  // --- POS / Integrations handler ---
+  const generateApiKey = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "fp_";
+    for (let i = 0; i < 32; i++) key += chars.charAt(Math.floor(Math.random() * chars.length));
+    setPosApiKey(key);
+    toast.success("Clé API générée");
+  };
+
+  const handleSavePos = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    setSavingPos(true);
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const webhookUrl = `${supabaseUrl}/functions/v1/pos-webhook`;
+    const { error } = await supabase.from("businesses").update({
+      pos_enabled: posEnabled,
+      pos_api_key: posApiKey || null,
+      pos_system_type: posSystemType,
+      pos_webhook_url: webhookUrl,
+    } as any).eq("id", business.id);
+    setSavingPos(false);
+    if (error) toast.error("Erreur de sauvegarde");
+    else toast.success("Intégration caisse sauvegardée !");
   };
 
   const generateSlugFromName = (name: string) =>
@@ -824,6 +939,261 @@ const SettingsPage = () => {
             className="rounded-xl bg-gradient-primary text-primary-foreground w-full"
           >
             {savingAuto ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder les automatisations</>}
+          </Button>
+        </div>
+        )}
+
+        {/* Établissements / Multi-location */}
+        {activeSection === "etablissements" && (
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-primary" /> Mes établissements
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Gérez vos points de vente. La carte de fidélité est valable dans tous vos établissements actifs.
+          </p>
+
+          {/* Existing locations */}
+          {loadingLocations ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" /> Chargement...</div>
+          ) : locations.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-2">Aucun établissement ajouté. Ajoutez votre premier point de vente ci-dessous.</p>
+          ) : (
+            <div className="space-y-2">
+              {locations.map((loc) => (
+                <div key={loc.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${loc.is_active ? "border-primary/30 bg-primary/5" : "border-border/30 bg-muted/30 opacity-60"}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{loc.name}</p>
+                    {(loc.address || loc.city) && (
+                      <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                        <MapPin className="w-3 h-3 shrink-0" />
+                        {[loc.address, loc.city].filter(Boolean).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={loc.is_active ? "default" : "outline"} className="text-[10px] shrink-0">
+                    {loc.is_active ? "Actif" : "Inactif"}
+                  </Badge>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => handleToggleLocation(loc.id, loc.is_active)}>
+                    <ToggleLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive" onClick={() => handleDeleteLocation(loc.id)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new location */}
+          <div className="border-t border-border/30 pt-4 space-y-3">
+            <p className="text-xs font-medium flex items-center gap-1.5"><Plus className="w-3.5 h-3.5" /> Ajouter un établissement</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Input value={newLocName} onChange={(e) => setNewLocName(e.target.value)} placeholder="Nom (ex: Succursale Centre)" className="rounded-xl text-sm" />
+              <Input value={newLocAddress} onChange={(e) => setNewLocAddress(e.target.value)} placeholder="Adresse" className="rounded-xl text-sm" />
+              <Input value={newLocCity} onChange={(e) => setNewLocCity(e.target.value)} placeholder="Ville" className="rounded-xl text-sm" />
+            </div>
+            <Button onClick={handleAddLocation} disabled={addingLocation || !newLocName.trim()} size="sm" className="rounded-xl bg-gradient-primary text-primary-foreground">
+              {addingLocation ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+              Ajouter
+            </Button>
+          </div>
+        </div>
+        )}
+
+        {/* Google Avis */}
+        {activeSection === "google-avis" && (
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-500" /> Google Avis automatique
+            </h2>
+            <Switch checked={googleReviewEnabled} onCheckedChange={setGoogleReviewEnabled} />
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Après un certain nombre de visites, proposez automatiquement à vos clients de laisser un avis Google. Cela améliore votre référencement local.
+          </p>
+
+          {googleReviewEnabled && (
+            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+              <div className="space-y-2">
+                <Label className="text-xs">Google Place ID</Label>
+                <Input
+                  value={googlePlaceId}
+                  onChange={(e) => setGooglePlaceId(e.target.value)}
+                  placeholder="ChIJ..."
+                  className="rounded-xl text-sm font-mono"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Trouvez votre Place ID sur <button type="button" className="text-primary underline" onClick={() => window.open("https://developers.google.com/maps/documentation/places/web-service/place-id", "_blank")}>Google Place ID Finder</button>. Cherchez votre commerce et copiez l'identifiant.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs">Nombre de visites avant la demande d'avis</Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={googleReviewThreshold}
+                    onChange={(e) => setGoogleReviewThreshold(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="rounded-xl text-sm w-24"
+                  />
+                  <span className="text-xs text-muted-foreground">visites</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">Message de demande d'avis</Label>
+                  <span className={`text-[10px] tabular-nums ${googleReviewMessage.length > 120 ? "text-destructive" : "text-muted-foreground"}`}>
+                    {googleReviewMessage.length}/120
+                  </span>
+                </div>
+                <textarea
+                  value={googleReviewMessage}
+                  onChange={(e) => { if (e.target.value.length <= 120) setGoogleReviewMessage(e.target.value); }}
+                  placeholder="Merci pour votre fidélité ! Un avis Google nous aiderait beaucoup"
+                  rows={2}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              {/* Preview */}
+              {googlePlaceId && (
+                <div className="rounded-2xl bg-muted/60 p-3.5 border border-border/30">
+                  <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wider font-medium">Aperçu notification</p>
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-yellow-500/20 flex items-center justify-center shrink-0">
+                      <Star className="w-4 h-4 text-yellow-500" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-xs truncate">{business?.name || "Votre commerce"}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{googleReviewMessage}</p>
+                      <p className="text-[10px] text-primary mt-1 font-medium">Laisser un avis sur Google</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Button
+            onClick={handleSaveGoogleReviews}
+            disabled={savingGoogle}
+            size="sm"
+            className="rounded-xl bg-gradient-primary text-primary-foreground"
+          >
+            {savingGoogle ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder</>}
+          </Button>
+        </div>
+        )}
+
+        {/* Intégrations / POS */}
+        {activeSection === "integrations" && (
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+              <Plug className="w-4 h-4 text-primary" /> Intégration caisse (POS)
+            </h2>
+            <Switch checked={posEnabled} onCheckedChange={setPosEnabled} />
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Connectez votre caisse ou système POS pour synchroniser automatiquement les transactions et ajouter des points lors de chaque achat.
+          </p>
+
+          {posEnabled && (
+            <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+              {/* System type */}
+              <div className="space-y-2">
+                <Label className="text-xs">Type de caisse</Label>
+                <select
+                  value={posSystemType}
+                  onChange={(e) => setPosSystemType(e.target.value)}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="generic">Caisse générique (API webhook)</option>
+                  <option value="square">Square</option>
+                  <option value="sumup">SumUp</option>
+                  <option value="zettle">Zettle (iZettle)</option>
+                  <option value="lightspeed">Lightspeed</option>
+                  <option value="custom">Autre / Custom</option>
+                </select>
+              </div>
+
+              {/* API Key */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Key className="w-3 h-3" /> Clé API
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={posApiKey}
+                    onChange={(e) => setPosApiKey(e.target.value)}
+                    placeholder="fp_..."
+                    className="rounded-xl text-sm font-mono flex-1"
+                    readOnly
+                  />
+                  <Button size="sm" variant="outline" className="rounded-xl gap-1.5 shrink-0" onClick={generateApiKey}>
+                    <RefreshCw className="w-3.5 h-3.5" /> Générer
+                  </Button>
+                  {posApiKey && (
+                    <Button size="sm" variant="ghost" className="rounded-xl shrink-0" onClick={() => { navigator.clipboard.writeText(posApiKey); toast.success("Clé copiée !"); }}>
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Utilisez cette clé pour authentifier les appels depuis votre caisse vers notre API.
+                </p>
+              </div>
+
+              {/* Webhook URL */}
+              <div className="space-y-2">
+                <Label className="text-xs">URL Webhook (pour votre caisse)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pos-webhook`}
+                    readOnly
+                    className="rounded-xl text-sm font-mono flex-1 bg-secondary"
+                  />
+                  <Button size="sm" variant="ghost" className="rounded-xl shrink-0" onClick={() => { navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pos-webhook`); toast.success("URL copiée !"); }}>
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Integration guide */}
+              <div className="rounded-xl bg-muted/60 p-4 border border-border/30 space-y-2">
+                <p className="text-xs font-medium flex items-center gap-1.5"><Plug className="w-3.5 h-3.5 text-primary" /> Guide d'intégration</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Configurez votre caisse pour envoyer un webhook POST à l'URL ci-dessus avec votre clé API dans le header <code className="bg-secondary px-1 rounded text-[10px]">x-api-key</code>.
+                </p>
+                <div className="rounded-lg bg-secondary p-3 text-[10px] font-mono text-muted-foreground overflow-x-auto">
+                  <p className="text-primary/80 mb-1">POST /functions/v1/pos-webhook</p>
+                  <p>Headers: x-api-key: {posApiKey || "votre_clé_api"}</p>
+                  <p className="mt-1">Body:</p>
+                  <pre className="text-[10px] leading-relaxed">{`{
+  "customer_email": "client@email.com",
+  "amount": 25.50,
+  "reference": "CMD-001",
+  "items": [
+    { "name": "Café", "qty": 2, "price": 3.50 }
+  ]
+}`}</pre>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Button
+            onClick={handleSavePos}
+            disabled={savingPos}
+            size="sm"
+            className="rounded-xl bg-gradient-primary text-primary-foreground"
+          >
+            {savingPos ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder</>}
           </Button>
         </div>
         )}

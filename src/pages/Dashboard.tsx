@@ -260,6 +260,30 @@ const Dashboard = () => {
     });
     if (histErr) { /* silent — non-critical insert */ }
 
+    // Google Reviews auto-push after X visits
+    const newTotalVisits = (customer.total_visits || 0) + 1;
+    const biz = business as any;
+    if (biz.google_review_enabled && biz.google_place_id && biz.google_review_threshold) {
+      if (newTotalVisits === biz.google_review_threshold) {
+        const reviewUrl = `https://search.google.com/local/writereview?placeid=${biz.google_place_id}`;
+        const reviewMsg = biz.google_review_message || "Merci pour votre fidélité ! Votre avis Google nous aiderait beaucoup";
+        try {
+          const { data: { session: gSess } } = await supabase.auth.getSession();
+          const gToken = gSess?.access_token ?? "";
+          const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+          await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${gToken}` },
+            body: JSON.stringify({
+              business_id: business.id, customer_id: customer.id,
+              action_type: "google_review",
+              change_message: `⭐ ${reviewMsg}`,
+            }),
+          });
+        } catch { /* non-blocking */ }
+      }
+    }
+
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");

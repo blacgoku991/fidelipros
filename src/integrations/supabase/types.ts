@@ -132,6 +132,10 @@ export type Database = {
           geofence_satellite_points: Json | null
           geofence_time_end: string | null
           geofence_time_start: string | null
+          google_place_id: string | null
+          google_review_enabled: boolean | null
+          google_review_message: string | null
+          google_review_threshold: number | null
           id: string
           is_demo: boolean
           label_color: string | null
@@ -150,6 +154,10 @@ export type Database = {
           onboarding_mode: string | null
           owner_id: string
           phone: string | null
+          pos_api_key: string | null
+          pos_enabled: boolean | null
+          pos_system_type: string | null
+          pos_webhook_url: string | null
           points_per_euro: number | null
           points_per_visit: number | null
           primary_color: string | null
@@ -216,6 +224,10 @@ export type Database = {
           geofence_satellite_points?: Json | null
           geofence_time_end?: string | null
           geofence_time_start?: string | null
+          google_place_id?: string | null
+          google_review_enabled?: boolean | null
+          google_review_message?: string | null
+          google_review_threshold?: number | null
           id?: string
           is_demo?: boolean
           label_color?: string | null
@@ -234,6 +246,10 @@ export type Database = {
           onboarding_mode?: string | null
           owner_id: string
           phone?: string | null
+          pos_api_key?: string | null
+          pos_enabled?: boolean | null
+          pos_system_type?: string | null
+          pos_webhook_url?: string | null
           points_per_euro?: number | null
           points_per_visit?: number | null
           primary_color?: string | null
@@ -300,6 +316,10 @@ export type Database = {
           geofence_satellite_points?: Json | null
           geofence_time_end?: string | null
           geofence_time_start?: string | null
+          google_place_id?: string | null
+          google_review_enabled?: boolean | null
+          google_review_message?: string | null
+          google_review_threshold?: number | null
           id?: string
           is_demo?: boolean
           label_color?: string | null
@@ -318,6 +338,10 @@ export type Database = {
           onboarding_mode?: string | null
           owner_id?: string
           phone?: string | null
+          pos_api_key?: string | null
+          pos_enabled?: boolean | null
+          pos_system_type?: string | null
+          pos_webhook_url?: string | null
           points_per_euro?: number | null
           points_per_visit?: number | null
           primary_color?: string | null
