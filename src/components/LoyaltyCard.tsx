@@ -22,6 +22,7 @@ interface LoyaltyCardProps {
   cardStyle?: string;
   cardBgType?: string;
   cardBgImageUrl?: string;
+  loyaltyType?: string;
 }
 
 const levelLabels: Record<string, string> = {
@@ -51,18 +52,19 @@ export function LoyaltyCard({
   cardStyle = "classic",
   cardBgType = "gradient",
   cardBgImageUrl,
+  loyaltyType = "points",
 }: LoyaltyCardProps) {
   const primaryColor = accentColor || "#6B46C1";
   const secondary = secondaryColor || darken(primaryColor, 30);
   const hasStripImage = cardBgType === "image" && !!cardBgImageUrl;
+  const isStamps = loyaltyType === "stamps";
 
   const bgBrightness = hexBrightness(primaryColor);
   const textOnBg = bgBrightness > 160 ? "#1a1a1a" : "#ffffff";
   const textMuted = bgBrightness > 160 ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.6)";
-  const qrBg = "#ffffff";
-  const qrFg = "#1a1a1a";
 
   const cardBg = `linear-gradient(135deg, ${primaryColor}, ${secondary})`;
+  const unitLabel = isStamps ? "TAMPONS" : loyaltyType === "cashback" ? "CAGNOTTE" : "POINTS";
 
   return (
     <motion.div
@@ -92,39 +94,70 @@ export function LoyaltyCard({
               </span>
             </div>
           )}
-          <span
-            className="font-bold text-sm tracking-tight truncate"
-            style={{ color: textOnBg }}
-          >
+          <span className="font-bold text-sm tracking-tight truncate" style={{ color: textOnBg }}>
             {businessName}
           </span>
         </div>
         {showPoints && (
           <div className="text-right shrink-0">
             <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-              Points
+              {unitLabel}
             </p>
             <p className="text-xl font-bold leading-none" style={{ color: textOnBg }}>
-              {points}
+              {loyaltyType === "cashback" ? `${points}€` : points}
             </p>
           </div>
         )}
       </div>
 
-      {/* ── STRIP IMAGE ── */}
-      {hasStripImage && (
-        <div className="mx-3 rounded-xl overflow-hidden" style={{ aspectRatio: "3.2 / 1" }}>
-          <img
-            src={cardBgImageUrl}
-            alt="Card banner"
-            className="w-full h-full object-cover"
+      {/* ── STRIP IMAGE with stamp overlays ── */}
+      <div className="relative mx-0 overflow-hidden" style={{ aspectRatio: "3 / 1" }}>
+        {hasStripImage ? (
+          <img src={cardBgImageUrl} alt="Card banner" className="w-full h-full object-cover" />
+        ) : (
+          <div
+            className="w-full h-full"
+            style={{
+              background: `linear-gradient(135deg, ${lighten(primaryColor, 15)}, ${darken(primaryColor, 25)})`,
+              opacity: 0.6,
+            }}
           />
-        </div>
-      )}
+        )}
 
-      {/* ── MEMBER + TIER ── */}
+        {/* Stamp circles overlay */}
+        {isStamps && (
+          <div className="absolute inset-0 flex flex-wrap items-center justify-center gap-2 p-3">
+            {Array.from({ length: maxPoints }).map((_, i) => {
+              const filled = i < points;
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    background: filled ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.2)",
+                    border: "1.5px solid rgba(255,255,255,0.5)",
+                    boxShadow: filled ? "0 2px 6px rgba(0,0,0,0.2)" : "none",
+                    fontSize: 14,
+                    backdropFilter: "blur(4px)",
+                  }}
+                >
+                  {filled ? "✓" : ""}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── MEMBER + REWARD — Loyaltify-style ── */}
       <div className="px-4 pt-3 flex items-start justify-between">
         <div className="min-w-0 flex-1">
+          <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
+            MEMBRE
+          </p>
           {showCustomerName && (
             <p className="text-base font-bold truncate" style={{ color: textOnBg }}>
               {customerName || "Client"}
@@ -133,10 +166,10 @@ export function LoyaltyCard({
         </div>
         <div className="text-right shrink-0">
           <p className="text-[8px] uppercase tracking-widest font-semibold" style={{ color: textMuted }}>
-            Niveau
+            RÉCOMPENSE
           </p>
           <p className="text-base font-bold" style={{ color: textOnBg }}>
-            {levelLabels[level] || "Bronze"}
+            {rewardsEarned}
           </p>
         </div>
       </div>
@@ -144,40 +177,15 @@ export function LoyaltyCard({
       {/* ── QR CODE + CARD CODE ── */}
       {showQr && cardId && (
         <div className="flex flex-col items-center py-4 gap-2">
-          <div
-            className="rounded-xl p-2"
-            style={{ background: qrBg, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
-          >
-            <QRCodeSVG
-              value={cardId}
-              size={100}
-              bgColor={qrBg}
-              fgColor={qrFg}
-              level="M"
-            />
+          <div className="rounded-xl p-2" style={{ background: "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+            <QRCodeSVG value={cardId} size={100} bgColor="#ffffff" fgColor="#1a1a1a" level="M" />
           </div>
-          <span
-            className="text-xs font-mono tracking-wider"
-            style={{ color: textMuted }}
-          >
+          <span className="text-xs font-mono tracking-wider" style={{ color: textMuted }}>
             {cardId.length > 12 ? cardId.slice(0, 12) : cardId}
           </span>
         </div>
       )}
 
-      {/* ── PROMO / REWARD BAR ── */}
-      {(promoText || (showRewardsPreview && rewardDescription)) && (
-        <div
-          className="mx-4 mb-4 px-3 py-2 rounded-lg text-center"
-          style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.1)" }}
-        >
-          <p className="text-[11px] font-semibold" style={{ color: textOnBg }}>
-            {promoText || rewardDescription}
-          </p>
-        </div>
-      )}
-
-      {/* ── Bottom padding if no QR ── */}
       {(!showQr || !cardId) && <div className="pb-4" />}
 
       {/* Subtle top highlight */}
@@ -195,6 +203,15 @@ function darken(hex: string, amount: number): string {
   const r = Math.max(0, parseInt(clean.slice(0, 2), 16) - amount);
   const g = Math.max(0, parseInt(clean.slice(2, 4), 16) - amount);
   const b = Math.max(0, parseInt(clean.slice(4, 6), 16) - amount);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function lighten(hex: string, amount: number): string {
+  const clean = hex.replace("#", "");
+  if (clean.length !== 6) return hex;
+  const r = Math.min(255, parseInt(clean.slice(0, 2), 16) + amount);
+  const g = Math.min(255, parseInt(clean.slice(2, 4), 16) + amount);
+  const b = Math.min(255, parseInt(clean.slice(4, 6), 16) + amount);
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
