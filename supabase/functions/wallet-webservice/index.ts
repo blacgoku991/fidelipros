@@ -383,26 +383,12 @@ async function buildPkpassForUpdate(
           changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : business.loyalty_type === "cashback" ? "%@ de cagnotte !" : "%@ points !",
         },
       ],
-      primaryFields: [{ key: "name", label: "", value: customer?.full_name || "Client" }],
+      primaryFields: [],
       secondaryFields: [
-        { key: "level", label: "STATUT", value: `${levelEmoji} ${level.toUpperCase()}` },
-        {
-          key: "progress",
-          label: business.loyalty_type === "stamps" ? "PROGRESSION" : business.loyalty_type === "cashback" ? "SOLDE" : business.loyalty_type === "subscription" ? "STATUT" : "OBJECTIF",
-          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Actif" : `${pointsCurrent} / ${pointsMax}`,
-          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : "%@ points !",
-        },
-        {
-          key: "next_reward",
-          label: "PROCHAINE",
-          value: pointsToReward > 0 ? `encore ${pointsToReward}` : "🎁 Dispo !",
-          textAlignment: "PKTextAlignmentRight",
-        },
+        { key: "member", label: "MEMBRE", value: customer?.full_name || "Client" },
+        { key: "reward", label: "RÉCOMPENSE", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
       ],
       auxiliaryFields: [
-        { key: "visits", label: "VISITES", value: `${customer?.total_visits || 0}` },
-        { key: "streak", label: "SÉRIE", value: `${customer?.current_streak || 0}` },
-        { key: "rewards", label: "RÉCOMPENSES", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
         ...(latestOffer ? [{
           key: "offer",
           label: "",
@@ -412,7 +398,7 @@ async function buildPkpassForUpdate(
       ],
       backFields: [
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },
-        { key: "visits_back", label: "📊 Statistiques", value: `Visites : ${customer?.total_visits || 0}\nStreak : ${customer?.current_streak || 0} jours` },
+        { key: "stats", label: "📊 Statistiques", value: `Points : ${pointsCurrent}/${pointsMax}\nVisites : ${customer?.total_visits || 0}\nNiveau : ${level.toUpperCase()}\nStreak : ${customer?.current_streak || 0} jours` },
         { key: "info", label: "ℹ️ À propos", value: `Programme de fidélité ${business.name}.` },
         { key: "powered", label: "", value: "Propulsé par FidéliPro" },
       ],
