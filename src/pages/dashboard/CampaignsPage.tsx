@@ -296,7 +296,7 @@ const CampaignsPage = () => {
     const logs = customers.map(c => ({
       business_id: business.id,
       customer_id: c.id,
-      title: title.trim() || businessName,
+      title: businessName,
       message: message.trim(),
       type: "custom" as const,
       segment: segLabel,
