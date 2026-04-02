@@ -129,7 +129,7 @@ export function getLoyaltyLabels(type: LoyaltyType) {
   }
 }
 
-// ─── Apple Wallet PassKit field mapping ──────────────────────────────────
+// ─── Apple Wallet PassKit field mapping — Loyaltify-style simplified ─────
 
 export function buildApplePassFields(
   config: UnifiedCardConfig,
@@ -142,7 +142,7 @@ export function buildApplePassFields(
 } {
   const labels = getLoyaltyLabels(config.loyaltyType);
 
-  // ── Header: top-right — adapted per loyalty type
+  // ── Header: top-right — count
   const headerFields: PassField[] = [];
   if (config.showPoints) {
     headerFields.push({
@@ -156,44 +156,26 @@ export function buildApplePassFields(
     });
   }
 
-  // ── Primary: just the name, no label
+  // ── Primary: not used in Loyaltify-style (kept empty)
   const primaryFields: PassField[] = [];
+
+  // ── Secondary: MEMBER name + REWARD count (clean 2-field layout)
+  const secondaryFields: PassField[] = [];
   if (config.showCustomerName) {
-    primaryFields.push({
+    secondaryFields.push({
       key: "member",
-      label: "",
+      label: "MEMBRE",
       value: customer.fullName || "Client",
     });
   }
-
-  // ── Secondary: progression + reward
-  const secondaryFields: PassField[] = [];
-  if (config.loyaltyType === "cashback") {
-    secondaryFields.push({ key: "balance", label: "Cagnotte", value: `${customer.currentPoints},00 €` });
-  } else if (config.loyaltyType === "subscription") {
-    secondaryFields.push({ key: "status", label: "Statut", value: "Actif" });
-  } else {
-    secondaryFields.push({
-      key: "progress",
-      label: labels.progressLabel,
-      value: `${customer.currentPoints} / ${customer.maxPoints}`,
-    });
-  }
-  if (config.rewardDescription && config.showRewardsPreview) {
-    secondaryFields.push({ key: "reward", label: "Récompense", value: config.rewardDescription });
-  }
-
-  // ── Auxiliary: level + expiry
-  const auxiliaryFields: PassField[] = [];
-  const levelEmoji = customer.level === "gold" ? "⭐" : customer.level === "silver" ? "🥈" : "🥉";
-  auxiliaryFields.push({
-    key: "tier",
-    label: "Niveau",
-    value: `${levelEmoji} ${capitalize(customer.level)}`,
+  secondaryFields.push({
+    key: "reward",
+    label: "RÉCOMPENSE",
+    value: String(customer.rewardsEarned),
   });
-  if (config.showExpiration) {
-    auxiliaryFields.push({ key: "expiry", label: "Expire", value: "31/12/2026" });
-  }
+
+  // ── Auxiliary: empty for clean design
+  const auxiliaryFields: PassField[] = [];
 
   return { headerFields, primaryFields, secondaryFields, auxiliaryFields };
 }
