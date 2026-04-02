@@ -80,7 +80,7 @@ const BusinessPublicPage = () => {
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       const response = await fetch(
-        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,card_style,max_points_per_card,reward_description,address,city,phone,website,category,logo_url`,
+        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text`,
         {
           headers: {
             apikey: supabaseKey,
