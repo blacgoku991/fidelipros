@@ -12,6 +12,7 @@ interface AuthContextType {
   role: string | null;
   business: Business | null;
   logout: () => Promise<void>;
+  refreshBusiness: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
