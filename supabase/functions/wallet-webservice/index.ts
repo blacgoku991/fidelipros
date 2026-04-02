@@ -195,6 +195,44 @@ async function handleRegisterDevice(
     .update({ wallet_installed_at: new Date().toISOString() })
     .eq("id", card.id);
 
+  // ── Notification de bienvenue automatique ───────────────────────────
+  try {
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("welcome_push_enabled, welcome_push_message, name")
+      .eq("id", card.business_id)
+      .single();
+
+    if (business?.welcome_push_enabled !== false) {
+      const welcomeMsg = business?.welcome_push_message ||
+        `Bienvenue chez ${business?.name || "nous"} ! Votre carte de fidélité est prête 🎉`;
+
+      // Petit délai pour laisser iOS finir l'enregistrement du pass
+      await new Promise((r) => setTimeout(r, 3000));
+
+      const sbUrl = Deno.env.get("SUPABASE_URL")!;
+      const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const pushRes = await fetch(`${sbUrl}/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sbKey}`,
+        },
+        body: JSON.stringify({
+          business_id: card.business_id,
+          card_ids: [card.id],
+          change_message: welcomeMsg,
+          action_type: "campaign",
+        }),
+      });
+      const pushData = await pushRes.json().catch(() => ({}));
+      console.log(`[PassKit WS] ✓ Welcome push sent: pushed=${pushData.pushed || 0}`);
+    }
+  } catch (welcomeErr) {
+    console.error(`[PassKit WS] Welcome push error (non-blocking):`, welcomeErr);
+  }
+
   console.log(`[PassKit WS] Device registered successfully`);
   return new Response("", { status: 201 });
 }
