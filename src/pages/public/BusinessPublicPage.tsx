@@ -152,37 +152,37 @@ const BusinessPublicPage = () => {
         "Content-Type": "application/json",
       };
 
-      // Check if customer already exists by email or phone (via cards lookup which anon can read)
-      let existingCard = null;
+      // Check if customer already exists by email or phone
+      let existingCustomer = null;
       if (email.trim()) {
-        // Use card lookup approach: find cards for this business, then match
-        // Since anon can't SELECT customers directly, we check by trying to find via edge or skip
-        // We'll attempt the lookup - if RLS blocks it, we get empty results and create a new customer
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=id`,
+          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=*,customer_cards(*)`,
           { headers }
         );
         if (res.ok) {
           const data = await res.json();
-          if (data?.length > 0) {
-            // Found existing customer, look up their card
-            const cardRes = await fetch(
-              `${supabaseUrl}/rest/v1/customer_cards?customer_id=eq.${data[0].id}&business_id=eq.${business.id}&select=*`,
-              { headers }
-            );
-            if (cardRes.ok) {
-              const cards = await cardRes.json();
-              if (cards?.length > 0) {
-                setCustomer(data[0]);
-                setCard(cards[0]);
-                setStep("card");
-                setSubmitting(false);
-                toast.success("Bon retour parmi nous ! 🎉");
-                return;
-              }
-            }
-          }
+          if (data?.length > 0) existingCustomer = data[0];
         }
+      }
+      if (!existingCustomer && phone.trim()) {
+        const res = await fetch(
+          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&phone=eq.${encodeURIComponent(phone.trim())}&select=*,customer_cards(*)`,
+          { headers }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.length > 0) existingCustomer = data[0];
+        }
+      }
+
+      if (existingCustomer) {
+        setCustomer(existingCustomer);
+        const existingCard = existingCustomer.customer_cards?.[0];
+        if (existingCard) setCard(existingCard);
+        setStep("card");
+        setSubmitting(false);
+        toast.success("Bon retour parmi nous ! 🎉");
+        return;
       }
 
       // Generate a UUID client-side so we don't need return=representation on customers
