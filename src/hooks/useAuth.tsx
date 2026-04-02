@@ -2,12 +2,15 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Business = Tables<"businesses">;
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   role: string | null;
-  business: any;
+  business: Business | null;
   logout: () => Promise<void>;
 }
 
@@ -18,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
-  const [business, setBusiness] = useState<any>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
 
   useEffect(() => {
     let active = true;
