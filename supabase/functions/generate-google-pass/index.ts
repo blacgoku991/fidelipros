@@ -81,7 +81,6 @@ serve(async (req) => {
   const missing = REQUIRED_SECRETS.filter((s) => !Deno.env.get(s));
   if (missing.length > 0) {
     console.error("[GOOGLE-PASS] Missing secrets:", missing);
-    // Return a clean response — never expose secret names to public users
     return new Response(JSON.stringify({ unavailable: true, error: "Google Wallet n'est pas encore configuré pour ce commerce." }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -104,7 +103,6 @@ serve(async (req) => {
     );
 
     const serviceAccountEmail = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL")!;
-    // Secrets stored with literal \n — expand to real newlines
     const privateKeyPem = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY")!.replace(/\\n/g, "\n");
     const issuerId = Deno.env.get("GOOGLE_WALLET_ISSUER_ID")!;
 
@@ -139,10 +137,18 @@ serve(async (req) => {
     const classId = `${issuerId}.loyalty_${business.id}`;
     const objectId = `${issuerId}.card_${card.id}`;
 
+    // Fetch active rewards for this business
+    const { data: rewards } = await supabase
+      .from("rewards")
+      .select("title, description, points_required")
+      .eq("business_id", card.business_id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+
     const pointsLabel = business.loyalty_type === "stamps" ? "Tampons" : "Points";
-    const maxPoints = card.max_points || business.max_points_per_card || 10;
-    const currentPoints = card.current_points || 0;
-    const remaining = Math.max(0, maxPoints - currentPoints);
+    const pointsCurrent = card.current_points || 0;
+    const pointsMax = card.max_points || business.max_points_per_card || 10;
+    const remaining = Math.max(0, pointsMax - pointsCurrent);
     const rewardDesc = business.reward_description || "Récompense offerte !";
     const customerName = customer?.full_name || "Client";
 
@@ -157,20 +163,47 @@ serve(async (req) => {
           }
         : undefined,
       hexBackgroundColor: business.primary_color || "#7c3aed",
-      reviewStatus: "UNDER_REVIEW",
-      // Card details section
+      reviewStatus: "APPROVED",
       localizedIssuerName: { defaultValue: { language: "fr", value: business.name } },
-      // Secondary / info labels
       secondaryLoyaltyPoints: remaining > 0
         ? { balance: { int: remaining }, label: `${pointsLabel} restants` }
         : undefined,
     };
 
-    const loyaltyObject = {
+    // Build info module rows with rewards
+    const infoModuleRows: any[] = [
+      {
+        header: pointsLabel,
+        body: `${pointsCurrent} / ${pointsMax}`,
+      },
+    ];
+
+    if (rewards && rewards.length > 0) {
+      const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
+      if (nextReward) {
+        infoModuleRows.push({
+          header: "Prochaine récompense",
+          body: `${nextReward.title} (${remaining} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+        });
+      }
+      for (const r of rewards) {
+        infoModuleRows.push({
+          header: `🎁 ${r.title}`,
+          body: `${r.points_required} ${business.loyalty_type === "stamps" ? "tampons" : "points"}${r.description ? ` — ${r.description}` : ""}`,
+        });
+      }
+    } else if (business.reward_description) {
+      infoModuleRows.push({
+        header: "Récompense",
+        body: `${business.reward_description} (${remaining} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+      });
+    }
+
+    const loyaltyObject: any = {
       id: objectId,
       classId,
       loyaltyPoints: {
-        balance: { int: currentPoints },
+        balance: { int: pointsCurrent },
         label: pointsLabel,
       },
       secondaryLoyaltyPoints: {
@@ -184,14 +217,13 @@ serve(async (req) => {
       },
       accountId: customerName,
       accountName: customerName,
-      // Rich info rows
       textModulesData: [
         {
           id: "progress",
           header: "Progression",
           body: remaining > 0
-            ? `${currentPoints}/${maxPoints} — Plus que ${remaining} pour votre récompense !`
-            : `${currentPoints}/${maxPoints} — ${rewardDesc} 🎉`,
+            ? `${pointsCurrent}/${pointsMax} — Plus que ${remaining} pour votre récompense !`
+            : `${pointsCurrent}/${pointsMax} — ${rewardDesc} 🎉`,
         },
         ...(business.address ? [{
           id: "address",
@@ -206,15 +238,25 @@ serve(async (req) => {
           id: "website",
         }],
       } : undefined,
-      // Use wide image (strip) if available, skip heroImage for cleaner look
       heroImage: business.card_bg_image_url
         ? {
             sourceUri: { uri: business.card_bg_image_url },
             contentDescription: { defaultValue: { language: "fr", value: business.name } },
           }
+        : business.logo_url
+        ? {
+            sourceUri: { uri: business.logo_url },
+            contentDescription: { defaultValue: { language: "fr", value: business.name } },
+          }
         : undefined,
       hexBackgroundColor: business.primary_color || "#7c3aed",
       state: "ACTIVE",
+      infoModuleData: {
+        labelValueRows: infoModuleRows.map((row: any) => ({
+          columns: [{ label: row.header, value: row.body }],
+        })),
+        showLastUpdateTime: true,
+      },
     };
 
     const jwtPayload = {
@@ -226,7 +268,7 @@ serve(async (req) => {
         loyaltyClasses: [loyaltyClass],
         loyaltyObjects: [loyaltyObject],
       },
-      origins: ["https://fidelipros.lovable.app"],
+      origins: [Deno.env.get("APP_ORIGIN") || "https://fidelipros.lovable.app"],
     };
 
     const jwt = await signJWT(jwtPayload, privateKeyPem);
@@ -237,9 +279,9 @@ serve(async (req) => {
         success: true,
         saveUrl,
         card: {
-          points: card.current_points || 0,
-          maxPoints: card.max_points || 10,
-          customerName: customer?.full_name || "Client",
+          points: pointsCurrent,
+          maxPoints: pointsMax,
+          customerName,
           businessName: business.name,
         },
       }),
@@ -247,7 +289,7 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error("[GOOGLE-PASS] Error:", err);
-    return new Response(JSON.stringify({ error: String(err) }), {
+    return new Response(JSON.stringify({ error: "Failed to generate Google Wallet pass" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

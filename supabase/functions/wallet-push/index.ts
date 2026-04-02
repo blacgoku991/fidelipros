@@ -338,6 +338,35 @@ Deno.serve(async (req) => {
         }
       : null;
 
+    // ── Also update Google Wallet passes (fire and forget) ──────────
+    let googleUpdated = 0;
+    try {
+      const sbUrl = Deno.env.get("SUPABASE_URL")!;
+      const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const cardIdsToUpdate = [...new Set(cardUpdateResults.filter((r: any) => r.updated).map((r: any) => r.serial_number))];
+
+      if (cardIdsToUpdate.length > 0) {
+        const gr = await fetch(`${sbUrl}/functions/v1/update-google-pass`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sbKey}`,
+          },
+          body: JSON.stringify({
+            business_id,
+            card_ids: cardIdsToUpdate,
+            ...(act === "campaign" && change_message ? { message: change_message } : {}),
+          }),
+        });
+        const grData = await gr.json().catch(() => ({}));
+        googleUpdated = grData.updated || 0;
+        console.log(`[Wallet Push] Google Wallet updated: ${googleUpdated}`);
+      }
+    } catch (e) {
+      console.error("[Wallet Push] Google Wallet update error (non-blocking):", e);
+    }
+
     return jsonResponse({
       success: true,
       action_type: act,
@@ -346,6 +375,7 @@ Deno.serve(async (req) => {
       unique_devices: uniqueTokens.size,
       pushed: successCount,
       failed: failCount,
+      google_updated: googleUpdated,
       card_updates: cardUpdateResults,
       apns_results: pushResults,
       ...(testNotificationLog ? { test_notification_log: testNotificationLog } : {}),

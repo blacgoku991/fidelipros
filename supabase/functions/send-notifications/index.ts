@@ -90,7 +90,35 @@ Deno.serve(async (req) => {
       console.error("Wallet push error:", e);
     }
 
-    return json({ wallet: walletSent, webpush: 0 });
+    // ── Mise à jour Google Wallet passes ─────────────────────────────────
+    let googleUpdated = 0;
+    try {
+      const gr = await fetch(`${sbUrl}/functions/v1/update-google-pass`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sbKey}`,
+        },
+        body: JSON.stringify({
+          business_id: verifiedBusinessId,
+          message: change_message || message,
+        }),
+      });
+      const grText = await gr.text();
+      try {
+        const googleResult = JSON.parse(grText);
+        googleUpdated = googleResult.updated || 0;
+        if (googleResult.skipped) {
+          console.log("Google Wallet update skipped (not configured)");
+        }
+      } catch {
+        console.error("Google Wallet update returned non-JSON:", grText.substring(0, 200));
+      }
+    } catch (e) {
+      console.error("Google Wallet update error:", e);
+    }
+
+    return json({ wallet: walletSent, google: googleUpdated, webpush: 0 });
   } catch (err) {
     console.error("send-notifications error:", err);
     return json({ error: "Internal server error" }, 500);
