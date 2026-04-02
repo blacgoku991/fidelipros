@@ -1,9 +1,9 @@
 // Apple PassKit Web Service — handles device registration, pass updates
 // Spec: https://developer.apple.com/documentation/walletpasses/adding-a-web-service-to-update-passes
 
-import { createClient } from "npm:@supabase/supabase-js@2";
-import forge from "npm:node-forge@1.3.1";
-import JSZip from "npm:jszip@3.10.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import forge from "https://esm.sh/node-forge@1.3.1";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
