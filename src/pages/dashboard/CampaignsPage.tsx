@@ -314,7 +314,7 @@ const CampaignsPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          business_id: (business as any).id,
+          business_id: business.id,
           title: title.trim() || businessName,
           message: message.trim(),
           segment: segLabel,
