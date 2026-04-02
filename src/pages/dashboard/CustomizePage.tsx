@@ -166,7 +166,10 @@ const CustomizePage = () => {
       ...config,
     } as any).eq("id", business.id);
     if (error) { console.error("Save error:", error); toast.error("Erreur de sauvegarde : " + error.message); }
-    else toast.success("Configuration sauvegardée !");
+    else {
+      toast.success("Configuration sauvegardée !");
+      await refreshBusiness();
+    }
     setSaving(false);
   };
 
