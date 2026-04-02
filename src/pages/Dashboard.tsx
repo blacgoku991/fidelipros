@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Users, TrendingUp, QrCode, Crown, Sparkles, Search,
   Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
-  Mail, Phone, History, MapPin,
+  Mail, Phone, History, MapPin, Star as StarIcon, MessageSquare,
   CheckCircle2, Circle, Palette, Send, Camera, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
@@ -30,6 +30,9 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { queueScan, getPendingScans, removeScan, getPendingCount } from "@/lib/offlineScanQueue";
+import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
 
 const levelConfig: Record<string, { bg: string; text: string; label: string; emoji: string }> = {
   bronze: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", label: "Bronze", emoji: "🥉" },
@@ -78,6 +81,8 @@ const Dashboard = () => {
   const [scannerPaused, setScannerPaused] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
+  const isOnline = useOnlineStatus();
+  const [pendingScanCount, setPendingScanCount] = useState(0);
 
   // Popup
   const [popup, setPopup] = useState<{
@@ -169,8 +174,39 @@ const Dashboard = () => {
   };
 
   // ── Scanner logic ─────────────────────────────────────────
-  const processCardCode = async (code: string) => {
+  // Sync pending offline scans when coming back online
+  useEffect(() => {
+    if (!isOnline || !business || !user) return;
+    const syncOffline = async () => {
+      const pending = await getPendingScans();
+      for (const scan of pending) {
+        try {
+          await processCardCode(scan.cardCode, true);
+          await removeScan(scan.id!);
+        } catch { /* will retry next time */ }
+      }
+      setPendingScanCount(await getPendingCount());
+    };
+    syncOffline();
+  }, [isOnline, business, user]);
+
+  // Load pending count on mount
+  useEffect(() => {
+    getPendingCount().then(setPendingScanCount);
+  }, []);
+
+  const processCardCode = async (code: string, isSyncMode = false) => {
     if (!code.trim() || !business || !user) return;
+
+    // Offline fallback: queue scan and show toast
+    if (!isOnline && !isSyncMode) {
+      await queueScan({ cardCode: code.trim(), businessId: business.id, userId: user.id, timestamp: new Date().toISOString() });
+      setPendingScanCount(await getPendingCount());
+      toast.info("Scan enregistré hors-ligne. Il sera synchronisé au retour de la connexion.");
+      setCardCode("");
+      return;
+    }
+
     setScanning(true);
     setScannerPaused(true);
 
@@ -284,6 +320,22 @@ const Dashboard = () => {
       }
     }
 
+    // Dispatch webhooks
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session: whSess } } = await supabase.auth.getSession();
+      const whToken = whSess?.access_token ?? "";
+      fetch(`${supabaseUrl}/functions/v1/dispatch-webhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${whToken}` },
+        body: JSON.stringify({
+          business_id: business.id,
+          event_type: rewardEarned ? "customer.reward_claimed" : "customer.scan",
+          payload: { customer_id: customer.id, customer_name: customer.full_name, points: rewardEarned ? 0 : newPoints, max_points: maxPts, reward_earned: rewardEarned },
+        }),
+      }).catch(() => {});
+    } catch { /* non-blocking */ }
+
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
@@ -329,6 +381,11 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout title={`Bonjour, ${businessName} 👋`} subtitle="Voici un aperçu de votre activité">
+      {/* Onboarding tour */}
+      {business && !(business as any).onboarding_tour_completed && (
+        <OnboardingTour businessId={business.id} />
+      )}
+
       {/* ── Onboarding checklist ── */}
       {!allOnboardingDone && (
         <motion.div
@@ -396,12 +453,12 @@ const Dashboard = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.07 }}
-              className="group relative overflow-hidden rounded-2xl bg-card border border-border/40 p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              className="group relative overflow-hidden rounded-2xl bg-card border border-border/40 p-3 sm:p-5 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
             >
               <div className={`absolute -top-6 -right-6 w-20 h-20 rounded-full bg-gradient-to-br ${stat.gradient} opacity-[0.08] group-hover:opacity-[0.15] transition-opacity`} />
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-sm`}>
-                  <Icon className="w-5 h-5 text-white" />
+              <div className="flex items-center justify-between mb-2 sm:mb-4">
+                <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-sm`}>
+                  <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 {stat.insufficientData ? (
                   <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">min. 10 scans</span>
@@ -412,7 +469,7 @@ const Dashboard = () => {
                   </span>
                 ) : null}
               </div>
-              <p className="text-3xl font-display font-bold tracking-tight">{stat.value}</p>
+              <p className="text-xl sm:text-3xl font-display font-bold tracking-tight">{stat.value}</p>
               <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
             </motion.div>
           );
@@ -477,6 +534,17 @@ const Dashboard = () => {
                 <Input value={cardCode} onChange={(e) => setCardCode(e.target.value)} placeholder="Entrez le code carte..." className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40" onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)} />
                 <Button onClick={() => processCardCode(cardCode)} disabled={scanning || !cardCode.trim()} className="bg-gradient-primary text-primary-foreground rounded-xl h-11 px-6 font-semibold shrink-0 shadow-md">Valider</Button>
               </div>
+              {!isOnline && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-amber-700 dark:text-amber-400 text-xs font-medium">Mode hors-ligne — les scans seront synchronisés au retour de la connexion</span>
+                </div>
+              )}
+              {pendingScanCount > 0 && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm">
+                  <span className="text-blue-700 dark:text-blue-400 text-xs font-medium">{pendingScanCount} scan{pendingScanCount > 1 ? "s" : ""} en attente de synchronisation</span>
+                </div>
+              )}
             </div>
 
             <div className="lg:col-span-2 space-y-4">
@@ -759,6 +827,9 @@ const Dashboard = () => {
                   hasCampaign={onboarding.hasCampaign}
                 />
               </div>
+
+              {/* Avis récents */}
+              <RecentReviewsWidget businessId={business.id} />
             </div>
           )}
         </TabsContent>
@@ -843,6 +914,61 @@ function QrVitrineSection({ business }: { business: any }) {
             <Button size="icon" variant="outline" className="rounded-xl h-9 w-9 shrink-0" onClick={() => window.open(publicUrl, "_blank")}><ExternalLink className="w-3.5 h-3.5" /></Button>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Recent Reviews Widget ──────────────────────────────────────
+function RecentReviewsWidget({ businessId }: { businessId: string }) {
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [avgRating, setAvgRating] = useState(0);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase
+        .from("customer_reviews")
+        .select("*, customers(full_name)")
+        .eq("business_id", businessId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (data && data.length > 0) {
+        setReviews(data);
+        const avg = data.reduce((s: number, r: any) => s + r.rating, 0) / data.length;
+        setAvgRating(Math.round(avg * 10) / 10);
+      }
+    };
+    fetch();
+  }, [businessId]);
+
+  if (reviews.length === 0) return null;
+
+  return (
+    <div className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-primary" />
+          <h3 className="font-display font-semibold text-sm">Avis récents</h3>
+        </div>
+        <Badge variant="secondary" className="text-xs">
+          <StarIcon className="w-3 h-3 fill-amber-400 text-amber-400 mr-1" />
+          {avgRating}/5
+        </Badge>
+      </div>
+      <div className="space-y-3">
+        {reviews.map((r: any) => (
+          <div key={r.id} className="flex items-start gap-3 p-3 rounded-xl bg-secondary/30">
+            <div className="flex gap-0.5 shrink-0 mt-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <StarIcon key={s} className={`w-3 h-3 ${s <= r.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"}`} />
+              ))}
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium">{(r.customers as any)?.full_name || "Client"}</p>
+              {r.comment && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{r.comment}</p>}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

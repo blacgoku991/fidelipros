@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { buildCardConfig, buildCustomerData, buildApplePassFields, getProgressInfo, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Share, Download, X } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Share, Download, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { StarRating } from "@/components/public/StarRating";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 const badgeIcons: Record<string, string> = {
@@ -51,6 +52,11 @@ const CardViewPage = () => {
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
   const [googleAvailable, setGoogleAvailable] = useState(true);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewComment, setReviewComment] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [canReview, setCanReview] = useState(false);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
@@ -106,6 +112,22 @@ const CardViewPage = () => {
         .eq("id", cardData.business_id)
         .maybeSingle();
       if (biz) setBusiness(biz);
+
+      // Check if customer can leave a review (visited in last 24h and no review today)
+      if (cardData.customers) {
+        const lastVisit = cardData.customers.last_visit_at;
+        const now = new Date();
+        const visitedRecently = lastVisit && (now.getTime() - new Date(lastVisit).getTime()) < 24 * 60 * 60 * 1000;
+        if (visitedRecently) {
+          const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+          const { count } = await supabase.from("customer_reviews").select("*", { count: "exact", head: true })
+            .eq("customer_id", cardData.customers.id)
+            .eq("business_id", cardData.business_id)
+            .gte("created_at", todayStart);
+          if ((count || 0) === 0) setCanReview(true);
+        }
+      }
+
       setLoading(false);
     };
     fetchData();
@@ -321,6 +343,63 @@ const CardViewPage = () => {
                 </span>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Review section */}
+        {canReview && !reviewSubmitted && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-5 rounded-2xl bg-card border border-border/50 space-y-3"
+          >
+            <div className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-primary" />
+              <p className="font-semibold text-sm">Notez votre expérience</p>
+            </div>
+            <div className="flex justify-center">
+              <StarRating value={reviewRating} onChange={setReviewRating} />
+            </div>
+            {reviewRating > 0 && (
+              <textarea
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                placeholder="Un commentaire ? (optionnel)"
+                className="w-full rounded-xl border border-border/50 bg-background p-3 text-sm resize-none h-20 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                maxLength={500}
+              />
+            )}
+            {reviewRating > 0 && (
+              <Button
+                onClick={async () => {
+                  setReviewSubmitting(true);
+                  try {
+                    await supabase.from("customer_reviews").insert({
+                      business_id: business.id,
+                      customer_id: customer.id,
+                      rating: reviewRating,
+                      comment: reviewComment.trim() || null,
+                    });
+                    setReviewSubmitted(true);
+                    setCanReview(false);
+                    toast.success("Merci pour votre avis !");
+                  } catch {
+                    toast.error("Erreur lors de l'envoi");
+                  }
+                  setReviewSubmitting(false);
+                }}
+                disabled={reviewSubmitting}
+                className="w-full rounded-xl"
+                size="sm"
+              >
+                {reviewSubmitting ? "Envoi..." : "Envoyer mon avis"}
+              </Button>
+            )}
+          </motion.div>
+        )}
+        {reviewSubmitted && (
+          <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+            <p className="text-sm font-medium text-emerald-600">Merci pour votre avis ! ⭐</p>
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ function isValidName(name: string): boolean {
 
 const BusinessPublicPage = () => {
   const { businessId } = useParams();
+  const [searchParams] = useSearchParams();
+  const registrationSource = searchParams.get("source") || "direct";
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -236,6 +238,7 @@ const BusinessPublicPage = () => {
           email: email.trim() || null,
           phone: phone.trim() || null,
           birthday: birthday || null,
+          registration_source: registrationSource,
         }),
       });
 

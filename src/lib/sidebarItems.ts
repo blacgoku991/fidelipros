@@ -8,6 +8,7 @@ export interface SidebarItem {
   icon: React.ElementType;
   label: string;
   path: string;
+  dataTour?: string;
 }
 
 export interface SidebarGroup {
@@ -20,28 +21,28 @@ export const businessSidebarGroups: SidebarGroup[] = [
     label: "",
     items: [
       { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
-      { icon: ScanLine, label: "Scanner", path: "/dashboard/scanner" },
+      { icon: ScanLine, label: "Scanner", path: "/dashboard/scanner", dataTour: "scanner" },
     ],
   },
   {
     label: "Fidélité",
     items: [
-      { icon: Palette, label: "Carte de fidélité", path: "/dashboard/customize" },
+      { icon: Palette, label: "Carte de fidélité", path: "/dashboard/customize", dataTour: "personnaliser" },
       { icon: Users, label: "Clients", path: "/dashboard/clients" },
-      { icon: Gift, label: "Récompenses", path: "/dashboard/rewards" },
+      { icon: Gift, label: "Récompenses", path: "/dashboard/rewards", dataTour: "recompenses" },
     ],
   },
   {
     label: "Marketing",
     items: [
-      { icon: Send, label: "Campagnes", path: "/dashboard/campaigns" },
+      { icon: Send, label: "Campagnes", path: "/dashboard/campaigns", dataTour: "campagnes" },
       { icon: Zap, label: "Automations", path: "/dashboard/automations" },
     ],
   },
   {
     label: "Analyse",
     items: [
-      { icon: TrendingUp, label: "Statistiques", path: "/dashboard/analytics" },
+      { icon: TrendingUp, label: "Statistiques", path: "/dashboard/analytics", dataTour: "statistiques" },
     ],
   },
   {

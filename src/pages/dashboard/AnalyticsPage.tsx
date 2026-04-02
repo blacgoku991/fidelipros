@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Users, Gift, BarChart3, Repeat, Target, ArrowUpRight, Wallet } from "lucide-react";
+import { TrendingUp, Users, Gift, BarChart3, Repeat, Target, ArrowUpRight, Wallet, Filter } from "lucide-react";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
@@ -17,6 +17,9 @@ const AnalyticsPage = () => {
   const [scansTrend, setScansTrend] = useState<any[]>([]);
   const [segmentData, setSegmentData] = useState<any[]>([]);
   const [monthlyScans, setMonthlyScans] = useState<any[]>([]);
+  const [conversionFilter, setConversionFilter] = useState({ visits: 0, registrations: 0, active: 0, sourceBreakdown: [] as { source: string; count: number }[] });
+  const [avgReviewRating, setAvgReviewRating] = useState(0);
+  const [reviewCount, setReviewCount] = useState(0);
 
   useEffect(() => {
     if (businessId) fetchAll();
@@ -77,6 +80,31 @@ const AnalyticsPage = () => {
     }
     setScansTrend(daily);
 
+    // Conversion funnel
+    try {
+      const { count: visitCount } = await supabase.from("vitrine_visits").select("*", { count: "exact", head: true }).eq("business_id", businessId);
+      const sourceCounts: Record<string, number> = {};
+      customers.forEach((c: any) => {
+        const src = (c as any).registration_source || "direct";
+        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+      });
+      setConversionFilter({
+        visits: visitCount || 0,
+        registrations: customers.length,
+        active: activeClients,
+        sourceBreakdown: Object.entries(sourceCounts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
+      });
+    } catch { /* vitrine_visits table may not exist yet */ }
+
+    // Reviews stats
+    try {
+      const { data: reviewsData } = await supabase.from("customer_reviews").select("rating").eq("business_id", businessId);
+      if (reviewsData && reviewsData.length > 0) {
+        setReviewCount(reviewsData.length);
+        setAvgReviewRating(Math.round((reviewsData.reduce((s, r) => s + r.rating, 0) / reviewsData.length) * 10) / 10);
+      }
+    } catch { /* customer_reviews table may not exist yet */ }
+
     setStats({
       totalScans: scans.length,
       activeClients,
@@ -102,7 +130,7 @@ const AnalyticsPage = () => {
       </div>
 
       {/* Business Impact */}
-      <div className="grid sm:grid-cols-3 gap-4 mb-8">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
           className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Récompenses débloquées</p>
@@ -123,6 +151,15 @@ const AnalyticsPage = () => {
             <ArrowUpRight className="w-4 h-4 text-emerald-500" />
           </div>
           <p className="text-xs text-muted-foreground mt-1">Clients avec 2+ visites</p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+          className="rounded-2xl bg-card border border-border/40 p-5 shadow-sm">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">Note moyenne</p>
+          <div className="flex items-baseline gap-2">
+            <p className="text-3xl font-display font-bold">{avgReviewRating > 0 ? `${avgReviewRating}/5` : "—"}</p>
+            {avgReviewRating >= 4 && <ArrowUpRight className="w-4 h-4 text-emerald-500" />}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{reviewCount} avis clients</p>
         </motion.div>
       </div>
 
@@ -171,8 +208,48 @@ const AnalyticsPage = () => {
         </motion.div>
       </div>
 
+      {/* Conversion Filter */}
+      {conversionFilter.visits > 0 && (
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+          className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm mb-8">
+          <div className="flex items-center gap-2 mb-5">
+            <Filter className="w-4 h-4 text-primary" />
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Entonnoir de conversion</p>
+          </div>
+          <div className="grid sm:grid-cols-3 gap-4 mb-6">
+            {[
+              { label: "Visites vitrine", value: conversionFilter.visits, color: "text-blue-500" },
+              { label: "Inscriptions", value: conversionFilter.registrations, color: "text-amber-500" },
+              { label: "Clients actifs (30j)", value: conversionFilter.active, color: "text-emerald-500" },
+            ].map((step, i) => (
+              <div key={step.label} className="text-center">
+                <p className={`text-3xl font-display font-bold ${step.color}`}>{step.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{step.label}</p>
+                {i < 2 && conversionFilter.visits > 0 && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    → {Math.round(((i === 0 ? conversionFilter.registrations : conversionFilter.active) / conversionFilter.visits) * 100)}% conversion
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+          {conversionFilter.sourceBreakdown.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Source d'inscription</p>
+              <div className="flex flex-wrap gap-2">
+                {conversionFilter.sourceBreakdown.map((s) => (
+                  <Badge key={s.source} variant="secondary" className="text-xs">
+                    {s.source === "direct" ? "Direct" : s.source === "vitrine" ? "Vitrine" : s.source === "widget" ? "Widget" : s.source}: {s.count}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* Segments */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}
         className="rounded-2xl bg-card border border-border/40 p-6 shadow-sm max-w-md">
         <div className="flex items-center gap-2 mb-4">
           <Target className="w-4 h-4 text-primary" />
