@@ -164,7 +164,7 @@ const CampaignsPage = () => {
     const { data } = await supabase
       .from("notifications_log")
       .select("*")
-      .eq("business_id", (business as any).id)
+      .eq("business_id", business.id)
       .order("sent_at", { ascending: false })
       .limit(200);
     if (!data) return;
