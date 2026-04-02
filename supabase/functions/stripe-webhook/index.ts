@@ -128,11 +128,12 @@ serve(async (req) => {
           } else {
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             if (customer.email) {
-              const { data: user } = await supabase.auth.admin.getUserByEmail(customer.email);
-              if (user?.user) {
+              const { data: users } = await supabase.auth.admin.listUsers();
+              const user = users?.users?.find((u: any) => u.email === customer.email);
+              if (user) {
                 await supabase.from("businesses").update({
                   subscription_status: "past_due",
-                }).eq("owner_id", user.user.id);
+                }).eq("owner_id", user.id);
               }
             }
           }
