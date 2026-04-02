@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,51 +19,45 @@ const CATEGORIES = [
 const OnboardingBusiness = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, business, loading: authLoading } = useAuth();
   const plan = searchParams.get("plan");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [businessId, setBusinessId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", category: "", city: "" });
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        // getSession() lit depuis localStorage sans appel réseau → pas de spinner infini
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
-        if (!user) { navigate("/login"); return; }
+    if (authLoading) return;
 
-        const { data: business, error } = await supabase
-          .from("businesses")
-          .select("id, name, category, subscription_status, subscription_plan")
-          .eq("owner_id", user.id)
-          .maybeSingle();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-        if (error || !business) { navigate("/login"); return; }
+    if (!business) {
+      navigate(`/onboarding?plan=${plan || "pro"}`, { replace: true });
+      return;
+    }
 
-        const name = business.name;
-        const status = business.subscription_status;
+    const name = business.name;
+    const status = business.subscription_status;
 
-        // Already onboarded, skip
-        if (name && name !== "Mon Commerce") {
-          if (status === "inactive") {
-            navigate(`/dashboard/checkout?plan=${plan || business.subscription_plan || "pro"}`);
-          } else {
-            navigate("/dashboard");
-          }
-          return;
-        }
-
-        setBusinessId(business.id);
-      } catch {
-        navigate("/login");
-      } finally {
-        setLoading(false);
+    if (name && name !== "Mon Commerce") {
+      if (status === "inactive") {
+        navigate(`/dashboard/checkout?plan=${plan || business.subscription_plan || "pro"}`, { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
       }
-    };
-    init();
-  }, []);
+      return;
+    }
+
+    setForm({
+      name: business.name && business.name !== "Mon Commerce" ? business.name : "",
+      category: business.category || "",
+      city: business.city || "",
+    });
+    setLoading(false);
+  }, [authLoading, user, business, navigate, plan]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +65,7 @@ const OnboardingBusiness = () => {
       toast.error("Le nom du commerce et la catégorie sont requis");
       return;
     }
-    if (!businessId) return;
+    if (!business) return;
 
     setSaving(true);
 
@@ -78,14 +73,13 @@ const OnboardingBusiness = () => {
       name: form.name.trim(),
       category: form.category,
       city: form.city.trim() || null,
+      subscription_plan: plan || "starter",
     };
-
-    updateData.subscription_plan = plan || "starter";
 
     const { error } = await supabase
       .from("businesses")
       .update(updateData)
-      .eq("id", businessId);
+      .eq("id", business.id);
 
     if (error) {
       toast.error("Erreur lors de la mise à jour du commerce");
@@ -97,7 +91,7 @@ const OnboardingBusiness = () => {
     navigate(`/dashboard/checkout?plan=${plan || "starter"}`);
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -107,7 +101,6 @@ const OnboardingBusiness = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-card items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-white blur-3xl" />
@@ -134,7 +127,6 @@ const OnboardingBusiness = () => {
         </div>
       </div>
 
-      {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <motion.div
           className="w-full max-w-sm"
