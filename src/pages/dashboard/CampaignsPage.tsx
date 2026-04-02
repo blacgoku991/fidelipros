@@ -155,7 +155,7 @@ const CampaignsPage = () => {
     const { count } = await supabase
       .from("wallet_registrations")
       .select("id", { count: "exact", head: true })
-      .eq("business_id", (business as any).id);
+      .eq("business_id", business.id);
     setWalletCount(count || 0);
   };
 
