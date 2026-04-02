@@ -358,6 +358,29 @@ const AdminBusinesses = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete business confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette entreprise ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous allez supprimer <strong>{deleteTarget?.name}</strong> et toutes ses données associées (clients, cartes, historique, campagnes…).
+              <br /><br />
+              <span className="text-destructive font-medium">Cette action est irréversible.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={() => deleteTarget && handleDeleteBusiness(deleteTarget)}>
+              {deleting ? "Suppression…" : "Supprimer définitivement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
