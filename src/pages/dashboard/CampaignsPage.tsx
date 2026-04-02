@@ -514,7 +514,7 @@ const CampaignsPage = () => {
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Message</p>
                   <p className="text-sm leading-relaxed">{selectedCampaign.message}</p>
                 </div>
-                <IPhonePreview title={selectedCampaign.title} message={selectedCampaign.message} />
+                <IPhonePreview title={businessName} message={selectedCampaign.message} />
               </motion.div>
             )}
 
