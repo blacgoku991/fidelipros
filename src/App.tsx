@@ -38,6 +38,7 @@ const AdminEmailDigest = lazy(() => import("./pages/admin/AdminEmailDigest"));
 const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminDemoGenerator = lazy(() => import("./pages/admin/AdminDemoGenerator"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 
 // Lazy-loaded: Onboarding & public
 const Onboarding = lazy(() => import("./pages/Onboarding"));
