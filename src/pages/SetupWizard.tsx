@@ -48,17 +48,20 @@ const SetupWizard = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessSlug, setBusinessSlug] = useState<string | null>(null);
 
-  // ── Payment verification is handled by CheckoutPage — skip duplicate polling ──
+  const isCheckoutSuccess = searchParams.get("checkout") === "success";
+  const sessionId = searchParams.get("session_id");
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentError] = useState(false);
+  const [pollProgress] = useState(5);
+
+  // Payment verification is handled by CheckoutPage — no duplicate polling here.
   // CheckoutPage redirects to /setup after successful activation.
-  // If we arrive with checkout=success, just clear the params and proceed.
   useEffect(() => {
     if (!isCheckoutSuccess) return;
-    // Remove checkout params from URL to avoid re-triggering
     const newUrl = new URL(window.location.href);
     newUrl.searchParams.delete("checkout");
     newUrl.searchParams.delete("session_id");
     window.history.replaceState({}, "", newUrl.toString());
-    setCheckingPayment(false);
   }, []);
 
   // Step 2 — commerce info
