@@ -93,18 +93,18 @@ const SettingsPage = () => {
 
   useEffect(() => {
     if (business) {
-      setSlug((business as any).slug || "");
+      setSlug(business.slug || "");
     }
   }, [business]);
 
   useEffect(() => {
     if (business) {
-      setBirthdayEnabled((business as any).birthday_notif_enabled || false);
-      setBirthdayMessage((business as any).birthday_notif_message || "Joyeux anniversaire ! Un cadeau vous attend 🎂");
-      setWelcomePushEnabled((business as any).welcome_push_enabled ?? true);
-      setWelcomePushMessage((business as any).welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
-      setVipAutoEnabled((business as any).vip_auto_enabled || false);
-      setVipAutoThreshold((business as any).vip_auto_threshold || 50);
+      setBirthdayEnabled(business.birthday_notif_enabled || false);
+      setBirthdayMessage(business.birthday_notif_message || "Joyeux anniversaire ! Un cadeau vous attend 🎂");
+      setWelcomePushEnabled(business.welcome_push_enabled ?? true);
+      setWelcomePushMessage(business.welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
+      setVipAutoEnabled(business.vip_auto_enabled || false);
+      setVipAutoThreshold(business.vip_auto_threshold || 50);
     }
   }, [business]);
 
