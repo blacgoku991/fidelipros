@@ -5,21 +5,37 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { QrCode, CheckCircle, Sparkles } from "lucide-react";
+import { QrCode, CheckCircle, Sparkles, Euro } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+
+const LOYALTY_LABELS: Record<string, { unit: string; unitPlural: string }> = {
+  stamps: { unit: "tampon", unitPlural: "tampons" },
+  points: { unit: "point", unitPlural: "points" },
+  cashback: { unit: "€", unitPlural: "€" },
+  subscription: { unit: "point", unitPlural: "points" },
+};
 
 const ScannerPage = () => {
   const { user, business, locationId } = useAuth();
   const [cardCode, setCardCode] = useState("");
+  const [amount, setAmount] = useState("");
   const [scanning, setScanning] = useState(false);
   const [success, setSuccess] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
 
+  const loyaltyType = business?.loyalty_type || "stamps";
+  const isCashback = loyaltyType === "cashback";
+  const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
+
   const handleScan = async () => {
     if (!cardCode.trim() || !business || !user) {
       toast.error("Entrez un code de carte");
+      return;
+    }
+    if (isCashback && (!amount || parseFloat(amount) <= 0)) {
+      toast.error("Entrez le montant de l'achat");
       return;
     }
     setScanning(true);
@@ -38,13 +54,44 @@ const ScannerPage = () => {
       return;
     }
 
-    const newPoints = card.current_points + 1;
-    const rewardEarned = newPoints >= card.max_points;
+    // Calculate points increment based on loyalty type
+    let increment = 1;
+    if (isCashback) {
+      const purchaseAmount = parseFloat(amount) || 0;
+      const pointsPerEuro = (business as any).points_per_euro || 1;
+      increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
+      if (increment < 1) increment = 1;
+    } else {
+      increment = (business as any).points_per_visit || 1;
+    }
+
+    const newPoints = card.current_points + increment;
     const customer = card.customers;
 
+    // Check if a reward was earned — use rewards from DB if available
+    let earnedReward: any = null;
+    const { data: rewards } = await supabase
+      .from("rewards")
+      .select("title, points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+
+    // Check if points reached max (standard reward) or a specific reward threshold
+    const rewardEarned = newPoints >= card.max_points;
+
+    if (rewards && rewards.length > 0) {
+      // Find the highest reward the customer just unlocked
+      earnedReward = rewards.filter((r: any) => r.points_required <= newPoints)
+        .sort((a: any, b: any) => b.points_required - a.points_required)[0];
+    }
+
+    const unitLabel = increment > 1 ? labels.unitPlural : labels.unit;
     const changeMsg = rewardEarned
-      ? `🎁 Récompense débloquée chez ${business.name} !`
-      : `+1 point chez ${business.name} ! Vous avez ${newPoints} points.`;
+      ? `🎁 ${earnedReward?.title || "Récompense"} débloquée chez ${business.name} !`
+      : isCashback
+        ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
+        : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
 
     await supabase
       .from("customer_cards")
@@ -80,12 +127,12 @@ const ScannerPage = () => {
     await supabase
       .from("customers")
       .update({
-        total_points: customer.total_points + 1,
+        total_points: customer.total_points + increment,
         total_visits: customer.total_visits + 1,
         current_streak: newStreak,
         longest_streak: Math.max(newStreak, customer.longest_streak),
         last_visit_at: new Date().toISOString(),
-        level: customer.total_points + 1 >= 25 ? "gold" : customer.total_points + 1 >= 10 ? "silver" : "bronze",
+        level: customer.total_points + increment >= 25 ? "gold" : customer.total_points + increment >= 10 ? "silver" : "bronze",
       })
       .eq("id", customer.id);
 
@@ -93,7 +140,7 @@ const ScannerPage = () => {
       customer_id: customer.id,
       business_id: business.id,
       card_id: card.id,
-      points_added: 1,
+      points_added: increment,
       action: "scan",
       scanned_by: user.id,
       ...(locationId ? { location_id: locationId } : {}),
@@ -104,17 +151,24 @@ const ScannerPage = () => {
       points: rewardEarned ? 0 : newPoints,
       maxPoints: card.max_points,
       rewardEarned,
+      rewardTitle: earnedReward?.title,
+      increment,
     });
 
     setSuccess(true);
     setTodayScans((p) => p + 1);
     setCardCode("");
+    setAmount("");
     setScanning(false);
 
     if (rewardEarned) {
-      toast.success("🎉 Récompense débloquée !", { description: `${customer.full_name} a gagné sa récompense !` });
+      toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
+        description: `${customer.full_name} a gagné sa récompense !`,
+      });
     } else {
-      toast.success(`+1 point pour ${customer.full_name}`, { description: `${newPoints}/${card.max_points} points` });
+      toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
+        description: `${newPoints}/${card.max_points} ${labels.unitPlural}`,
+      });
     }
 
     setTimeout(() => setSuccess(false), 3000);
@@ -129,7 +183,11 @@ const ScannerPage = () => {
               {success ? (
                 <motion.div key="success" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="flex flex-col items-center gap-2">
                   <CheckCircle className="w-14 h-14 text-emerald-500" />
-                  <p className="font-display font-bold text-emerald-600 text-sm">Point ajouté !</p>
+                  <p className="font-display font-bold text-emerald-600 text-sm">
+                    {lastScan?.rewardEarned
+                      ? `🎉 ${lastScan.rewardTitle || "Récompense"} !`
+                      : `+${lastScan?.increment || 1} ${labels.unit} !`}
+                  </p>
                 </motion.div>
               ) : (
                 <motion.div key="scanner" className="flex flex-col items-center gap-2">
@@ -153,8 +211,27 @@ const ScannerPage = () => {
                 {scanning ? "..." : "OK"}
               </Button>
             </div>
+
+            {isCashback && (
+              <div className="flex gap-2 items-center">
+                <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="Montant de l'achat (€)"
+                  className="rounded-xl"
+                  onKeyDown={(e) => e.key === "Enter" && handleScan()}
+                />
+              </div>
+            )}
+
             <p className="text-[11px] text-center text-muted-foreground">
-              Entrez le code affiché sur la carte du client
+              {isCashback
+                ? "Entrez le code carte et le montant de l'achat"
+                : "Entrez le code affiché sur la carte du client"}
             </p>
           </div>
         </div>
@@ -181,11 +258,11 @@ const ScannerPage = () => {
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {lastScan.points}/{lastScan.maxPoints} points
+                {lastScan.points}/{lastScan.maxPoints} {labels.unitPlural}
               </p>
               {lastScan.rewardEarned && (
                 <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-2 text-sm font-semibold text-accent">
-                  🎉 Récompense gagnée !
+                  🎉 {lastScan.rewardTitle || "Récompense gagnée"} !
                 </motion.p>
               )}
             </motion.div>
