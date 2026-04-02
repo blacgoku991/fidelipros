@@ -80,7 +80,7 @@ function welcomeTemplate(businessName: string, email: string): { subject: string
 }
 
 function paymentSucceededTemplate(businessName: string, email: string, plan: string | null, amount: number | null): { subject: string; html: string } {
-  const planLabel = plan === "starter" ? "Starter — 29€/mois" : plan === "pro" ? "Pro — 79€/mois" : plan === "enterprise" ? "Enterprise — 199€/mois" : "Abonnement";
+  const planLabel = plan === "starter" ? "Starter — 29€/mois" : plan === "pro" ? "Pro — 59€/mois" : plan === "enterprise" ? "Enterprise — 199€/mois" : "Abonnement";
   const body = `
     <div style="text-align:center;margin-bottom:28px;">
       <div style="display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;background:#d1fae5;border-radius:50%;font-size:32px;margin-bottom:12px;">✓</div>
