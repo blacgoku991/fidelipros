@@ -108,8 +108,8 @@ const ClientsPage = () => {
         birthday: newBirthday || null,
       } as any).select().single();
     if (error) { toast.error("Erreur lors de l'ajout"); return; }
-    await supabase.from("customer_cards").insert({ customer_id: customer.id, business_id: business.id, max_points: business.max_points_per_card || 10 });
-    toast.success("Client ajouté !");
+    const { error: cardErr } = await supabase.from("customer_cards").insert({ customer_id: customer.id, business_id: business.id, max_points: business.max_points_per_card || 10 });
+    if (cardErr) { toast.error("Client créé mais erreur lors de la création de la carte"); } else { toast.success("Client ajouté !"); }
     setAddOpen(false);
     setNewName(""); setNewEmail(""); setNewPhone(""); setNewBirthday("");
     fetchCustomers();

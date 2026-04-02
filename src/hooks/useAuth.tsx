@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Admin impersonation: if super_admin has an impersonated business, load that instead
       let resolvedBusiness = bizRes.data ?? null;
       if (userRole === "super_admin") {
-        const impersonatedId = localStorage.getItem("impersonated_business_id");
+        const impersonatedId = localStorage.getItem("impersonating_business");
         if (impersonatedId) {
           const { data: impBiz } = await supabase
             .from("businesses")

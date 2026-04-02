@@ -85,10 +85,12 @@ const AutomationsPage = () => {
     }
 
     if (editingId) {
-      await supabase.from("automations").update({ ...form } as any).eq("id", editingId);
+      const { error } = await supabase.from("automations").update({ ...form } as any).eq("id", editingId);
+      if (error) { toast.error("Erreur lors de la mise à jour"); return; }
       toast.success("Automation mise à jour");
     } else {
-      await supabase.from("automations").insert({ ...form, business_id: businessId } as any);
+      const { error } = await supabase.from("automations").insert({ ...form, business_id: businessId } as any);
+      if (error) { toast.error("Erreur lors de la création"); return; }
       toast.success("Automation créée");
     }
     setDialogOpen(false);
@@ -97,13 +99,15 @@ const AutomationsPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("automations").delete().eq("id", id);
+    const { error } = await supabase.from("automations").delete().eq("id", id);
+    if (error) { toast.error("Erreur lors de la suppression"); return; }
     toast.success("Automation supprimée");
     fetchAutomations();
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await supabase.from("automations").update({ is_active: active } as any).eq("id", id);
+    const { error } = await supabase.from("automations").update({ is_active: active } as any).eq("id", id);
+    if (error) { toast.error("Erreur lors de la mise à jour"); return; }
     fetchAutomations();
   };
 

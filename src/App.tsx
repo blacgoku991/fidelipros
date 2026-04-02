@@ -38,6 +38,7 @@ const AdminEmailDigest = lazy(() => import("./pages/admin/AdminEmailDigest"));
 const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminDemoGenerator = lazy(() => import("./pages/admin/AdminDemoGenerator"));
+const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 
 // Lazy-loaded: Onboarding & public
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -110,6 +111,7 @@ const App = () => (
                 <Route path="/admin/plans" element={<AdminPlans />} />
                 <Route path="/admin/messages" element={<AdminMessages />} />
                 <Route path="/admin/demos" element={<AdminDemoGenerator />} />
+                <Route path="/admin/audit" element={<AdminAuditLogs />} />
                 <Route path="/b/:businessId" element={<BusinessPublicPage />} />
                 <Route path="/vitrine/:slug" element={<VitrinePage />} />
                 <Route path="/demo/:slug" element={<DemoPage />} />
