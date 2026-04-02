@@ -333,7 +333,7 @@ const CampaignsPage = () => {
   };
 
   const saveDraft = () => {
-    if (!title.trim() && !message.trim()) { toast.error("Ajoutez un titre ou un message"); return; }
+    if (!message.trim()) { toast.error("Ajoutez un message"); return; }
     toast.success("Brouillon sauvegardé");
     resetForm();
   };
