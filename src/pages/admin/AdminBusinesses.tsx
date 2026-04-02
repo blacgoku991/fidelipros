@@ -266,7 +266,7 @@ const AdminBusinesses = () => {
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Aperçu rapide" onClick={() => viewBizDetails(biz)}>
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifier" onClick={() => startImpersonation(biz)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifier" onClick={() => impersonateBusiness(biz)}>
                         <LogIn className="w-4 h-4" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" title={isActive ? "Suspendre" : "Réactiver"}
