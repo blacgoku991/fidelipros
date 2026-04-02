@@ -51,10 +51,9 @@ export function OnboardingTour({ businessId }: OnboardingTourProps) {
 
   return (
     <Joyride
-      steps={steps}
+      steps={steps as any}
       run={run}
       continuous
-      showProgress
       showSkipButton
       callback={handleCallback}
       locale={{
