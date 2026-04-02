@@ -81,8 +81,13 @@ Deno.serve(async (req) => {
           change_message: change_message || message,
         }),
       });
-      const walletResult = await wr.json();
-      walletSent = walletResult.pushed || 0;
+      const wrText = await wr.text();
+      try {
+        const walletResult = JSON.parse(wrText);
+        walletSent = walletResult.pushed || 0;
+      } catch {
+        console.error("Wallet push returned non-JSON:", wrText.substring(0, 200));
+      }
     } catch (e) {
       console.error("Wallet push error:", e);
     }
