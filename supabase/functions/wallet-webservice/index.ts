@@ -347,6 +347,8 @@ async function buildPkpassForUpdate(
   const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
+  const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
+  const lblColor = business.label_color ? hexToRgb(business.label_color) : autoLabelColor(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
   const pointsCurrent = card.current_points || 0;
   const pointsMax = card.max_points || 10;
@@ -364,9 +366,9 @@ async function buildPkpassForUpdate(
     organizationName: business.name,
     description: `Carte de fidélité ${business.name}`,
     logoText: business.name,
-    foregroundColor: "rgb(255, 255, 255)",
+    foregroundColor: fgColor,
     backgroundColor: bgColor,
-    labelColor: "rgb(255, 255, 255)",
+    labelColor: lblColor,
     webServiceURL: `${supabaseUrl}/functions/v1/wallet-webservice`,
     authenticationToken: authToken,
     barcode: { message: card.card_code, format: "PKBarcodeFormatQR", messageEncoding: "iso-8859-1" },
