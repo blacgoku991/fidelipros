@@ -249,7 +249,22 @@ export async function buildPkpass(
           textAlignment: "PKTextAlignmentRight",
         },
       ],
-      auxiliaryFields: [],
+      auxiliaryFields: [
+        ...(rewards.length > 0 ? [{
+          key: "next_reward",
+          label: "PROCHAINE RÉCOMPENSE",
+          value: (() => {
+            // Find the next reward the customer can earn
+            const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
+            if (!nextReward) return business.reward_description || "Récompense offerte !";
+            return `${nextReward.title} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`;
+          })(),
+        }] : business.reward_description ? [{
+          key: "next_reward",
+          label: "RÉCOMPENSE",
+          value: `${business.reward_description} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+        }] : []),
+      ],
       backFields: [
         {
           key: "reward_info",
@@ -608,17 +623,28 @@ interface StampCircle { cx: number; cy: number; radius: number; filled: boolean;
 function buildStampPositions(w: number, h: number, current: number, max: number, scale: number): StampCircle[] {
   const circles: StampCircle[] = [];
   const count = Math.min(max, 12); // Cap at 12 visible stamps
-  const radius = Math.floor(16 * scale);
-  const spacing = Math.floor(w / (count + 1));
-  const cy = Math.floor(h / 2);
 
-  for (let i = 0; i < count; i++) {
-    circles.push({
-      cx: spacing * (i + 1),
-      cy,
-      radius,
-      filled: i < current,
-    });
+  // Layout stamps in rows if many, otherwise single centered row
+  const maxPerRow = count <= 5 ? count : count <= 10 ? 5 : 6;
+  const rows = Math.ceil(count / maxPerRow);
+  const radius = Math.floor((rows > 1 ? 12 : 18) * scale);
+  const rowSpacing = Math.floor(h / (rows + 1));
+
+  let idx = 0;
+  for (let row = 0; row < rows; row++) {
+    const itemsInRow = Math.min(maxPerRow, count - idx);
+    const colSpacing = Math.floor(w / (itemsInRow + 1));
+    const cy = rowSpacing * (row + 1);
+
+    for (let col = 0; col < itemsInRow; col++) {
+      circles.push({
+        cx: colSpacing * (col + 1),
+        cy,
+        radius,
+        filled: idx < current,
+      });
+      idx++;
+    }
   }
   return circles;
 }
@@ -628,25 +654,27 @@ function getStampPixel(x: number, y: number, stamps: StampCircle[], bgR: number,
     const dx = x - s.cx;
     const dy = y - s.cy;
     const dist = Math.sqrt(dx * dx + dy * dy);
+    const borderWidth = Math.max(2, Math.floor(s.radius * 0.15));
 
-    if (dist <= s.radius) {
-      // Inside circle
-      if (s.filled) {
-        // Filled stamp: bright white circle with slight shadow
+    if (s.filled) {
+      // Filled stamp: solid white circle
+      if (dist <= s.radius) {
         return { r: 255, g: 255, b: 255 };
-      } else {
-        // Empty stamp: semi-transparent ring (lighter than bg)
-        if (dist > s.radius - 2) {
-          // Ring border
-          return { r: Math.min(255, bgR + 60), g: Math.min(255, bgG + 60), b: Math.min(255, bgB + 60) };
-        }
-        // Inner: slightly lighter than background
-        return { r: Math.min(255, bgR + 20), g: Math.min(255, bgG + 20), b: Math.min(255, bgB + 20) };
       }
-    }
-    // Circle border glow for filled stamps
-    if (s.filled && dist <= s.radius + 1.5) {
-      return { r: Math.min(255, bgR + 40), g: Math.min(255, bgG + 40), b: Math.min(255, bgB + 40) };
+      // Outer glow
+      if (dist <= s.radius + 2) {
+        return { r: Math.min(255, bgR + 80), g: Math.min(255, bgG + 80), b: Math.min(255, bgB + 80) };
+      }
+    } else {
+      // Empty stamp: white outline ring, transparent inside
+      if (dist <= s.radius && dist > s.radius - borderWidth) {
+        // White ring border
+        return { r: 255, g: 255, b: 255 };
+      }
+      // Inside empty circle: slightly lighter bg to show the circle area
+      if (dist <= s.radius - borderWidth) {
+        return { r: Math.min(255, bgR + 15), g: Math.min(255, bgG + 15), b: Math.min(255, bgB + 15) };
+      }
     }
   }
   return null;
@@ -657,8 +685,8 @@ function getStampPixel(x: number, y: number, stamps: StampCircle[], bgR: number,
 interface ProgressBarDef { x: number; y: number; w: number; h: number; fillRatio: number; }
 
 function buildProgressBar(canvasW: number, canvasH: number, current: number, max: number, scale: number): ProgressBarDef {
-  const barH = Math.floor(14 * scale);
-  const margin = Math.floor(30 * scale);
+  const barH = Math.floor(20 * scale);
+  const margin = Math.floor(25 * scale);
   return {
     x: margin,
     y: Math.floor(canvasH / 2) - Math.floor(barH / 2),
@@ -694,8 +722,8 @@ function getProgressPixel(x: number, y: number, bar: ProgressBarDef, bgR: number
       // Filled portion: white
       return { r: 255, g: 255, b: 255 };
     }
-    // Unfilled portion: lighter than bg
-    return { r: Math.min(255, bgR + 30), g: Math.min(255, bgG + 30), b: Math.min(255, bgB + 30) };
+    // Unfilled portion: white with low opacity (visible outline)
+    return { r: Math.min(255, bgR + 50), g: Math.min(255, bgG + 50), b: Math.min(255, bgB + 50) };
   }
   return null;
 }
