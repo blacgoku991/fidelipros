@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Joyride, STATUS } from "react-joyride";
-import type { CallBackProps, Step } from "react-joyride";
+import Joyride, { STATUS } from "react-joyride";
+import type { Step } from "react-joyride";
 import { supabase } from "@/integrations/supabase/client";
 
 const steps: Step[] = [
@@ -8,7 +8,6 @@ const steps: Step[] = [
     target: '[data-tour="scanner"]',
     content: "Scannez les QR codes de vos clients pour ajouter des points ou tampons. C'est le coeur de votre programme de fidélité !",
     title: "Scanner",
-    disableBeacon: true,
   },
   {
     target: '[data-tour="personnaliser"]',
@@ -39,13 +38,13 @@ interface OnboardingTourProps {
 export function OnboardingTour({ businessId }: OnboardingTourProps) {
   const [run, setRun] = useState(true);
 
-  const handleCallback = async (data: CallBackProps) => {
+  const handleCallback = async (data: any) => {
     const { status } = data;
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status as any)) {
+    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status)) {
       setRun(false);
       await supabase
         .from("businesses")
-        .update({ onboarding_tour_completed: true } as any)
+        .update({ onboarding_completed: true })
         .eq("id", businessId);
     }
   };
@@ -58,28 +57,6 @@ export function OnboardingTour({ businessId }: OnboardingTourProps) {
       showProgress
       showSkipButton
       callback={handleCallback}
-      styles={{
-        options: {
-          primaryColor: "#7c3aed",
-          zIndex: 10000,
-        },
-        tooltip: {
-          borderRadius: 16,
-          padding: 20,
-        },
-        buttonNext: {
-          borderRadius: 12,
-          padding: "8px 20px",
-          fontWeight: 600,
-        },
-        buttonBack: {
-          borderRadius: 12,
-          marginRight: 8,
-        },
-        buttonSkip: {
-          borderRadius: 12,
-        },
-      }}
       locale={{
         back: "Retour",
         close: "Fermer",
