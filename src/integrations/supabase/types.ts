@@ -132,6 +132,10 @@ export type Database = {
           geofence_satellite_points: Json | null
           geofence_time_end: string | null
           geofence_time_start: string | null
+          google_place_id: string | null
+          google_review_enabled: boolean | null
+          google_review_message: string | null
+          google_review_threshold: number | null
           id: string
           is_demo: boolean
           is_franchise: boolean
@@ -218,6 +222,10 @@ export type Database = {
           geofence_satellite_points?: Json | null
           geofence_time_end?: string | null
           geofence_time_start?: string | null
+          google_place_id?: string | null
+          google_review_enabled?: boolean | null
+          google_review_message?: string | null
+          google_review_threshold?: number | null
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
@@ -304,6 +312,10 @@ export type Database = {
           geofence_satellite_points?: Json | null
           geofence_time_end?: string | null
           geofence_time_start?: string | null
+          google_place_id?: string | null
+          google_review_enabled?: boolean | null
+          google_review_message?: string | null
+          google_review_threshold?: number | null
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
