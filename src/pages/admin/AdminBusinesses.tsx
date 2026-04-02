@@ -64,10 +64,22 @@ const AdminBusinesses = () => {
   };
 
   const updatePlan = async (id: string, plan: string) => {
-    const { error } = await supabase.from("businesses").update({ subscription_plan: plan as any }).eq("id", id);
-    if (error) { toast.error("Erreur lors de la mise à jour du plan"); return; }
-    toast.success("Plan mis à jour");
-    fetchAll();
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const res = await fetch(`${supabaseUrl}/functions/v1/manage-stripe-plans`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "sync_subscription", business_id: id, new_plan: plan }),
+      });
+      const result = await res.json();
+      if (!res.ok || result.error) { toast.error(result.error || "Erreur sync Stripe"); return; }
+      toast.success(result.synced ? "Plan mis à jour (Stripe synchronisé)" : "Plan mis à jour (DB uniquement)");
+      fetchAll();
+    } catch (err) {
+      toast.error("Erreur lors de la mise à jour du plan");
+    }
   };
 
   const updateStatus = async (id: string, status: string) => {
