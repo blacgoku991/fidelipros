@@ -340,7 +340,6 @@ const CampaignsPage = () => {
 
   const resetForm = () => {
     setCreating(false);
-    setTitle("");
     setMessage("");
     setSelectedSegments(new Set(["all"]));
     setScheduled(false);
