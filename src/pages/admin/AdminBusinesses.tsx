@@ -85,6 +85,12 @@ const AdminBusinesses = () => {
   const updateStatus = async (id: string, status: string) => {
     const { error } = await supabase.from("businesses").update({ subscription_status: status as any }).eq("id", id);
     if (error) { toast.error("Erreur lors de la mise à jour du statut"); return; }
+    if (user) {
+      await supabase.from("admin_audit_logs").insert({
+        admin_user_id: user.id, action: "update_status", target_business_id: id,
+        metadata: { new_status: status },
+      });
+    }
     toast.success("Statut mis à jour");
     fetchAll();
   };
@@ -93,6 +99,13 @@ const AdminBusinesses = () => {
   const suspendBusiness = async (biz: any) => {
     const newStatus = biz.subscription_status === "inactive" ? "active" : "inactive";
     await supabase.from("businesses").update({ subscription_status: newStatus as any }).eq("id", biz.id);
+    if (user) {
+      await supabase.from("admin_audit_logs").insert({
+        admin_user_id: user.id, action: newStatus === "inactive" ? "suspend_business" : "reactivate_business",
+        target_business_id: biz.id, target_user_id: biz.owner_id,
+        metadata: { business_name: biz.name, new_status: newStatus },
+      });
+    }
     toast.success(newStatus === "inactive" ? "Compte suspendu" : "Compte réactivé");
     setSuspendTarget(null);
     fetchAll();
@@ -122,6 +135,13 @@ const AdminBusinesses = () => {
       await supabase.from("customers").delete().eq("business_id", bizId);
       await supabase.from("businesses").delete().eq("id", bizId);
 
+      if (user) {
+        await supabase.from("admin_audit_logs").insert({
+          admin_user_id: user.id, action: "delete_business",
+          target_business_id: bizId, target_user_id: biz.owner_id,
+          metadata: { business_name: biz.name },
+        });
+      }
       toast.success(`Entreprise "${biz.name}" supprimée`);
       setDeleteTarget(null);
       fetchAll();

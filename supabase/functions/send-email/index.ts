@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
-  "https://id-preview--a602f3ee-5c8a-4025-8469-788fb1c1e4c8.lovable.app",
+  ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
 
 function getCorsHeaders(req: Request) {

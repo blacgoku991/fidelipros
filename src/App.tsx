@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AdminGuard } from "@/components/admin/AdminGuard";
 
 // Eager-loaded pages (public, lightweight)
 import Index from "./pages/Index";
@@ -105,16 +106,16 @@ const App = () => (
                 <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />
                 <Route path="/dashboard/qrcode" element={<Navigate to="/dashboard/customize" replace />} />
                 <Route path="/dashboard/notifications" element={<Navigate to="/dashboard/campaigns" replace />} />
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/businesses" element={<AdminBusinesses />} />
-                <Route path="/admin/businesses/:businessId" element={<AdminBusinessDetail />} />
-                <Route path="/admin/users" element={<AdminUsers />} />
-                <Route path="/admin/landing" element={<AdminLandingContent />} />
-                <Route path="/admin/digest" element={<AdminEmailDigest />} />
-                <Route path="/admin/plans" element={<AdminPlans />} />
-                <Route path="/admin/messages" element={<AdminMessages />} />
-                <Route path="/admin/demos" element={<AdminDemoGenerator />} />
-                <Route path="/admin/audit" element={<AdminAuditLogs />} />
+                <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+                <Route path="/admin/businesses" element={<AdminGuard><AdminBusinesses /></AdminGuard>} />
+                <Route path="/admin/businesses/:businessId" element={<AdminGuard><AdminBusinessDetail /></AdminGuard>} />
+                <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+                <Route path="/admin/landing" element={<AdminGuard><AdminLandingContent /></AdminGuard>} />
+                <Route path="/admin/digest" element={<AdminGuard><AdminEmailDigest /></AdminGuard>} />
+                <Route path="/admin/plans" element={<AdminGuard><AdminPlans /></AdminGuard>} />
+                <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
+                <Route path="/admin/demos" element={<AdminGuard><AdminDemoGenerator /></AdminGuard>} />
+                <Route path="/admin/audit" element={<AdminGuard><AdminAuditLogs /></AdminGuard>} />
                 <Route path="/b/:businessId" element={<BusinessPublicPage />} />
                 <Route path="/vitrine/:slug" element={<VitrinePage />} />
                 <Route path="/demo/:slug" element={<DemoPage />} />

@@ -55,13 +55,24 @@ const Register = () => {
       toast.error("Veuillez remplir tous les champs");
       return;
     }
-    if (password.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères");
+    if (password.length < 10) {
+      toast.error("Le mot de passe doit contenir au moins 10 caractères");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Le mot de passe doit contenir au moins une majuscule");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Le mot de passe doit contenir au moins un chiffre");
+      return;
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      toast.error("Le mot de passe doit contenir au moins un caractère spécial");
       return;
     }
 
     setLoading(true);
-    console.log("[Register] signUp attempt →", email.trim(), "plan:", selectedPlan);
 
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
@@ -73,15 +84,8 @@ const Register = () => {
     });
 
     setLoading(false);
-    console.log("[Register] signUp result →", {
-      userId: data?.user?.id,
-      identities: data?.user?.identities?.length,
-      session: !!data?.session,
-      errorMsg: error?.message ?? null,
-    });
 
     if (error) {
-      console.error("[Register] error →", error.message);
       const msg = error.message.toLowerCase();
       if (msg.includes("already") || msg.includes("registered") || msg.includes("exists") || msg.includes("taken")) {
         navigate("/login", { state: { accountExistsEmail: email.trim() } });
@@ -93,23 +97,17 @@ const Register = () => {
 
     // Supabase renvoie user sans erreur mais identities vide = email déjà enregistré
     if (data.user && (data.user.identities?.length ?? 0) === 0) {
-      console.log("[Register] silent duplicate detected — identities empty");
       navigate("/login", { state: { accountExistsEmail: email.trim() } });
       return;
     }
 
     if (data.session) {
-      // Email confirmation désactivée → utilisateur authentifié immédiatement
-      console.log("[Register] session created → redirecting to checkout");
       toast.success("Compte créé ! Redirection vers le paiement…");
       navigate(`/dashboard/checkout?plan=${selectedPlan}`);
     } else if (data.user) {
-      // Email confirmation requise → écran de confirmation
-      console.log("[Register] email confirmation required → showing confirmation screen");
       setSentToEmail(email.trim());
       setEmailSent(true);
     } else {
-      console.error("[Register] unexpected state — no user, no session, no error");
       toast.error("Une erreur inattendue s'est produite. Veuillez réessayer.");
     }
   };
@@ -377,7 +375,7 @@ const Register = () => {
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Min. 8 caractères"
+                        placeholder="Min. 10 car., 1 maj., 1 chiffre, 1 spécial"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         className="h-11 rounded-xl pr-10"

@@ -4,7 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
-  "https://id-preview--a602f3ee-5c8a-4025-8469-788fb1c1e4c8.lovable.app",
+  ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
@@ -61,13 +61,22 @@ serve(async (req) => {
     let activeSub: Stripe.Subscription | null = null;
     let plan: string | null = null;
 
-    // Path 1: resolve via checkout session_id
+    // Path 1: resolve via checkout session_id (with ownership validation)
     if (sessionId) {
       log("Looking up checkout session", { sessionId });
       try {
         const session = await stripe.checkout.sessions.retrieve(sessionId, {
           expand: ["subscription"],
         });
+        // Validate that this session belongs to the authenticated user
+        const sessionEmail = session.customer_email || session.customer_details?.email;
+        if (sessionEmail && sessionEmail !== user.email) {
+          log("Session email mismatch — rejecting", { sessionEmail, userEmail: user.email });
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 403,
+          });
+        }
         customerId = session.customer as string | null;
         const sub = session.subscription as Stripe.Subscription | null;
         if (sub && (sub.status === "active" || sub.status === "trialing")) {

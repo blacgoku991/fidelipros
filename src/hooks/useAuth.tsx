@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userRole = rolesRes.data?.[0]?.role ?? null;
       setRole(userRole);
 
-      // Admin impersonation: if super_admin has an impersonated business, load that instead
+      // Admin impersonation: only allow if role is verified as super_admin from DB
       let resolvedBusiness = bizRes.data ?? null;
       if (userRole === "super_admin") {
         const impersonatedId = localStorage.getItem("impersonating_business");
@@ -95,7 +95,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!active) return;
           if (impBiz) {
             resolvedBusiness = impBiz;
+          } else {
+            // Invalid impersonation target — clean up
+            localStorage.removeItem("impersonating_business");
+            localStorage.removeItem("impersonating_business_name");
           }
+        }
+      } else {
+        // Not super_admin — clear any stale impersonation state
+        if (localStorage.getItem("impersonating_business")) {
+          localStorage.removeItem("impersonating_business");
+          localStorage.removeItem("impersonating_business_name");
         }
       }
 
@@ -133,11 +143,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshBusiness = async () => {
     if (!user) return;
-    // Respect admin impersonation
+    // Respect admin impersonation only if role is verified super_admin
     const impersonatedId = localStorage.getItem("impersonating_business");
     if (role === "super_admin" && impersonatedId) {
-      const { data } = await supabase.from("businesses").select("*").eq("id", impersonatedId).maybeSingle();
-      if (data) { setBusiness(data); return; }
+      // Re-verify role from DB before trusting impersonation
+      const { data: roleCheck } = await supabase
+        .from("user_roles").select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
+      if (roleCheck) {
+        const { data } = await supabase.from("businesses").select("*").eq("id", impersonatedId).maybeSingle();
+        if (data) { setBusiness(data); return; }
+      } else {
+        // Role revoked — clear impersonation
+        localStorage.removeItem("impersonating_business");
+        localStorage.removeItem("impersonating_business_name");
+      }
     }
     const { data } = await supabase.from("businesses").select("*").eq("owner_id", user.id).maybeSingle();
     setBusiness(data ?? null);

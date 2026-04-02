@@ -16,8 +16,10 @@ import { toast } from "sonner";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminUsers = () => {
+  const { user: adminUser } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -52,6 +54,13 @@ const AdminUsers = () => {
   const toggleRole = async (userId: string, currentRole: string) => {
     const newRole = currentRole === "super_admin" ? "business_owner" : "super_admin";
     await supabase.from("user_roles").update({ role: newRole as any }).eq("user_id", userId);
+    if (adminUser) {
+      await supabase.from("admin_audit_logs").insert({
+        admin_user_id: adminUser.id, action: "toggle_role",
+        target_user_id: userId,
+        metadata: { old_role: currentRole, new_role: newRole },
+      });
+    }
     toast.success(`Rôle mis à jour : ${newRole}`);
     fetchUsers();
   };
@@ -103,12 +112,18 @@ const AdminUsers = () => {
       const { error: profileErr } = await supabase.from("profiles").delete().eq("id", userId);
       if (profileErr) errors.push(`profiles: ${profileErr.message}`);
 
+      if (adminUser) {
+        await supabase.from("admin_audit_logs").insert({
+          admin_user_id: adminUser.id, action: "delete_user",
+          target_user_id: userId, target_business_id: bizId || undefined,
+          metadata: { user_name: user.full_name, user_email: user.email, errors_count: errors.length },
+        });
+      }
       if (errors.length > 0) {
         toast.warning(`Utilisateur supprimé partiellement. ${errors.length} erreur(s)`, {
           description: errors.slice(0, 3).join(", "),
           duration: 8000,
         });
-        console.error("Deletion errors:", errors);
       } else {
         toast.success(`Utilisateur "${user.full_name || user.email}" supprimé`);
       }
@@ -117,7 +132,6 @@ const AdminUsers = () => {
       fetchUsers();
     } catch (err) {
       toast.error("Erreur critique lors de la suppression");
-      console.error("Delete user error:", err);
     } finally {
       setDeleting(false);
     }

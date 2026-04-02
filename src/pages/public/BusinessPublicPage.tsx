@@ -240,7 +240,6 @@ const BusinessPublicPage = () => {
       });
 
       if (!custRes.ok) {
-        console.error("Customer creation failed:", custRes.status, await custRes.text());
         toast.error("Erreur lors de l'inscription. Réessayez.");
         setSubmitting(false);
         return;
@@ -265,7 +264,6 @@ const BusinessPublicPage = () => {
       });
 
       if (!cardRes.ok) {
-        console.error("Card creation failed:", cardRes.status, await cardRes.text());
         toast.error("Erreur lors de la création de la carte. Réessayez.");
         setSubmitting(false);
         return;
@@ -278,8 +276,7 @@ const BusinessPublicPage = () => {
       setCard(newCard);
       setStep("card");
       toast.success("Bienvenue ! Votre carte de fidélité est prête 🎉");
-    } catch (err) {
-      console.error("Registration error:", err);
+    } catch {
       toast.error("Erreur lors de l'inscription. Vérifiez votre connexion.");
     }
     setSubmitting(false);

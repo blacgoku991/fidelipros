@@ -205,7 +205,6 @@ const Dashboard = () => {
     }).eq("id", card.id);
 
     if (updateError) {
-      console.error("Card update failed:", updateError);
       setPopup({ open: true, type: "error", title: "Erreur", message: "La mise à jour des points a échoué. Réessayez." });
       setScanning(false);
       return;
@@ -237,7 +236,7 @@ const Dashboard = () => {
       last_visit_at: new Date().toISOString(),
       level: newLevel,
     }).eq("id", customer.id);
-    if (custErr) console.error("Customer update failed:", custErr);
+    if (custErr) { /* silent — non-critical update */ }
 
     // Send level-up Apple Wallet notification
     if (levelChanged) {
@@ -259,7 +258,7 @@ const Dashboard = () => {
       customer_id: customer.id, business_id: business.id, card_id: card.id,
       points_added: pointsToAdd, action: "scan", scanned_by: user.id,
     });
-    if (histErr) console.error("Points history insert failed:", histErr);
+    if (histErr) { /* silent — non-critical insert */ }
 
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
