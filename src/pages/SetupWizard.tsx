@@ -16,7 +16,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MAX_RETRIES = 15;
+const MAX_RETRIES = 30; // 30 × 2s = 60s
 
 const STEPS = [
   { id: 1, label: "Bienvenue",   icon: Sparkles },

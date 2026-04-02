@@ -90,9 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         path.startsWith("/dashboard/abonnement") ||
         path.startsWith("/admin") ||
         path.startsWith("/setup");
+      const isBlocked = biz && (
+        biz.subscription_status === "inactive" ||
+        biz.subscription_status === "past_due" ||
+        biz.subscription_status === "canceled"
+      );
       if (
-        biz &&
-        biz.subscription_status === "inactive" &&
+        isBlocked &&
         path.startsWith("/dashboard") &&
         !isExempt
       ) {

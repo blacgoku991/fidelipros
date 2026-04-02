@@ -50,7 +50,7 @@ const CheckoutPage = () => {
     if (checkoutSuccess !== "success") return;
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 15; // 15 × 2s = 30s
+    const MAX_ATTEMPTS = 30; // 30 × 2s = 60s
     let timerId: ReturnType<typeof setTimeout>;
 
     const poll = async () => {
@@ -65,7 +65,8 @@ const CheckoutPage = () => {
         if (data?.subscribed) {
           setActivationProgress(100);
           setActivationDone(true);
-          setTimeout(() => window.location.replace("/dashboard"), 700);
+          // Redirect to setup wizard for onboarding if not completed
+          setTimeout(() => window.location.replace("/setup"), 700);
           return;
         }
       } catch { /* continuer */ }
