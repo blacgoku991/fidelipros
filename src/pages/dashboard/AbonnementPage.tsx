@@ -33,9 +33,42 @@ const statusConfig: Record<string, { label: string; color: string; dot: string }
 const AbonnementPage = () => {
   const { business } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [portalLoading, setPortalLoading] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Refresh business data when returning from Stripe portal or on focus
+  const refreshSubscription = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await supabase.functions.invoke("check-subscription");
+      // Force page reload to get fresh business data from useAuth
+      window.location.reload();
+    } catch {
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Auto-refresh when returning from Stripe portal (detected via visibility change)
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && portalLoading) {
+        setPortalLoading(false);
+        refreshSubscription();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [portalLoading, refreshSubscription]);
+
+  // Also check URL param for portal return
+  useEffect(() => {
+    if (searchParams.get("portal_return") === "true") {
+      refreshSubscription();
+    }
+  }, [searchParams, refreshSubscription]);
 
   const plan = business?.subscription_plan as PlanKey | null;
   const status = business?.subscription_status as string | null;
