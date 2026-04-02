@@ -123,7 +123,7 @@ const CampaignsPage = () => {
   const [scheduled, setScheduled] = useState(false);
 
   // ── Form ──────────────────────────────────────────────────────────────────
-  const [title, setTitle] = useState("");
+  
   const [message, setMessage] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<Set<SegmentKey>>(new Set(["all"]));
   const [scheduleDate, setScheduleDate] = useState("");
