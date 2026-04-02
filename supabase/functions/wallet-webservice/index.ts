@@ -359,16 +359,18 @@ async function buildPkpassForUpdate(
   customer: any,
   authToken: string
 ): Promise<Uint8Array> {
-  const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
+  const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
+  if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
   const p12Base64 = Deno.env.get("APPLE_PASS_CERTIFICATE")!;
   const p12Password = Deno.env.get("APPLE_PASS_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
+  const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);
 
   // Fetch business logo for icons and logo
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business, card);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
