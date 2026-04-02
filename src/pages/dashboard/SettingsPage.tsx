@@ -118,7 +118,7 @@ const SettingsPage = () => {
       setGeoMessage(business.geofence_message || "Passez nous voir, on vous attend ! 🎉");
       setGeoTimeStart(business.geofence_time_start || "09:00");
       setGeoTimeEnd(business.geofence_time_end || "20:00");
-      setSatellitePoints(Array.isArray((business as any).geofence_satellite_points) ? (business as any).geofence_satellite_points : []);
+      setSatellitePoints(Array.isArray(business.geofence_satellite_points) ? (business.geofence_satellite_points as { lat: number; lng: number }[]) : []);
     }
   }, [business]);
 
