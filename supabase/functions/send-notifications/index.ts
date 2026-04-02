@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
 
     // ── Envoi Apple Wallet push ───────────────────────────────────────────
     let walletSent = 0;
+    let walletError: string | null = null;
     try {
       const wr = await fetch(`${sbUrl}/functions/v1/wallet-push`, {
         method: "POST",
@@ -82,11 +83,17 @@ Deno.serve(async (req) => {
       const wrText = await wr.text();
       try {
         const walletResult = JSON.parse(wrText);
+        if (!walletResult.success && walletResult.error) {
+          walletError = walletResult.error;
+          console.error("Wallet push failed:", walletError);
+        }
         walletSent = walletResult.pushed || 0;
       } catch {
+        walletError = "Wallet push returned non-JSON response";
         console.error("Wallet push returned non-JSON:", wrText.substring(0, 200));
       }
     } catch (e) {
+      walletError = String(e);
       console.error("Wallet push error:", e);
     }
 
@@ -118,7 +125,7 @@ Deno.serve(async (req) => {
       console.error("Google Wallet update error:", e);
     }
 
-    return json({ wallet: walletSent, google: googleUpdated, webpush: 0 });
+    return json({ wallet: walletSent, google: googleUpdated, webpush: 0, ...(walletError ? { wallet_error: walletError } : {}) });
   } catch (err) {
     console.error("send-notifications error:", err);
     return json({ error: "Internal server error" }, 500);

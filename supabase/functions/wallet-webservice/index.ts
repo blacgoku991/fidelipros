@@ -7,6 +7,35 @@ import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
+// Apple Worldwide Developer Relations Certification Authority G4
+// Required in the PKCS7 signature chain for valid .pkpass files
+const WWDR_G4_PEM = `-----BEGIN CERTIFICATE-----
+MIIEVTCCAz2gAwIBAgIUE9x3lVJx5T3GMujM/+Uh88zFztIwDQYJKoZIhvcNAQEL
+BQAwYjELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkFwcGxlIEluYy4xJjAkBgNVBAsT
+HUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRYwFAYDVQQDEw1BcHBsZSBS
+b290IENBMB4XDTIwMTIxNjE5MzYwNFoXDTMwMTIxMDAwMDAwMFowdTFEMEIGA1UE
+Aww7QXBwbGUgV29ybGR3aWRlIERldmVsb3BlciBSZWxhdGlvbnMgQ2VydGlmaWNh
+dGlvbiBBdXRob3JpdHkxCzAJBgNVBAsMAkc0MRMwEQYDVQQKDApBcHBsZSBJbmMu
+MQswCQYDVQQGEwJVUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANAf
+eKp6JzKwRl/nF3bYoJ0OKY6tPTKlxGs3yeRBkWq3eXFdDDQEYHX3rkOPR8SGHgjo
+v9Y5Ui8eZ/xx8YJtPH4GUnadLLzVQ+mxtLxAOnhRXVGhJeG+bJGdayFZGEHVD41t
+QSo5SiHgkJ9OE0/QjJoyuNdqkh4laqQyziIZhQVg3AJK8lrrd3kCfcCXVGySjnYB
+5kaP5eYq+6KwrRitbTOFOCOL6oqW7Z+uZk+jDEAnbZXQYojZQykn/e2kv1MukBVl
+PNkuYmQzHWxq3Y4hqqRfFcYw7V/mjDaSlLfcOQIA+2SM1AyB8j/VNJeHdSbCb64D
+YyEMe9QbsWLFApy9/a8CAwEAAaOB7zCB7DASBgNVHRMBAf8ECDAGAQH/AgEAMB8G
+A1UdIwQYMBaAFCvQaUeUdgn+9GuNLkCm90dNfwheMEQGCCsGAQUFBwEBBDgwNjA0
+BggrBgEFBQcwAYYoaHR0cDovL29jc3AuYXBwbGUuY29tL29jc3AwMy1hcHBsZXJv
+b3RjYTAuBgNVHR8EJzAlMCOgIaAfhh1odHRwOi8vY3JsLmFwcGxlLmNvbS9yb290
+LmNybDAdBgNVHQ4EFgQUW9n6HeeaGgujmXYiUIY+kchbd6gwDgYDVR0PAQH/BAQD
+AgEGMBAGCiqGSIb3Y2QGAgEEAgUAMA0GCSqGSIb3DQEBCwUAA4IBAQA/Vj2e5bbD
+eeZFIGi9v3OLLBKeAuOugCKMBB7DUshwgKj7zqew1UJEggOCTwb8O0kU+9h0UoWv
+p50h5wESA5/NQFjQAde/MoMrU1goPO6cn1R2PWQnxn6NHThNLa6B5rmluJyJlPef
+x4elUWY0GzlxOSTjh2fvpbFoe4zuPfeutnvi0v/fYcZqdUmVIkSoBPyUuAsuORFJ
+EtHlgepZAE9bPFo22noicwkJac3AfOriJP6YRLj477JxPxpd1F1+M02cHSS+APCQ
+A1iZQT0xWmJArzmoUUOSqwSonMJNsUvSq3xKX+udO7xPiEAGE/+QF4oIRynoYpgp
+pU8RBWk6z/Kf
+-----END CERTIFICATE-----`;
+
 const ICON_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAgklEQVR4nGPkF9f6z0BnwERvCwfMUhZcEh9eXL1LqeECEtrK2MSx+pQaFuIzhxE9ISErxOVSUi1EN4eJWIWkAmT96D7GGryUWkjInJGTZUYtHbV01NJRS0ctHSSW0rrlgGIpvoqXEgvR61WM5go1LEQG2CryAWk5YPUprcHgSb20BgDttTV1QCPBRwAAAABJRU5ErkJggg==";
 
@@ -38,12 +67,9 @@ Deno.serve(async (req) => {
     const config = {
       alive: true,
       timestamp: new Date().toISOString(),
-      PASS_TYPE_ID,
-      SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
       has_p12: !!Deno.env.get("APPLE_PASS_CERTIFICATE"),
       has_team_id: !!Deno.env.get("APPLE_TEAM_ID"),
       has_service_role: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-      webServiceURL_expected: `${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-webservice`,
     };
     console.log(`[PassKit WS] PING →`, JSON.stringify(config));
     return new Response(JSON.stringify(config, null, 2), {
@@ -128,10 +154,8 @@ async function handleRegisterDevice(
     console.log(`[PassKit WS]   ✗ No card found for serialNumber=${serialNumber}`);
     return new Response("Unauthorized", { status: 401 });
   }
-  if (card.wallet_auth_token !== authToken) {
-    console.log(`[PassKit WS]   ✗ Auth token MISMATCH`);
-    console.log(`[PassKit WS]     pass token (len=${authToken.length}): ${authToken.slice(0, 8)}...${authToken.slice(-8)}`);
-    console.log(`[PassKit WS]     DB   token (len=${card.wallet_auth_token?.length ?? 0}): ${card.wallet_auth_token?.slice(0, 8) ?? "NULL"}...${card.wallet_auth_token?.slice(-8) ?? ""}`);
+  if (!card.wallet_auth_token || card.wallet_auth_token !== authToken) {
+    console.log(`[PassKit WS]   ✗ Auth token MISMATCH or NULL`);
     console.log(`[PassKit WS]     DB wallet_auth_token IS NULL: ${card.wallet_auth_token === null}`);
     return new Response("Unauthorized", { status: 401 });
   }
@@ -335,16 +359,18 @@ async function buildPkpassForUpdate(
   customer: any,
   authToken: string
 ): Promise<Uint8Array> {
-  const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
+  const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
+  if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
   const p12Base64 = Deno.env.get("APPLE_PASS_CERTIFICATE")!;
   const p12Password = Deno.env.get("APPLE_PASS_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
+  const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);
 
   // Fetch business logo for icons and logo
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business, card);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
@@ -448,6 +474,7 @@ async function buildPkpassForUpdate(
   const p7 = forge.pkcs7.createSignedData();
   p7.content = forge.util.createBuffer(manifestStr, "utf8");
   p7.addCertificate(signerCert);
+  p7.addCertificate(wwdrCert); // WWDR G4 required in Apple Wallet signature chain
   for (const cert of certificateChain) p7.addCertificate(cert);
   p7.addSigner({
     key: signerKey,
@@ -524,9 +551,26 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
   return { logoPng, logo2xPng };
 }
 
-// ── Strip image generation ────────────────────────────────────────
+// ── Strip image — use card_bg_image_url if available, else generate visual ─────
 
-function generateStripImages(hexColor: string): { stripPng: Uint8Array; strip2xPng: Uint8Array } {
+async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
+  if (business.card_bg_image_url) {
+    try {
+      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const response = await fetch(imgUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        if (imageBytes.byteLength <= 60_000) {
+          console.log("[Pass WS] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.log(`[Pass WS] Strip image too large (${imageBytes.byteLength} bytes), using generated`);
+      }
+    } catch (err) {
+      console.error("[Pass WS] Failed to fetch strip image:", err);
+    }
+  }
+  const hexColor = business.primary_color || "#6B46C1";
   const stripPng = generateStripPng(320, 123, hexColor);
   const strip2xPng = generateStripPng(640, 246, hexColor);
   return { stripPng, strip2xPng };
@@ -542,12 +586,10 @@ function generateStripPng(width: number, height: number, hexColor: string): Uint
   for (let y = 0; y < height; y++) {
     rawData.push(0);
     for (let x = 0; x < width; x++) {
-      const stripe = ((x + y) % 16) < 4;
-      const lightness = stripe ? 20 : 0;
-      const gradientDarken = Math.floor((y / height) * 30);
-      const pr = Math.min(255, Math.max(0, r + lightness - gradientDarken));
-      const pg = Math.min(255, Math.max(0, g + lightness - gradientDarken));
-      const pb = Math.min(255, Math.max(0, b + lightness - gradientDarken));
+      const gradientDarken = Math.floor((y / height) * 25);
+      const pr = Math.max(0, r - gradientDarken);
+      const pg = Math.max(0, g - gradientDarken);
+      const pb = Math.max(0, b - gradientDarken);
       rawData.push(pr, pg, pb, 255);
     }
   }

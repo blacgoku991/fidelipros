@@ -243,15 +243,15 @@ Deno.serve(async (req) => {
     }
 
     // ── REAL APNs Push via Token-Based Auth ──────────────────────────
-    const p8Key = Deno.env.get("APPLE_P8_KEY")!;
-    const keyId = Deno.env.get("APPLE_KEY_ID")!;
-    const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
+    const p8Key = Deno.env.get("APPLE_P8_KEY") || "";
+    const keyId = Deno.env.get("APPLE_KEY_ID") || "";
+    const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
 
-    if (!p8Key || !keyId) {
-      console.error("[Wallet Push] Missing APPLE_P8_KEY or APPLE_KEY_ID");
+    if (!p8Key || !keyId || !teamId) {
+      console.error("[Wallet Push] Missing APNs credentials", { hasP8: !!p8Key, hasKeyId: !!keyId, hasTeamId: !!teamId });
       return jsonResponse({
         success: false,
-        error: "APNs credentials not configured (P8 key / Key ID missing)",
+        error: "APNs credentials not configured (P8 key / Key ID / Team ID missing)",
         total_registrations: registrations.length,
       }, 500);
     }
@@ -297,10 +297,12 @@ Deno.serve(async (req) => {
           // If token is invalid, mark registration
           if (result.status === 410 || result.reason === "Unregistered") {
             logEntry.error_message = "Token invalid/unregistered";
+            // Only delete the specific registration, not all registrations with this token
             await supabase
               .from("wallet_registrations")
               .delete()
-              .eq("push_token", pushToken);
+              .eq("push_token", pushToken)
+              .eq("serial_number", reg.serial_number);
           }
         }
 
