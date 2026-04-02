@@ -128,7 +128,7 @@ const CustomizePage = () => {
       show_points: business.show_points ?? true,
       show_expiration: business.show_expiration ?? false,
       show_rewards_preview: business.show_rewards_preview ?? true,
-      notif_frequency: business.notif_frequency || "daily",
+      notif_frequency: (business.notif_frequency || "daily") as BusinessConfig["notif_frequency"],
       notif_time_start: business.notif_time_start || "09:00",
       notif_time_end: business.notif_time_end || "20:00",
       notif_custom_interval_hours: business.notif_custom_interval_hours || 24,
