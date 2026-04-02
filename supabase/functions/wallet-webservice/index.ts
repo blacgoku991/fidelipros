@@ -381,20 +381,20 @@ async function buildPkpassForUpdate(
       primaryFields: [{ key: "name", label: "CLIENT", value: customer?.full_name || "Client" }],
       secondaryFields: [
         { key: "level", label: "STATUT", value: `${levelEmoji} ${level.toUpperCase()}` },
-        {
-          key: "offer",
-          label: "OFFRE DU JOUR",
-          value: latestOffer,
-          changeMessage: "%@",
-        },
-      ],
-      auxiliaryFields: [
         { key: "progress", label: "PROGRESSION", value: `${pointsCurrent} / ${pointsMax}` },
         {
           key: "next_reward",
           label: "PROCHAINE",
           value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
           textAlignment: "PKTextAlignmentRight",
+        },
+      ],
+      auxiliaryFields: [
+        {
+          key: "offer",
+          label: "",
+          value: latestOffer || " ",
+          changeMessage: "%@",
         },
       ],
       backFields: [
