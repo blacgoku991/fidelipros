@@ -148,8 +148,8 @@ const CustomizePage = () => {
       latitude: business.latitude || null,
       longitude: business.longitude || null,
       geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
-      foreground_color: (business as any).foreground_color || "",
-      label_color: (business as any).label_color || "",
+      foreground_color: business.foreground_color || "",
+      label_color: business.label_color || "",
     });
     setLogoUrl(business.logo_url || null);
     setStripImageUrl(business.card_bg_image_url || null);
