@@ -1,8 +1,8 @@
 import { QRCodeSVG } from "qrcode.react";
 
 /**
- * Apple Wallet Store Card — pixel-perfect PassKit replica.
- * FIXED HEIGHT: all card types use the same dimensions.
+ * Apple Wallet Store Card — Loyaltify-style design.
+ * Clean layout: Header → Strip (with stamp overlays) → Member/Reward → QR → Code
  */
 
 export interface PassField {
@@ -26,6 +26,10 @@ export interface AppleWalletPassProps {
   footerText?: string;
   width?: number;
   children?: React.ReactNode;
+  // Stamp-specific
+  loyaltyType?: "points" | "stamps" | "cashback" | "subscription";
+  currentStamps?: number;
+  maxStamps?: number;
 }
 
 export function AppleWalletPass({
@@ -43,14 +47,18 @@ export function AppleWalletPass({
   footerText,
   width = 320,
   children,
+  loyaltyType = "points",
+  currentStamps = 0,
+  maxStamps = 10,
 }: AppleWalletPassProps) {
   const bgBrightness = hexBrightness(backgroundColor);
   const fg = foregroundColor || (bgBrightness > 160 ? "#1a1a1a" : "#ffffff");
   const lbl = labelColor || (bgBrightness > 160 ? "rgba(0,0,0,0.45)" : "rgba(255,255,255,0.55)");
   const s = width / 320;
 
-  // FIXED card height — same for all loyalty types
-  const CARD_HEIGHT = Math.round(440 * s);
+  const CARD_HEIGHT = Math.round(480 * s);
+  const STRIP_HEIGHT = Math.round(130 * s);
+  const isStamps = loyaltyType === "stamps";
 
   return (
     <div
@@ -129,41 +137,90 @@ export function AppleWalletPass({
           <div style={{ display: "flex", gap: `${12 * s}px`, flexShrink: 0 }}>
             {headerFields.map((f) => (
               <div key={f.key} style={{ textAlign: "right" }}>
-                <FieldLabel s={s} color={lbl}>{f.label}</FieldLabel>
-                <FieldValue s={s} color={fg} size={18}>{f.value}</FieldValue>
+                <p style={{ color: lbl, fontSize: `${7 * s}px`, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1.2, marginBottom: `${1 * s}px` }}>{f.label}</p>
+                <p style={{ color: fg, fontSize: `${20 * s}px`, fontWeight: 700, lineHeight: 1.1 }}>{f.value}</p>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── STRIP IMAGE ── */}
-      {stripImageUrl && (
-        <div style={{ width: "100%", height: `${Math.round(100 * s)}px`, overflow: "hidden", flexShrink: 0 }}>
+      {/* ── STRIP IMAGE with stamp overlays ── */}
+      <div style={{ width: "100%", height: `${STRIP_HEIGHT}px`, overflow: "hidden", flexShrink: 0, position: "relative" }}>
+        {stripImageUrl ? (
           <img
             src={stripImageUrl}
             alt=""
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
           />
-        </div>
-      )}
+        ) : (
+          <div style={{ width: "100%", height: "100%", background: `linear-gradient(135deg, ${adjustBrightness(backgroundColor, 20)}, ${adjustBrightness(backgroundColor, -20)})` }} />
+        )}
 
-      {/* ── FIELDS AREA — flex-grow to fill remaining space ── */}
+        {/* Stamp overlay grid for stamps type */}
+        {isStamps && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              flexWrap: "wrap",
+              alignContent: "center",
+              justifyContent: "center",
+              gap: `${6 * s}px`,
+              padding: `${8 * s}px ${12 * s}px`,
+            }}
+          >
+            {Array.from({ length: maxStamps }).map((_, i) => {
+              const filled = i < currentStamps;
+              return (
+                <div
+                  key={i}
+                  style={{
+                    width: `${24 * s}px`,
+                    height: `${24 * s}px`,
+                    borderRadius: "50%",
+                    background: filled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.25)",
+                    border: `${1.5 * s}px solid rgba(255,255,255,0.6)`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: `${12 * s}px`,
+                    backdropFilter: "blur(4px)",
+                    boxShadow: filled ? `0 ${2 * s}px ${6 * s}px rgba(0,0,0,0.2)` : "none",
+                  }}
+                >
+                  {filled ? "✓" : ""}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── MEMBER + REWARD/TIER — simplified Loyaltify-style ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between", minHeight: 0 }}>
         <div>
-          {primaryFields.length > 0 && (
-            <FieldRow fields={primaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={16} padTop={10} padBottom={2} />
-          )}
           {secondaryFields.length > 0 && (
-            <FieldRow fields={secondaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={13} padTop={6} padBottom={2} />
-          )}
-          {auxiliaryFields.length > 0 && (
-            <FieldRow fields={auxiliaryFields} s={s} fg={fg} lbl={lbl} valueFontSize={12} padTop={4} padBottom={4} />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                padding: `${10 * s}px ${16 * s}px ${6 * s}px`,
+              }}
+            >
+              {secondaryFields.map((f, i) => (
+                <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
+                  <p style={{ color: lbl, fontSize: `${7 * s}px`, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1.2, marginBottom: `${2 * s}px` }}>{f.label}</p>
+                  <p style={{ color: fg, fontSize: `${14 * s}px`, fontWeight: 700, lineHeight: 1.15 }}>{f.value}</p>
+                </div>
+              ))}
+            </div>
           )}
           {children}
         </div>
 
-        {/* ── BARCODE — always anchored at bottom ── */}
+        {/* ── BARCODE ── */}
         {barcodeValue && (
           <div
             style={{
@@ -193,10 +250,10 @@ export function AppleWalletPass({
               <p
                 style={{
                   color: lbl,
-                  fontSize: `${8 * s}px`,
+                  fontSize: `${9 * s}px`,
                   fontFamily: "'SF Mono', 'Menlo', monospace",
                   letterSpacing: "0.05em",
-                  marginTop: `${3 * s}px`,
+                  marginTop: `${4 * s}px`,
                 }}
               >
                 {footerText}
@@ -224,65 +281,6 @@ export function AppleWalletPass({
   );
 }
 
-/* ── Shared sub-components ── */
-
-function FieldLabel({ children, s, color }: { children: React.ReactNode; s: number; color: string }) {
-  return (
-    <p
-      style={{
-        color,
-        fontSize: `${8 * s}px`,
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        lineHeight: 1.2,
-        marginBottom: `${1 * s}px`,
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
-function FieldValue({ children, s, color, size }: { children: React.ReactNode; s: number; color: string; size: number }) {
-  return (
-    <p
-      style={{
-        color,
-        fontSize: `${size * s}px`,
-        fontWeight: 700,
-        lineHeight: 1.15,
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
-function FieldRow({
-  fields, s, fg, lbl, valueFontSize, padTop, padBottom,
-}: {
-  fields: PassField[]; s: number; fg: string; lbl: string;
-  valueFontSize: number; padTop: number; padBottom: number;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: `${padTop * s}px ${16 * s}px ${padBottom * s}px`,
-      }}
-    >
-      {fields.map((f, i) => (
-        <div key={f.key} style={{ textAlign: i === 0 ? "left" : "right", flex: i === 0 ? 1 : undefined }}>
-          <FieldLabel s={s} color={lbl}>{f.label}</FieldLabel>
-          <FieldValue s={s} color={fg} size={valueFontSize}>{f.value}</FieldValue>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function hexBrightness(hex: string): number {
   const c = hex.replace("#", "");
   if (c.length !== 6) return 128;
@@ -290,4 +288,13 @@ function hexBrightness(hex: string): number {
   const g = parseInt(c.slice(2, 4), 16);
   const b = parseInt(c.slice(4, 6), 16);
   return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+function adjustBrightness(hex: string, amount: number): string {
+  const c = hex.replace("#", "");
+  if (c.length !== 6) return hex;
+  const r = Math.min(255, Math.max(0, parseInt(c.slice(0, 2), 16) + amount));
+  const g = Math.min(255, Math.max(0, parseInt(c.slice(2, 4), 16) + amount));
+  const b = Math.min(255, Math.max(0, parseInt(c.slice(4, 6), 16) + amount));
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
