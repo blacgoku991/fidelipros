@@ -129,7 +129,7 @@ const CampaignsPage = () => {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
 
-  const businessName = (business as any)?.name || "FidéliPro";
+  const businessName = business?.name || "FidéliPro";
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
