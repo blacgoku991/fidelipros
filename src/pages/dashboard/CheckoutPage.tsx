@@ -50,7 +50,7 @@ const CheckoutPage = () => {
     if (checkoutSuccess !== "success") return;
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 15; // 15 × 2s = 30s
+    const MAX_ATTEMPTS = 30; // 30 × 2s = 60s
     let timerId: ReturnType<typeof setTimeout>;
 
     const poll = async () => {
