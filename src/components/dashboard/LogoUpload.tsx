@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Upload, X, Loader2 } from "lucide-react";
@@ -14,6 +14,10 @@ export function LogoUpload({ currentUrl, businessId, onUploaded }: LogoUploadPro
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(currentUrl);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setPreview(currentUrl);
+  }, [currentUrl]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
