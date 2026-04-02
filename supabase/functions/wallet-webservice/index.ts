@@ -67,12 +67,9 @@ Deno.serve(async (req) => {
     const config = {
       alive: true,
       timestamp: new Date().toISOString(),
-      PASS_TYPE_ID,
-      SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
       has_p12: !!Deno.env.get("APPLE_PASS_CERTIFICATE"),
       has_team_id: !!Deno.env.get("APPLE_TEAM_ID"),
       has_service_role: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-      webServiceURL_expected: `${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-webservice`,
     };
     console.log(`[PassKit WS] PING →`, JSON.stringify(config));
     return new Response(JSON.stringify(config, null, 2), {
