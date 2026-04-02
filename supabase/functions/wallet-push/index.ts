@@ -391,7 +391,7 @@ async function createApnsJwt(
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    bin,
+    bin.buffer as ArrayBuffer,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]
