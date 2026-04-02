@@ -18,7 +18,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download, LogIn, AlertTriangle } from "lucide-react";
+import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download, LogIn, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,6 +34,8 @@ const AdminBusinesses = () => {
   const [selectedBiz, setSelectedBiz] = useState<any>(null);
   const [bizStats, setBizStats] = useState<any>(null);
   const [suspendTarget, setSuspendTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
 
   useEffect(() => { fetchAll(); }, []);
@@ -82,7 +84,40 @@ const AdminBusinesses = () => {
     fetchAll();
   };
 
-  const startImpersonation = (biz: any) => {
+  const handleDeleteBusiness = async (biz: any) => {
+    setDeleting(true);
+    try {
+      const bizId = biz.id;
+      // Delete all related data first
+      await Promise.all([
+        supabase.from("points_history").delete().eq("business_id", bizId),
+        supabase.from("customer_scores").delete().eq("business_id", bizId),
+        supabase.from("notifications_log").delete().eq("business_id", bizId),
+        supabase.from("notification_campaigns").delete().eq("business_id", bizId),
+        supabase.from("notification_templates").delete().eq("business_id", bizId),
+        supabase.from("automations").delete().eq("business_id", bizId),
+        supabase.from("special_events").delete().eq("business_id", bizId),
+        supabase.from("wallet_registrations").delete().eq("business_id", bizId),
+        supabase.from("digest_logs").delete().eq("merchant_id", bizId),
+        supabase.from("merchant_locations").delete().eq("business_id", bizId),
+        supabase.from("user_merchant_points").delete().eq("business_id", bizId),
+        supabase.from("demo_sessions").delete().eq("business_id", bizId),
+        supabase.from("rewards").delete().eq("business_id", bizId),
+      ]);
+      await supabase.from("customer_cards").delete().eq("business_id", bizId);
+      await supabase.from("customers").delete().eq("business_id", bizId);
+      await supabase.from("businesses").delete().eq("id", bizId);
+
+      toast.success(`Entreprise "${biz.name}" supprimée`);
+      setDeleteTarget(null);
+      fetchAll();
+    } catch (err) {
+      toast.error("Erreur lors de la suppression");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
     localStorage.setItem("impersonating_business", biz.id);
     localStorage.setItem("impersonating_business_name", biz.name);
     setImpersonating(biz.id);
@@ -240,6 +275,10 @@ const AdminBusinesses = () => {
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Détails" onClick={() => navigate(`/admin/businesses/${biz.id}`)}>
                         <ExternalLink className="w-4 h-4" />
                       </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Supprimer"
+                        onClick={() => setDeleteTarget(biz)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -319,6 +358,29 @@ const AdminBusinesses = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete business confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette entreprise ?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vous allez supprimer <strong>{deleteTarget?.name}</strong> et toutes ses données associées (clients, cartes, historique, campagnes…).
+              <br /><br />
+              <span className="text-destructive font-medium">Cette action est irréversible.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              onClick={() => deleteTarget && handleDeleteBusiness(deleteTarget)}>
+              {deleting ? "Suppression…" : "Supprimer définitivement"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
