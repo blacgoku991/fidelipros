@@ -139,6 +139,13 @@ serve(async (req) => {
     const classId = `${issuerId}.loyalty_${business.id}`;
     const objectId = `${issuerId}.card_${card.id}`;
 
+    const pointsLabel = business.loyalty_type === "stamps" ? "Tampons" : "Points";
+    const maxPoints = card.max_points || business.max_points_per_card || 10;
+    const currentPoints = card.current_points || 0;
+    const remaining = Math.max(0, maxPoints - currentPoints);
+    const rewardDesc = business.reward_description || "Récompense offerte !";
+    const customerName = customer?.full_name || "Client";
+
     const loyaltyClass = {
       id: classId,
       issuerName: business.name,
@@ -151,25 +158,58 @@ serve(async (req) => {
         : undefined,
       hexBackgroundColor: business.primary_color || "#7c3aed",
       reviewStatus: "UNDER_REVIEW",
+      // Card details section
+      localizedIssuerName: { defaultValue: { language: "fr", value: business.name } },
+      // Secondary / info labels
+      secondaryLoyaltyPoints: remaining > 0
+        ? { balance: { int: remaining }, label: `${pointsLabel} restants` }
+        : undefined,
     };
 
     const loyaltyObject = {
       id: objectId,
       classId,
       loyaltyPoints: {
-        balance: { int: card.current_points || 0 },
-        label: business.loyalty_type === "stamps" ? "Tampons" : "Points",
+        balance: { int: currentPoints },
+        label: pointsLabel,
+      },
+      secondaryLoyaltyPoints: {
+        balance: { int: remaining },
+        label: remaining > 0 ? "Restants" : "Complet ✓",
       },
       barcode: {
         type: "QR_CODE",
         value: card.card_code || card.id,
         alternateText: card.card_code || card.id,
       },
-      accountId: customer?.id || "unknown",
-      accountName: customer?.full_name || "Client",
-      heroImage: business.logo_url
+      accountId: customerName,
+      accountName: customerName,
+      // Rich info rows
+      textModulesData: [
+        {
+          id: "progress",
+          header: "Progression",
+          body: remaining > 0
+            ? `${currentPoints}/${maxPoints} — Plus que ${remaining} pour votre récompense !`
+            : `${currentPoints}/${maxPoints} — ${rewardDesc} 🎉`,
+        },
+        ...(business.address ? [{
+          id: "address",
+          header: "Adresse",
+          body: `${business.address}${business.city ? `, ${business.city}` : ""}`,
+        }] : []),
+      ],
+      linksModuleData: business.website ? {
+        uris: [{
+          uri: business.website,
+          description: `Site web ${business.name}`,
+          id: "website",
+        }],
+      } : undefined,
+      // Use wide image (strip) if available, skip heroImage for cleaner look
+      heroImage: business.card_bg_image_url
         ? {
-            sourceUri: { uri: business.logo_url },
+            sourceUri: { uri: business.card_bg_image_url },
             contentDescription: { defaultValue: { language: "fr", value: business.name } },
           }
         : undefined,
