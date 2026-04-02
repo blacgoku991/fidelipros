@@ -12,7 +12,7 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3
 
 const AnalyticsPage = () => {
   const { business } = useAuth();
-  const businessId = (business as any)?.id;
+  const businessId = business?.id;
   const [stats, setStats] = useState({ totalScans: 0, activeClients: 0, rewardsEarned: 0, walletInstalls: 0, returnRate: 0, avgVisits: 0 });
   const [scansTrend, setScansTrend] = useState<any[]>([]);
   const [segmentData, setSegmentData] = useState<any[]>([]);

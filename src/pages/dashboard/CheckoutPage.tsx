@@ -81,8 +81,8 @@ const CheckoutPage = () => {
     return () => clearTimeout(timerId);
   }, [checkoutSuccess]);
 
-  const currentPlan  = (business as any)?.subscription_plan as PlanKey | null;
-  const isActive     = (business as any)?.subscription_status === "active";
+  const currentPlan  = business?.subscription_plan as PlanKey | null;
+  const isActive     = business?.subscription_status === "active";
   const [portalLoading, setPortalLoading] = useState(false);
 
   const openPortal = async (flow?: string) => {

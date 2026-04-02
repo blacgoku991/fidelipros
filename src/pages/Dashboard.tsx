@@ -47,9 +47,9 @@ const Dashboard = () => {
   useEffect(() => {
     if (loading || hasRedirected.current) return;
     if (!business) return;
-    const name = (business as any).name;
-    const status = (business as any).subscription_status;
-    const onboardingCompleted = (business as any).onboarding_completed;
+    const name = business.name;
+    const status = business.subscription_status;
+    const onboardingCompleted = business.onboarding_completed;
     if (!name || name === "Mon Commerce") {
       hasRedirected.current = true;
       navigate("/onboarding-business");

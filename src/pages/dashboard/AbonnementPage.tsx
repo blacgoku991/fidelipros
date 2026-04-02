@@ -37,8 +37,8 @@ const AbonnementPage = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
-  const plan = (business as any)?.subscription_plan as PlanKey | null;
-  const status = (business as any)?.subscription_status as string | null;
+  const plan = business?.subscription_plan as PlanKey | null;
+  const status = business?.subscription_status as string | null;
   const planData = plan ? STRIPE_PLANS[plan] : null;
   const statusInfo = status ? (statusConfig[status] || statusConfig.inactive) : statusConfig.inactive;
   const Icon = plan ? (planIcons[plan] || CreditCard) : CreditCard;
