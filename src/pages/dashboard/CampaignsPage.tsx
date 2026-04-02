@@ -294,7 +294,7 @@ const CampaignsPage = () => {
 
     const segLabel = [...selectedSegments].join(",");
     const logs = customers.map(c => ({
-      business_id: (business as any).id,
+      business_id: business.id,
       customer_id: c.id,
       title: title.trim() || businessName,
       message: message.trim(),
