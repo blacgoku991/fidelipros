@@ -43,18 +43,16 @@ Deno.serve(async (req) => {
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
-    // Validate JWT — service_role tokens have role=service_role in claims
-    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
-    const isServiceRole = !claimsErr && claimsData?.claims?.role === "service_role";
+    // Check if token is the service role key (internal call)
+    const isServiceRole = token === sbKey;
 
     if (isServiceRole) {
       verifiedBusinessId = business_id;
     } else {
-      // Valider le JWT utilisateur
+      // Validate user JWT and verify business ownership
       const { data: userData, error: authErr } = await supabase.auth.getUser(token);
       if (authErr || !userData?.user) return json({ error: "Token invalide" }, 401);
 
-      // Vérifier que l'utilisateur possède ce business
       const { data: biz } = await supabase
         .from("businesses")
         .select("id")
