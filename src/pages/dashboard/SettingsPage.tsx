@@ -482,7 +482,7 @@ const SettingsPage = () => {
                 <p className="font-bold text-xs leading-tight">Rejoignez notre programme de fidélité 🎁</p>
                 <p className="text-[10px] text-white/80 mt-0.5 truncate">{business?.name || "Votre commerce"} — Cumulez des points à chaque visite</p>
               </div>
-              <span className="text-xs font-bold bg-white/95 px-3 py-1.5 rounded-lg shrink-0" style={{ color: (business as any)?.accent_color || "#F59E0B" }}>
+              <span className="text-xs font-bold bg-white/95 px-3 py-1.5 rounded-lg shrink-0" style={{ color: business?.accent_color || "#F59E0B" }}>
                 Rejoindre →
               </span>
             </div>

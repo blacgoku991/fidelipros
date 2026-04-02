@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export function BusinessResults() {
   const { business } = useAuth();
-  const businessId = (business as any)?.id;
+  const businessId = business?.id;
   const [stats, setStats] = useState({ returning: 0, rewardsUnlocked: 0, totalScans: 0, activeClients: 0 });
 
   useEffect(() => {
