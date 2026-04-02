@@ -112,6 +112,16 @@ const AdminUsers = () => {
       const { error: profileErr } = await supabase.from("profiles").delete().eq("id", userId);
       if (profileErr) errors.push(`profiles: ${profileErr.message}`);
 
+      // Delete from auth.users via edge function (requires service role)
+      const { data: authDeleteData, error: authDeleteErr } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: userId },
+      });
+      if (authDeleteErr) {
+        errors.push(`auth.users: ${authDeleteErr.message}`);
+      } else if (authDeleteData?.error) {
+        errors.push(`auth.users: ${authDeleteData.error}`);
+      }
+
       if (adminUser) {
         await supabase.from("admin_audit_logs").insert({
           admin_user_id: adminUser.id, action: "delete_user",
@@ -125,7 +135,7 @@ const AdminUsers = () => {
           duration: 8000,
         });
       } else {
-        toast.success(`Utilisateur "${user.full_name || user.email}" supprimé`);
+        toast.success(`Utilisateur "${user.full_name || user.email}" supprimé complètement`);
       }
 
       setDeleteTarget(null);

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Zap, Crown, ArrowRight, ChevronDown } from "lucide-react";
+import { Check, X, Zap, Crown, ArrowRight, ChevronDown, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Navbar } from "@/components/landing/Navbar";
@@ -14,13 +14,17 @@ const plans = [
     price: 29,
     icon: Zap,
     color: "from-blue-500 to-cyan-500",
-    description: "Parfait pour démarrer votre programme de fidélité.",
+    description: "L'essentiel pour lancer votre fidélisation.",
     features: [
-      "Jusqu'à 200 clients",
       "Scanner QR code",
       "Cartes de fidélité digitales",
-      "Gestion des récompenses",
-      "Dashboard basique",
+      "Apple Wallet & Google Wallet",
+      "Jusqu'à 200 clients",
+      "Gestion récompenses",
+      "Personnalisation carte (logo, couleurs)",
+      "Vitrine publique",
+      "Mode hors-ligne (PWA)",
+      "Export CSV",
       "Support par email",
     ],
   },
@@ -31,34 +35,68 @@ const plans = [
     icon: Crown,
     color: "from-violet-500 to-purple-600",
     popular: true,
-    description: "Le plan complet pour les commerçants ambitieux.",
+    description: "Tout pour fidéliser et faire revenir vos clients.",
     features: [
-      "Clients illimités",
       "Tout Starter +",
-      "Apple Wallet & Google Wallet",
+      "Clients illimités",
       "Notifications push ciblées",
-      "Analytics avancés",
-      "Scoring client",
       "Campagnes marketing",
-      "Géofencing",
+      "Automations (relance, anniversaire, win-back)",
+      "Analytics avancés (tendances, conversion)",
+      "Scoring client (Bronze/Silver/Gold)",
+      "Gamification (streaks, niveaux)",
+      "Notifications de proximité (géofencing)",
+      "Avis clients & Google Reviews",
+      "Webhooks API",
+      "Widget d'inscription intégrable",
       "Support prioritaire",
+    ],
+  },
+  {
+    key: "franchise",
+    name: "Franchise",
+    price: 149,
+    icon: Building2,
+    color: "from-emerald-500 to-teal-600",
+    description: "Pour les enseignes multi-sites. Un programme, plusieurs points de vente.",
+    features: [
+      "Tout Pro +",
+      "Jusqu'à 5 établissements inclus",
+      "Dashboard master multi-sites",
+      "Comparaison entre points de vente",
+      "Managers dédiés par établissement",
+      "Carte fidélité unifiée (1 carte = tous les sites)",
+      "+29€/établissement supplémentaire",
+      "Support dédié",
     ],
   },
 ];
 
 const comparison = [
-  { feature: "Clients", starter: "200", pro: "Illimités" },
-  { feature: "Scanner QR code", starter: true, pro: true },
-  { feature: "Cartes de fidélité digitales", starter: true, pro: true },
-  { feature: "Gestion récompenses", starter: true, pro: true },
-  { feature: "Apple Wallet", starter: false, pro: true },
-  { feature: "Google Wallet", starter: false, pro: true },
-  { feature: "Notifications push", starter: false, pro: true },
-  { feature: "Analytics avancés", starter: false, pro: true },
-  { feature: "Scoring client", starter: false, pro: true },
-  { feature: "Campagnes marketing", starter: false, pro: true },
-  { feature: "Géofencing", starter: false, pro: true },
-  { feature: "Support", starter: "Email", pro: "Prioritaire" },
+  { feature: "Scanner QR code", starter: true, pro: true, franchise: true },
+  { feature: "Cartes de fidélité digitales", starter: true, pro: true, franchise: true },
+  { feature: "Apple Wallet & Google Wallet", starter: true, pro: true, franchise: true },
+  { feature: "Personnalisation carte", starter: true, pro: true, franchise: true },
+  { feature: "Vitrine publique", starter: true, pro: true, franchise: true },
+  { feature: "Mode hors-ligne (PWA)", starter: true, pro: true, franchise: true },
+  { feature: "Export CSV", starter: true, pro: true, franchise: true },
+  { feature: "Clients", starter: "200 max", pro: "Illimités", franchise: "Illimités" },
+  { feature: "Notifications push", starter: false, pro: true, franchise: true },
+  { feature: "Campagnes marketing", starter: false, pro: true, franchise: true },
+  { feature: "Automations", starter: false, pro: true, franchise: true },
+  { feature: "Analytics avancés", starter: false, pro: true, franchise: true },
+  { feature: "Scoring client", starter: false, pro: true, franchise: true },
+  { feature: "Gamification", starter: false, pro: true, franchise: true },
+  { feature: "Avis clients", starter: false, pro: true, franchise: true },
+  { feature: "Google Reviews", starter: false, pro: true, franchise: true },
+  { feature: "Notifications de proximité", starter: false, pro: true, franchise: true },
+  { feature: "Webhooks API", starter: false, pro: true, franchise: true },
+  { feature: "Multi-établissements", starter: false, pro: false, franchise: "5 inclus" },
+  { feature: "Dashboard master", starter: false, pro: false, franchise: true },
+  { feature: "Comparaison sites", starter: false, pro: false, franchise: true },
+  { feature: "Managers par site", starter: false, pro: false, franchise: true },
+  { feature: "Carte unifiée", starter: false, pro: false, franchise: true },
+  { feature: "Support", starter: "Email", pro: "Prioritaire", franchise: "Dédié" },
 ];
 
 const faqs = [
@@ -146,7 +184,7 @@ const Tarifs = () => {
 
       {/* Plan cards */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
             return (
@@ -239,6 +277,7 @@ const Tarifs = () => {
                   <td className="p-4 text-muted-foreground">{row.feature}</td>
                   <td className="p-4 text-center"><Cell value={row.starter} /></td>
                   <td className={`p-4 text-center ${plans[1].popular ? "bg-primary/5" : ""}`}><Cell value={row.pro} /></td>
+                  <td className="p-4 text-center"><Cell value={(row as any).franchise} /></td>
                 </motion.tr>
               ))}
             </tbody>
