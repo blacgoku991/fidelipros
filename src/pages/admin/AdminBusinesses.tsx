@@ -34,6 +34,8 @@ const AdminBusinesses = () => {
   const [selectedBiz, setSelectedBiz] = useState<any>(null);
   const [bizStats, setBizStats] = useState<any>(null);
   const [suspendTarget, setSuspendTarget] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
 
   useEffect(() => { fetchAll(); }, []);
