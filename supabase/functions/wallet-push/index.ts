@@ -1,7 +1,7 @@
 // Edge function: Real APNs push for Apple Wallet pass updates
 // Uses token-based (P8/JWT) authentication — works with Deno's HTTP/2 fetch
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 

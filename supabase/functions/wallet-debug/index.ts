@@ -2,7 +2,7 @@
 // Returns real DB state: wallet_registrations, apns_logs, customer_cards wallet info
 // REQUIRES service-role key or authenticated super_admin
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
