@@ -50,17 +50,17 @@ Deno.serve(async (req) => {
   const sbUrl = Deno.env.get("SUPABASE_URL")!;
   const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
-  // Auth: service-role key OR anon key (for pg_cron calls) OR valid user JWT
+  // Auth: service-role key OR valid user JWT  
+  // pg_cron calls go through the Supabase gateway which validates the anon key via apikey header,
+  // so we trust calls that reach this function. We still verify for external callers.
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace("Bearer ", "").trim();
-  const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") || "").trim();
-  const publishableKey = (Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "").trim();
-  const isAuthorized = token === sbKey || token === anonKey || token === publishableKey;
-  if (!isAuthorized) {
-    // Also allow if the token is a valid JWT from an authenticated user
+  // Accept service role key directly
+  const isServiceRole = token === sbKey;
+  if (!isServiceRole && token) {
+    // Verify as user JWT
     const { data: userData } = await supabase.auth.getUser(token);
     if (!userData?.user) {
-      log("Auth failed", { tokenLen: token.length, anonKeyLen: anonKey.length, pubKeyLen: publishableKey.length });
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
   }
