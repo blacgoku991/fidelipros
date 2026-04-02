@@ -114,7 +114,7 @@ const CustomizePage = () => {
       city: business.city || "",
       phone: business.phone || "",
       website: business.website || "",
-      loyalty_type: business.loyalty_type || "points",
+      loyalty_type: (business.loyalty_type || "points") as BusinessConfig["loyalty_type"],
       max_points_per_card: business.max_points_per_card || 10,
       points_per_visit: business.points_per_visit || 1,
       points_per_euro: business.points_per_euro || 0,
