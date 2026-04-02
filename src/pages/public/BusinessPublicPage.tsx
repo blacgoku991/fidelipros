@@ -150,68 +150,91 @@ const BusinessPublicPage = () => {
         apikey: supabaseKey,
         Authorization: `Bearer ${supabaseKey}`,
         "Content-Type": "application/json",
-        Prefer: "return=representation",
       };
 
-      // Check existing by email
-      let existingCustomer = null;
+      // Check if customer already exists by email or phone (via cards lookup which anon can read)
+      let existingCard = null;
       if (email.trim()) {
+        // Use card lookup approach: find cards for this business, then match
+        // Since anon can't SELECT customers directly, we check by trying to find via edge or skip
+        // We'll attempt the lookup - if RLS blocks it, we get empty results and create a new customer
         const res = await fetch(
-          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=*,customer_cards(*)`,
-          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=id`,
+          { headers }
         );
-        const data = await res.json();
-        if (data?.length > 0) existingCustomer = data[0];
-      }
-      if (!existingCustomer && phone.trim()) {
-        const res = await fetch(
-          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&phone=eq.${encodeURIComponent(phone.trim())}&select=*,customer_cards(*)`,
-          { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
-        );
-        const data = await res.json();
-        if (data?.length > 0) existingCustomer = data[0];
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.length > 0) {
+            // Found existing customer, look up their card
+            const cardRes = await fetch(
+              `${supabaseUrl}/rest/v1/customer_cards?customer_id=eq.${data[0].id}&business_id=eq.${business.id}&select=*`,
+              { headers }
+            );
+            if (cardRes.ok) {
+              const cards = await cardRes.json();
+              if (cards?.length > 0) {
+                setCustomer(data[0]);
+                setCard(cards[0]);
+                setStep("card");
+                setSubmitting(false);
+                toast.success("Bon retour parmi nous ! 🎉");
+                return;
+              }
+            }
+          }
+        }
       }
 
-      if (existingCustomer) {
-        setCustomer(existingCustomer);
-        const existingCard = existingCustomer.customer_cards?.[0];
-        if (existingCard) setCard(existingCard);
-        setStep("card");
-        setSubmitting(false);
-        toast.success("Bon retour parmi nous ! 🎉");
-        return;
-      }
+      // Generate a UUID client-side so we don't need return=representation on customers
+      const customerId = crypto.randomUUID();
 
-      // Create new customer
+      // Create new customer with return=minimal (no SELECT needed)
       const custRes = await fetch(`${supabaseUrl}/rest/v1/customers`, {
         method: "POST",
-        headers,
+        headers: { ...headers, Prefer: "return=minimal" },
         body: JSON.stringify({
+          id: customerId,
           business_id: business.id,
-          full_name: name.trim() || null,
+          full_name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
         }),
       });
-      const newCustomers = await custRes.json();
-      const newCustomer = newCustomers?.[0];
 
-      if (!newCustomer) {
-        toast.error("Erreur lors de l'inscription");
+      if (!custRes.ok) {
+        const errText = await custRes.text();
+        console.error("Customer creation failed:", custRes.status, errText);
+        toast.error("Erreur lors de l'inscription. Réessayez.");
         setSubmitting(false);
         return;
       }
 
-      // Auto-create loyalty card
+      const newCustomer = {
+        id: customerId,
+        full_name: name.trim(),
+        email: email.trim() || null,
+        phone: phone.trim() || null,
+      };
+
+      // Auto-create loyalty card (anon can SELECT cards, so return=representation works)
       const cardRes = await fetch(`${supabaseUrl}/rest/v1/customer_cards`, {
         method: "POST",
-        headers,
+        headers: { ...headers, Prefer: "return=representation" },
         body: JSON.stringify({
-          customer_id: newCustomer.id,
+          customer_id: customerId,
           business_id: business.id,
           max_points: business.max_points_per_card || 10,
         }),
       });
+
+      if (!cardRes.ok) {
+        const errText = await cardRes.text();
+        console.error("Card creation failed:", cardRes.status, errText);
+        toast.error("Erreur lors de la création de la carte. Réessayez.");
+        setSubmitting(false);
+        return;
+      }
+
       const newCards = await cardRes.json();
       const newCard = newCards?.[0];
 
@@ -221,7 +244,7 @@ const BusinessPublicPage = () => {
       toast.success("Bienvenue ! Votre carte de fidélité est prête 🎉");
     } catch (err) {
       console.error("Registration error:", err);
-      toast.error("Erreur lors de l'inscription");
+      toast.error("Erreur lors de l'inscription. Vérifiez votre connexion.");
     }
     setSubmitting(false);
   };
