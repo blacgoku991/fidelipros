@@ -91,7 +91,7 @@ const RewardsPage = () => {
               <div className="space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Un café au choix..." className="rounded-xl" /></div>
               <div className="space-y-2">
                 <Label>Points requis</Label>
-                <Input type="number" value={form.points_required} onChange={(e) => setForm({ ...form, points_required: parseInt(e.target.value) || 10 })} className="rounded-xl" />
+                <Input type="number" min={1} value={form.points_required} onChange={(e) => setForm({ ...form, points_required: Math.max(1, parseInt(e.target.value) || 1) })} className="rounded-xl" />
               </div>
               <Button onClick={handleAdd} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">Créer la récompense</Button>
             </div>
