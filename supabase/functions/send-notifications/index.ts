@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       console.error("Google Wallet update error:", e);
     }
 
-    return json({ wallet: walletSent, google: googleUpdated, webpush: 0 });
+    return json({ wallet: walletSent, google: googleUpdated, webpush: 0, ...(walletError ? { wallet_error: walletError } : {}) });
   } catch (err) {
     console.error("send-notifications error:", err);
     return json({ error: "Internal server error" }, 500);
