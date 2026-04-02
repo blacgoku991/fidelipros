@@ -54,7 +54,8 @@ serve(async (req) => {
     const plan = body?.plan;
     if (!plan || typeof plan !== "string") throw new Error("Plan non spécifié");
 
-    const origin = body?.origin || req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
+    const rawOrigin = body?.origin || req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
     // Read Price ID from site_settings first
     const { data: settingRow } = await supabaseAdmin

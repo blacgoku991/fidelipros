@@ -55,7 +55,8 @@ serve(async (req) => {
       flow = body?.flow;
     } catch { /* no body */ }
 
-    const origin = req.headers.get("origin") || "https://apple-wallet-fixer.lovable.app";
+    const rawOrigin = req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
     // Simple portal session — let Stripe handle plan changes natively
     const portalSession = await stripe.billingPortal.sessions.create({
