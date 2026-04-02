@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
     for (const sn of serialNumbers) {
       let cardUpdate: Record<string, any> = {};
-      let effectiveMessage = change_message || "🔔 Mise à jour Wallet";
+      let effectiveMessage = "";
 
       // Fetch old values BEFORE update for changeMessage validation
       const { data: cardData } = await supabase
@@ -148,21 +148,25 @@ Deno.serve(async (req) => {
         // Actually increment points — the VALUE must change for visible notification
         newPts = Math.min(oldPts + 1, maxPts);
         cardUpdate.current_points = newPts;
-        effectiveMessage = change_message || `☕ +1 point ajouté ! ${newPts}/${maxPts}`;
         fieldValueActuallyChanged = newPts !== oldPts;
         console.log(`[Wallet Push] Points ${oldPts} → ${newPts} for card ${sn} (changed=${fieldValueActuallyChanged})`);
       }
 
-      // Always set a unique wallet_change_message so the "offer" field value changes
-      // WARNING: if the message is identical to old value, iOS won't show a changeMessage notification
-      if (effectiveMessage === oldChangeMessage) {
-        // Append timestamp to force a unique value
-        effectiveMessage = `${effectiveMessage} (${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
-        console.log(`[Wallet Push] ⚠ Message was identical to previous — appended timestamp to force change`);
-      }
-      fieldValueActuallyChanged = true; // offer field will always change now
+      // Only set wallet_change_message for campaigns (user-facing notifications)
+      // For other actions (points_increment, geofence, etc.), update the card silently
+      const isCampaign = act === "campaign";
 
-      cardUpdate.wallet_change_message = effectiveMessage;
+      if (isCampaign && change_message) {
+        effectiveMessage = change_message;
+        // If message is identical to previous, append timestamp to force unique value
+        if (effectiveMessage === oldChangeMessage) {
+          effectiveMessage = `${effectiveMessage} (${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
+          console.log(`[Wallet Push] ⚠ Message identical — appended timestamp`);
+        }
+        cardUpdate.wallet_change_message = effectiveMessage;
+        fieldValueActuallyChanged = true;
+      }
+
       cardUpdate.updated_at = now;
 
       const { error: updateErr } = await supabase
