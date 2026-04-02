@@ -453,14 +453,19 @@ async function buildPkpassForUpdate(
         { key: "reward", label: "RÉCOMPENSE", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
       ],
       auxiliaryFields: [
-        ...(latestOffer ? [{
-          key: "offer",
-          label: "",
-          value: latestOffer,
-          changeMessage: "%@",
+        ...(business.reward_description ? [{
+          key: "next_reward",
+          label: "PROCHAINE RÉCOMPENSE",
+          value: `${business.reward_description} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
         }] : []),
       ],
       backFields: [
+        ...(latestOffer ? [{
+          key: "latest_offer",
+          label: "📢 Dernière notification",
+          value: latestOffer,
+          changeMessage: "%@",
+        }] : []),
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },
         { key: "stats", label: "📊 Statistiques", value: `Points : ${pointsCurrent}/${pointsMax}\nVisites : ${customer?.total_visits || 0}\nNiveau : ${level.toUpperCase()}\nStreak : ${customer?.current_streak || 0} jours` },
         { key: "info", label: "ℹ️ À propos", value: `Programme de fidélité ${business.name}.` },
