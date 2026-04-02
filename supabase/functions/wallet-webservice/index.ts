@@ -305,7 +305,10 @@ async function handleGetLatestPass(
 
   await supabase
     .from("customer_cards")
-    .update({ wallet_last_fetched_at: new Date().toISOString() })
+    .update({
+      wallet_last_fetched_at: new Date().toISOString(),
+      wallet_change_message: null, // Clear campaign message after iOS fetches the pass
+    })
     .eq("id", card.id);
 
   try {
