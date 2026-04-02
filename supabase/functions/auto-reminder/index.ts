@@ -214,9 +214,4 @@ Deno.serve(async (req) => {
   }
 });
 
-function jsonResponse(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
+// jsonResponse is now defined inside the handler
