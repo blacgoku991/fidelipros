@@ -235,49 +235,21 @@ export async function buildPkpass(
           changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : business.loyalty_type === "cashback" ? "%@ de cagnotte !" : "%@ points !",
         },
       ],
-      primaryFields: [
-        {
-          key: "name",
-          label: "",
-          value: customer?.full_name || "Client",
-        },
-      ],
+      primaryFields: [],
       secondaryFields: [
         {
-          key: "level",
-          label: "STATUT",
-          value: `${levelEmoji} ${levelLabel}`,
+          key: "member",
+          label: "MEMBRE",
+          value: customer?.full_name || "Client",
         },
         {
-          key: "progress",
-          label: business.loyalty_type === "stamps" ? "PROGRESSION" : business.loyalty_type === "cashback" ? "SOLDE" : business.loyalty_type === "subscription" ? "STATUT" : "OBJECTIF",
-          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Actif" : `${pointsCurrent} / ${pointsMax}`,
-          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : "%@ points !",
-        },
-        {
-          key: "next_reward",
-          label: "PROCHAINE",
-          value: pointsToReward > 0 ? `encore ${pointsToReward}` : "🎁 Dispo !",
+          key: "reward",
+          label: "RÉCOMPENSE",
+          value: `${card.rewards_earned || 0}`,
           textAlignment: "PKTextAlignmentRight",
         },
       ],
       auxiliaryFields: [
-        {
-          key: "visits",
-          label: "VISITES",
-          value: `${customer?.total_visits || 0}`,
-        },
-        {
-          key: "streak",
-          label: "SÉRIE",
-          value: `${customer?.current_streak || 0}`,
-        },
-        {
-          key: "rewards",
-          label: "RÉCOMPENSES",
-          value: `${card.rewards_earned || 0}`,
-          textAlignment: "PKTextAlignmentRight",
-        },
         ...(latestOffer ? [{
           key: "offer",
           label: "",
@@ -291,16 +263,15 @@ export async function buildPkpass(
           label: "🎁 Récompense",
           value: business.reward_description || "Récompense offerte !",
         },
-        // Dynamic rewards from database
         ...(rewards.length > 0 ? [{
           key: "rewards_catalog",
           label: "🏆 Récompenses disponibles",
           value: rewards.map((r: any) => `• ${r.title} — ${r.points_required} pts${r.description ? ` (${r.description})` : ""}`).join("\n"),
         }] : []),
         {
-          key: "visits",
+          key: "stats",
           label: "📊 Statistiques",
-          value: `Visites : ${customer?.total_visits || 0}\nStreak : ${customer?.current_streak || 0} jours`,
+          value: `Points : ${pointsCurrent}/${pointsMax}\nVisites : ${customer?.total_visits || 0}\nNiveau : ${levelLabel}\nStreak : ${customer?.current_streak || 0} jours`,
         },
         {
           key: "info",
