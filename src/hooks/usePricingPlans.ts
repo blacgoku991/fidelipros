@@ -17,7 +17,7 @@ function parseFeatures(json: string | undefined, fallback: readonly string[]): s
   try { return JSON.parse(json); } catch { return [...fallback]; }
 }
 
-export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; isLoading: boolean } {
+export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; franchise: PricingPlan; isLoading: boolean } {
   const { data: s, isLoading } = useSiteSettings();
 
   const starter: PricingPlan = {
