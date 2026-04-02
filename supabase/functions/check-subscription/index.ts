@@ -19,6 +19,27 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
   prod_UEuSxVTVVLAifJ: "pro",
 };
 
+// Also resolve plan from site_settings (for dynamically created Stripe products like franchise)
+async function resolveProductPlan(supabaseAdmin: any, productId: string, metadataPlan: string | undefined): Promise<string> {
+  // 1. Check hardcoded map
+  if (PRODUCT_TO_PLAN[productId]) return PRODUCT_TO_PLAN[productId];
+  // 2. Check metadata
+  if (metadataPlan) return metadataPlan;
+  // 3. Check site_settings for franchise product
+  const { data } = await supabaseAdmin
+    .from("site_settings")
+    .select("key, value")
+    .in("key", ["stripe_product_starter", "stripe_product_pro", "stripe_product_franchise"]);
+  if (data) {
+    for (const row of data) {
+      if (row.value === productId) {
+        return row.key.replace("stripe_product_", "");
+      }
+    }
+  }
+  return "starter";
+}
+
 const log = (step: string, details?: any) =>
   console.log(`[CHECK-SUB] ${step}${details ? ` — ${JSON.stringify(details)}` : ""}`);
 
@@ -82,7 +103,7 @@ serve(async (req) => {
         if (sub && (sub.status === "active" || sub.status === "trialing")) {
           activeSub = sub;
           const productId = sub.items.data[0]?.price?.product as string;
-          plan = PRODUCT_TO_PLAN[productId] ?? sub.metadata?.plan ?? "starter";
+          plan = await resolveProductPlan(supabaseAdmin, productId, sub.metadata?.plan);
           log("Active sub via session", { subId: sub.id, plan, status: sub.status });
         }
       } catch (err) {
@@ -112,7 +133,7 @@ serve(async (req) => {
       if (allSubs.length > 0) {
         activeSub = allSubs[0];
         const productId = activeSub.items.data[0]?.price?.product as string;
-        plan = PRODUCT_TO_PLAN[productId] ?? activeSub.metadata?.plan ?? "starter";
+        plan = await resolveProductPlan(supabaseAdmin, productId, activeSub.metadata?.plan);
         log("Active sub via customer", { subId: activeSub.id, plan, status: activeSub.status });
       }
     }
@@ -126,11 +147,15 @@ serve(async (req) => {
         .maybeSingle();
 
       if (bizData) {
+        const franchiseFields = plan === "franchise"
+          ? { is_franchise: true, max_locations: 5 }
+          : {};
         const { error: updateErr } = await supabaseAdmin.from("businesses").update({
           subscription_status: activeSub.status === "trialing" ? "trialing" : "active",
           subscription_plan: plan,
           stripe_customer_id: customerId,
           stripe_subscription_id: activeSub.id,
+          ...franchiseFields,
         }).eq("id", bizData.id);
 
         if (updateErr) log("DB update error", { err: updateErr.message });
@@ -158,7 +183,7 @@ serve(async (req) => {
       if (pastDueSubs.data.length > 0) {
         const sub = pastDueSubs.data[0];
         const productId = sub.items.data[0]?.price?.product as string;
-        const pastPlan = PRODUCT_TO_PLAN[productId] ?? "starter";
+        const pastPlan = await resolveProductPlan(supabaseAdmin, productId, sub.metadata?.plan);
 
         const { data: bizData } = await supabaseAdmin
           .from("businesses").select("id").eq("owner_id", user.id).maybeSingle();

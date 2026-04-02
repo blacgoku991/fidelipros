@@ -18,6 +18,7 @@ function getCorsHeaders(req: Request) {
 const FALLBACK_PLANS: Record<string, string> = {
   starter:    Deno.env.get("STRIPE_PRICE_STARTER")    || "price_1TGQcwFQlLT8Im0J1OI53niu",
   pro:        Deno.env.get("STRIPE_PRICE_PRO")        || "price_1TGQdDFQlLT8Im0J7YQ9OWuG",
+  franchise:  Deno.env.get("STRIPE_PRICE_FRANCHISE")  || "",
   enterprise: Deno.env.get("STRIPE_PRICE_ENTERPRISE") || "price_1TGQdVFQlLT8Im0JMB3Y4hmT",
 };
 
