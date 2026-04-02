@@ -2,7 +2,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
-import { businessSidebarItems, businessSidebarGroups } from "@/lib/sidebarItems";
+import {
+  businessSidebarItems, businessSidebarGroups,
+  franchiseSidebarGroups,
+  locationManagerSidebarGroups,
+} from "@/lib/sidebarItems";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,7 +16,14 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title, subtitle, headerAction }: DashboardLayoutProps) {
-  const { loading, logout } = useAuth();
+  const { loading, logout, isFranchiseOwner, locationId, locationName } = useAuth();
+
+  const groups = locationId
+    ? locationManagerSidebarGroups
+    : isFranchiseOwner
+      ? franchiseSidebarGroups
+      : businessSidebarGroups;
+  const items = groups.flatMap(g => g.items);
 
   if (loading) {
     return (
@@ -24,15 +35,20 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
 
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar items={businessSidebarItems} groups={businessSidebarGroups} onLogout={logout} />
+      <DashboardSidebar items={items} groups={groups} onLogout={logout} />
       <main className="lg:ml-64 min-h-screen flex flex-col">
-        <MobileHeader onLogout={logout} items={businessSidebarItems} groups={businessSidebarGroups} />
+        <MobileHeader onLogout={logout} items={items} groups={groups} />
 
         {/* Page header */}
         <div className="sticky top-0 lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <h1 className="text-lg sm:text-2xl font-display font-bold tracking-tight truncate">{title}</h1>
+              {locationName && (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5 mt-0.5">
+                  📍 {locationName}
+                </span>
+              )}
               {subtitle && (
                 <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 truncate">{subtitle}</p>
               )}

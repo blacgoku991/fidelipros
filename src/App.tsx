@@ -28,6 +28,9 @@ const CampaignsPage = lazy(() => import("./pages/dashboard/CampaignsPage"));
 const AbonnementPage = lazy(() => import("./pages/dashboard/AbonnementPage"));
 const AutomationsPage = lazy(() => import("./pages/dashboard/AutomationsPage"));
 const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
+const LocationsPage = lazy(() => import("./pages/dashboard/LocationsPage"));
+const LocationsComparePage = lazy(() => import("./pages/dashboard/LocationsComparePage"));
+const ManagersPage = lazy(() => import("./pages/dashboard/ManagersPage"));
 
 // Lazy-loaded: Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -101,6 +104,9 @@ const App = () => (
                 <Route path="/dashboard/abonnement" element={<AbonnementPage />} />
                 <Route path="/dashboard/automations" element={<AutomationsPage />} />
                 <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
+                <Route path="/dashboard/locations" element={<LocationsPage />} />
+                <Route path="/dashboard/locations/compare" element={<LocationsComparePage />} />
+                <Route path="/dashboard/managers" element={<ManagersPage />} />
                 <Route path="/payment" element={<CheckoutPage />} />
                 {/* Redirects for removed pages */}
                 <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />

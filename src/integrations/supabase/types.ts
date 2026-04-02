@@ -134,6 +134,8 @@ export type Database = {
           geofence_time_start: string | null
           id: string
           is_demo: boolean
+          is_franchise: boolean
+          max_locations: number
           label_color: string | null
           latitude: number | null
           logo_url: string | null
@@ -218,6 +220,8 @@ export type Database = {
           geofence_time_start?: string | null
           id?: string
           is_demo?: boolean
+          is_franchise?: boolean
+          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
@@ -302,6 +306,8 @@ export type Database = {
           geofence_time_start?: string | null
           id?: string
           is_demo?: boolean
+          is_franchise?: boolean
+          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
@@ -746,17 +752,55 @@ export type Database = {
         }
         Relationships: []
       }
+      location_managers: {
+        Row: {
+          id: string
+          location_id: string
+          user_id: string
+          role: string
+          invited_at: string
+          accepted_at: string | null
+        }
+        Insert: {
+          id?: string
+          location_id: string
+          user_id: string
+          role?: string
+          invited_at?: string
+          accepted_at?: string | null
+        }
+        Update: {
+          id?: string
+          location_id?: string
+          user_id?: string
+          role?: string
+          invited_at?: string
+          accepted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_managers_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       merchant_locations: {
         Row: {
           address: string | null
           business_id: string
           city: string | null
           created_at: string
+          email: string | null
           id: string
           is_active: boolean
           latitude: number | null
           longitude: number | null
+          manager_user_id: string | null
           name: string
+          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -764,11 +808,14 @@ export type Database = {
           business_id: string
           city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
+          manager_user_id?: string | null
           name: string
+          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -776,11 +823,14 @@ export type Database = {
           business_id?: string
           city?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
+          manager_user_id?: string | null
           name?: string
+          phone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1031,6 +1081,7 @@ export type Database = {
           created_at: string
           customer_id: string
           id: string
+          location_id: string | null
           note: string | null
           points_added: number
           scanned_by: string | null
@@ -1042,6 +1093,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           id?: string
+          location_id?: string | null
           note?: string | null
           points_added?: number
           scanned_by?: string | null
@@ -1053,6 +1105,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           id?: string
+          location_id?: string | null
           note?: string | null
           points_added?: number
           scanned_by?: string | null

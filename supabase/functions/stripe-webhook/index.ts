@@ -56,11 +56,15 @@ serve(async (req) => {
           const mappedStatus = sub.status === "active" ? "active"
             : sub.status === "trialing" ? "trialing"
             : "inactive";
+          const franchiseFields = plan === "franchise"
+            ? { is_franchise: true, max_locations: 5 }
+            : {};
           await supabase.from("businesses").update({
             subscription_status: mappedStatus,
             ...(plan ? { subscription_plan: plan } : {}),
             stripe_subscription_id: sub.id,
             stripe_customer_id: customerId,
+            ...franchiseFields,
           }).eq("owner_id", userId);
         }
         break;
@@ -74,6 +78,11 @@ serve(async (req) => {
         const customerId = sub.customer as string;
 
         if (userId) {
+          const franchiseFields = plan === "franchise"
+            ? { is_franchise: true, max_locations: 5 }
+            : plan && plan !== "franchise"
+              ? { is_franchise: false }
+              : {};
           await supabase.from("businesses").update({
             subscription_status: status === "active" ? "active"
               : status === "past_due" ? "past_due"
@@ -83,6 +92,7 @@ serve(async (req) => {
             ...(plan ? { subscription_plan: plan } : {}),
             stripe_subscription_id: sub.id,
             stripe_customer_id: customerId,
+            ...franchiseFields,
           }).eq("owner_id", userId);
         }
         break;
@@ -168,11 +178,15 @@ serve(async (req) => {
           if (subscriptionId) {
             const sub = await stripe.subscriptions.retrieve(subscriptionId);
             plan = sub.metadata?.plan ?? null;
+            const franchiseFields = plan === "franchise"
+              ? { is_franchise: true, max_locations: 5 }
+              : {};
             await supabase.from("businesses").update({
               subscription_status: "active",
               ...(plan ? { subscription_plan: plan } : {}),
               stripe_customer_id: customerId,
               stripe_subscription_id: subscriptionId,
+              ...franchiseFields,
             }).eq("id", bizId);
           } else {
             await supabase.from("businesses").update({

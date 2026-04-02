@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const ScannerPage = () => {
-  const { user, business } = useAuth();
+  const { user, business, locationId } = useAuth();
   const [cardCode, setCardCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -96,6 +96,7 @@ const ScannerPage = () => {
       points_added: 1,
       action: "scan",
       scanned_by: user.id,
+      ...(locationId ? { location_id: locationId } : {}),
     });
 
     setLastScan({
