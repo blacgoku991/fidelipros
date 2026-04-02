@@ -197,12 +197,19 @@ const Dashboard = () => {
       ? `🎁 Récompense débloquée chez ${business.name} !`
       : `${addedLabel} chez ${business.name} ! ${newPoints}/${maxPts} ${unitLabelPlural}.`;
 
-    await supabase.from("customer_cards").update({
+    const { error: updateError } = await supabase.from("customer_cards").update({
       current_points: rewardEarned ? 0 : newPoints,
       rewards_earned: rewardEarned ? (card.rewards_earned || 0) + 1 : card.rewards_earned,
       wallet_change_message: changeMsg,
       updated_at: new Date().toISOString(),
     }).eq("id", card.id);
+
+    if (updateError) {
+      console.error("Card update failed:", updateError);
+      setPopup({ open: true, type: "error", title: "Erreur", message: "La mise à jour des points a échoué. Réessayez." });
+      setScanning(false);
+      return;
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();

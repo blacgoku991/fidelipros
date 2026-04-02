@@ -53,15 +53,20 @@ const AbonnementPage = () => {
 
   // Auto-refresh when returning from Stripe portal (detected via visibility change)
   useEffect(() => {
+    let wasHidden = false;
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && portalLoading) {
+      if (document.visibilityState === "hidden") {
+        wasHidden = true;
+      }
+      if (document.visibilityState === "visible" && wasHidden) {
+        wasHidden = false;
         setPortalLoading(false);
         refreshSubscription();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
     return () => document.removeEventListener("visibilitychange", handleVisibility);
-  }, [portalLoading, refreshSubscription]);
+  }, [refreshSubscription]);
 
   // Also check URL param for portal return
   useEffect(() => {
