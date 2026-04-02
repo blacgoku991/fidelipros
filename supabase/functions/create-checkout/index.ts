@@ -130,7 +130,7 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: "subscription",
-      success_url: `${origin}/setup?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${origin}/dashboard/checkout?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/dashboard/checkout?plan=${plan}`,
       payment_method_types: ["card"],
       subscription_data: {
