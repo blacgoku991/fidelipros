@@ -1,7 +1,7 @@
 // Edge function: Auto-reminder for inactive customers + birthday notifications
 // Checks automations rules and sends push notifications via wallet-push
 
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
