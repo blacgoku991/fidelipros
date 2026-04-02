@@ -58,40 +58,66 @@ const AdminUsers = () => {
 
   const handleDeleteUser = async (user: any) => {
     setDeleting(true);
+    const errors: string[] = [];
     try {
       const userId = user.id;
       const bizId = user.business?.id;
 
       if (bizId) {
-        // Delete all business-related data
-        await Promise.all([
-          supabase.from("points_history").delete().eq("business_id", bizId),
-          supabase.from("customer_scores").delete().eq("business_id", bizId),
-          supabase.from("notifications_log").delete().eq("business_id", bizId),
-          supabase.from("notification_campaigns").delete().eq("business_id", bizId),
-          supabase.from("notification_templates").delete().eq("business_id", bizId),
-          supabase.from("automations").delete().eq("business_id", bizId),
-          supabase.from("special_events").delete().eq("business_id", bizId),
-          supabase.from("wallet_registrations").delete().eq("business_id", bizId),
-          supabase.from("digest_logs").delete().eq("merchant_id", bizId),
-          supabase.from("merchant_locations").delete().eq("business_id", bizId),
-          supabase.from("user_merchant_points").delete().eq("business_id", bizId),
-          supabase.from("demo_sessions").delete().eq("business_id", bizId),
-          supabase.from("rewards").delete().eq("business_id", bizId),
-        ]);
-        await supabase.from("customer_cards").delete().eq("business_id", bizId);
-        await supabase.from("customers").delete().eq("business_id", bizId);
-        await supabase.from("businesses").delete().eq("id", bizId);
+        // Delete all business-related data sequentially with error tracking
+        const bizTables = [
+          { table: "points_history", col: "business_id" },
+          { table: "customer_scores", col: "business_id" },
+          { table: "notifications_log", col: "business_id" },
+          { table: "notification_campaigns", col: "business_id" },
+          { table: "notification_templates", col: "business_id" },
+          { table: "automations", col: "business_id" },
+          { table: "special_events", col: "business_id" },
+          { table: "wallet_registrations", col: "business_id" },
+          { table: "digest_logs", col: "merchant_id" },
+          { table: "merchant_locations", col: "business_id" },
+          { table: "user_merchant_points", col: "business_id" },
+          { table: "demo_sessions", col: "business_id" },
+          { table: "rewards", col: "business_id" },
+        ] as const;
+
+        for (const { table, col } of bizTables) {
+          const { error } = await supabase.from(table).delete().eq(col, bizId);
+          if (error) errors.push(`${table}: ${error.message}`);
+        }
+
+        // These depend on the above being cleared first
+        const { error: cardErr } = await supabase.from("customer_cards").delete().eq("business_id", bizId);
+        if (cardErr) errors.push(`customer_cards: ${cardErr.message}`);
+
+        const { error: custErr } = await supabase.from("customers").delete().eq("business_id", bizId);
+        if (custErr) errors.push(`customers: ${custErr.message}`);
+
+        const { error: bizErr } = await supabase.from("businesses").delete().eq("id", bizId);
+        if (bizErr) errors.push(`businesses: ${bizErr.message}`);
       }
 
-      await supabase.from("user_roles").delete().eq("user_id", userId);
-      await supabase.from("profiles").delete().eq("id", userId);
+      const { error: roleErr } = await supabase.from("user_roles").delete().eq("user_id", userId);
+      if (roleErr) errors.push(`user_roles: ${roleErr.message}`);
 
-      toast.success(`Utilisateur "${user.full_name || user.email}" supprimé`);
+      const { error: profileErr } = await supabase.from("profiles").delete().eq("id", userId);
+      if (profileErr) errors.push(`profiles: ${profileErr.message}`);
+
+      if (errors.length > 0) {
+        toast.warning(`Utilisateur supprimé partiellement. ${errors.length} erreur(s)`, {
+          description: errors.slice(0, 3).join(", "),
+          duration: 8000,
+        });
+        console.error("Deletion errors:", errors);
+      } else {
+        toast.success(`Utilisateur "${user.full_name || user.email}" supprimé`);
+      }
+
       setDeleteTarget(null);
       fetchUsers();
     } catch (err) {
-      toast.error("Erreur lors de la suppression");
+      toast.error("Erreur critique lors de la suppression");
+      console.error("Delete user error:", err);
     } finally {
       setDeleting(false);
     }

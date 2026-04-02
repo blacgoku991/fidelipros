@@ -85,7 +85,7 @@ const ScannerPage = () => {
         current_streak: newStreak,
         longest_streak: Math.max(newStreak, customer.longest_streak),
         last_visit_at: new Date().toISOString(),
-        level: customer.total_points + 1 >= 50 ? "gold" : customer.total_points + 1 >= 20 ? "silver" : "bronze",
+        level: customer.total_points + 1 >= 25 ? "gold" : customer.total_points + 1 >= 10 ? "silver" : "bronze",
       })
       .eq("id", customer.id);
 
