@@ -473,7 +473,7 @@ const SettingsPage = () => {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Aperçu du widget</p>
             <div
               className="flex items-center gap-3 p-3.5 rounded-2xl text-white shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${(business as any)?.accent_color || "#F59E0B"}f0, ${(business as any)?.accent_color || "#F59E0B"}cc)` }}
+              style={{ background: `linear-gradient(135deg, ${business?.accent_color || "#F59E0B"}f0, ${business?.accent_color || "#F59E0B"}cc)` }}
             >
               <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                 <Gift className="w-4 h-4 text-white" />
