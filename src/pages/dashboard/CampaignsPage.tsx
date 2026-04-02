@@ -545,16 +545,6 @@ const CampaignsPage = () => {
                     {/* Fields */}
                     <div className="flex-1 space-y-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Titre</Label>
-                        <Input
-                          value={title}
-                          onChange={e => setTitle(e.target.value.slice(0, 60))}
-                          placeholder="Ex : Offre spéciale weekend 🎉"
-                          className="h-11 rounded-xl"
-                          maxLength={60}
-                        />
-                      </div>
-                      <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Message *</Label>
                           <span className={`text-xs font-mono font-semibold tabular-nums transition-colors ${counterColor}`}>
