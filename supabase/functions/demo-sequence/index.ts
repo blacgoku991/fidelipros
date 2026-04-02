@@ -13,14 +13,16 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-function json(data: any, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
-  });
-}
-
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
+  function json(data: any, status = 200) {
+    return new Response(JSON.stringify(data), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
