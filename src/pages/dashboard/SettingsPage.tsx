@@ -185,7 +185,7 @@ const SettingsPage = () => {
   };
 
   const handleSaveGeofencing = async () => {
-    if (!business) return;
+    if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingGeo(true);
     const { error } = await supabase.from("businesses").update({
       geofence_enabled: geoEnabled,
