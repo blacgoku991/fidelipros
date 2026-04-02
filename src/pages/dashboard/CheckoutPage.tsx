@@ -65,7 +65,8 @@ const CheckoutPage = () => {
         if (data?.subscribed) {
           setActivationProgress(100);
           setActivationDone(true);
-          setTimeout(() => window.location.replace("/dashboard"), 700);
+          // Redirect to setup wizard for onboarding if not completed
+          setTimeout(() => window.location.replace("/setup"), 700);
           return;
         }
       } catch { /* continuer */ }
