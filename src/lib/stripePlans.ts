@@ -32,6 +32,7 @@ export const STRIPE_PLANS = {
       "Analytics avancés",
       "Scoring client (Bronze/Silver/Gold)",
       "Gamification (streaks, niveaux)",
+      "Notifications de proximité (géofencing)",
       "Avis clients & Google Reviews",
       "Webhooks API",
       "Widget d'inscription",
