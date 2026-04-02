@@ -33,11 +33,9 @@ Deno.serve(async (req) => {
 
     if (!token) return json({ error: "Non authentifié" }, 401);
 
-    // Appel interne (service_role) → bypass ownership check
-    const isInternal = token === sbKey;
-
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
+    // Check if this is a service-role call (internal) via getClaims
     let verifiedBusinessId: string | null = null;
 
     const body = await req.json();
@@ -45,7 +43,11 @@ Deno.serve(async (req) => {
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
-    if (isInternal) {
+    // Validate JWT — service_role tokens have role=service_role in claims
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
+    const isServiceRole = !claimsErr && claimsData?.claims?.role === "service_role";
+
+    if (isServiceRole) {
       verifiedBusinessId = business_id;
     } else {
       // Valider le JWT utilisateur

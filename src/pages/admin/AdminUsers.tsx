@@ -82,7 +82,7 @@ const AdminUsers = () => {
         ] as const;
 
         for (const { table, col } of bizTables) {
-          const { error } = await supabase.from(table).delete().eq(col, bizId);
+          const { error } = await (supabase.from(table).delete() as any).eq(col, bizId);
           if (error) errors.push(`${table}: ${error.message}`);
         }
 
