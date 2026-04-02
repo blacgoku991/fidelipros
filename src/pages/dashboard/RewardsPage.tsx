@@ -49,6 +49,7 @@ const RewardsPage = () => {
 
   const handleAdd = async () => {
     if (!form.title.trim() || !business) { toast.error("Titre requis"); return; }
+    if (form.points_required < 1) { toast.error("Les points requis doivent être au minimum 1"); return; }
     await supabase.from("rewards").insert({
       business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
     });
