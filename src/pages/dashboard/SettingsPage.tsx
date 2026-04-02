@@ -243,7 +243,7 @@ const SettingsPage = () => {
   };
 
   const handleSaveAutomation = async () => {
-    if (!business) return;
+    if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingAuto(true);
     const { error } = await supabase.from("businesses").update({
       birthday_notif_enabled: birthdayEnabled,
