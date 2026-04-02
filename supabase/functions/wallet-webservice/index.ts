@@ -154,10 +154,8 @@ async function handleRegisterDevice(
     console.log(`[PassKit WS]   ✗ No card found for serialNumber=${serialNumber}`);
     return new Response("Unauthorized", { status: 401 });
   }
-  if (card.wallet_auth_token !== authToken) {
-    console.log(`[PassKit WS]   ✗ Auth token MISMATCH`);
-    console.log(`[PassKit WS]     pass token (len=${authToken.length}): ${authToken.slice(0, 8)}...${authToken.slice(-8)}`);
-    console.log(`[PassKit WS]     DB   token (len=${card.wallet_auth_token?.length ?? 0}): ${card.wallet_auth_token?.slice(0, 8) ?? "NULL"}...${card.wallet_auth_token?.slice(-8) ?? ""}`);
+  if (!card.wallet_auth_token || card.wallet_auth_token !== authToken) {
+    console.log(`[PassKit WS]   ✗ Auth token MISMATCH or NULL`);
     console.log(`[PassKit WS]     DB wallet_auth_token IS NULL: ${card.wallet_auth_token === null}`);
     return new Response("Unauthorized", { status: 401 });
   }
