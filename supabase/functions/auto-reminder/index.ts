@@ -24,6 +24,12 @@ const log = (step: string, details?: any) => {
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
+  const jsonResponse = (data: any, status = 200) =>
+    new Response(JSON.stringify(data), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
