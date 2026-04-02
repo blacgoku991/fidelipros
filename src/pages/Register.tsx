@@ -6,7 +6,7 @@ import { AuthNavbar } from "@/components/AuthNavbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CreditCard, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Check, Zap, Crown, Mail } from "lucide-react";
+import { CreditCard, Eye, EyeOff, Loader2, CheckCircle2, ArrowRight, ArrowLeft, Check, Zap, Crown, Mail, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { type PlanKey } from "@/lib/stripePlans";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const planIcons: Record<PlanKey, React.ElementType> = {
   starter: Zap,
   pro: Crown,
-  franchise: CreditCard,
+  franchise: Building2,
 };
 
 const planColors: Record<PlanKey, string> = {
@@ -30,10 +30,10 @@ const Register = () => {
   const [step, setStep] = useState<"plan" | "account">("plan");
   const initialPlan = searchParams.get("plan") as PlanKey;
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(
-    (initialPlan === "starter" || initialPlan === "pro") ? initialPlan : "pro"
+    (initialPlan === "starter" || initialPlan === "pro" || initialPlan === "franchise") ? initialPlan : "pro"
   );
-  const { starter, pro } = usePricingPlans();
-  const pricingPlans = [starter, pro];
+  const { starter, pro, franchise } = usePricingPlans();
+  const pricingPlans = [starter, pro, franchise];
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
