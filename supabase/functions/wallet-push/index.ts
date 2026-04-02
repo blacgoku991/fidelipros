@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "").trim();
 
-    if (!token) return new Response(JSON.stringify({ error: "Non authentifié" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!token) return jsonResponse({ error: "Non authentifié" }, 401);
 
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
