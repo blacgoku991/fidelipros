@@ -118,6 +118,7 @@ const AdminBusinesses = () => {
     }
   };
 
+  const impersonateBusiness = (biz: any) => {
     localStorage.setItem("impersonating_business", biz.id);
     localStorage.setItem("impersonating_business_name", biz.name);
     setImpersonating(biz.id);
@@ -265,7 +266,7 @@ const AdminBusinesses = () => {
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Aperçu rapide" onClick={() => viewBizDetails(biz)}>
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifier" onClick={() => startImpersonation(biz)}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" title="Impersonifier" onClick={() => impersonateBusiness(biz)}>
                         <LogIn className="w-4 h-4" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8" title={isActive ? "Suspendre" : "Réactiver"}
@@ -350,7 +351,7 @@ const AdminBusinesses = () => {
                   Voir en détail
                 </Button>
                 <Button variant="outline" className="flex-1 rounded-xl text-xs gap-1"
-                  onClick={() => { setSelectedBiz(null); startImpersonation(selectedBiz); }}>
+                  onClick={() => { setSelectedBiz(null); impersonateBusiness(selectedBiz); }}>
                   <LogIn className="w-3 h-3" /> Impersonifier
                 </Button>
               </div>

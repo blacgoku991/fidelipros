@@ -92,6 +92,7 @@ export type Database = {
           feature_rich_notifications: boolean | null
           feature_special_events: boolean | null
           feature_wallet: boolean | null
+          foreground_color: string | null
           geofence_enabled: boolean | null
           geofence_message: string | null
           geofence_radius: number | null
@@ -100,6 +101,7 @@ export type Database = {
           geofence_time_start: string | null
           id: string
           is_demo: boolean
+          label_color: string | null
           latitude: number | null
           logo_url: string | null
           longitude: number | null
@@ -174,6 +176,7 @@ export type Database = {
           feature_rich_notifications?: boolean | null
           feature_special_events?: boolean | null
           feature_wallet?: boolean | null
+          foreground_color?: string | null
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
@@ -182,6 +185,7 @@ export type Database = {
           geofence_time_start?: string | null
           id?: string
           is_demo?: boolean
+          label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
@@ -256,6 +260,7 @@ export type Database = {
           feature_rich_notifications?: boolean | null
           feature_special_events?: boolean | null
           feature_wallet?: boolean | null
+          foreground_color?: string | null
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
@@ -264,6 +269,7 @@ export type Database = {
           geofence_time_start?: string | null
           id?: string
           is_demo?: boolean
+          label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
