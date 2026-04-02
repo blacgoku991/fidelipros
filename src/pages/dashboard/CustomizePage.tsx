@@ -122,7 +122,7 @@ const CustomizePage = () => {
       primary_color: business.primary_color || "#6B46C1",
       secondary_color: business.secondary_color || "#F6AD55",
       card_style: business.card_style || "classic",
-      card_bg_type: business.card_bg_type || "gradient",
+      card_bg_type: (business.card_bg_type || "gradient") as BusinessConfig["card_bg_type"],
       show_customer_name: business.show_customer_name ?? true,
       show_qr_code: business.show_qr_code ?? true,
       show_points: business.show_points ?? true,
