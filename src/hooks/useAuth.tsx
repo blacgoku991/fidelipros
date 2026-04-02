@@ -46,7 +46,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUser(data.session.user);
+      // Verify the user still exists (handles deleted accounts with stale sessions)
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (!active) return;
+
+      if (userError || !userData.user) {
+        console.warn("[Auth] Session exists but user is invalid/deleted, signing out");
+        await supabase.auth.signOut();
+        setUser(null);
+        setRole(null);
+        setBusiness(null);
+        setLocationId(null);
+        setLocationName(null);
+        setLoading(false);
+        return;
+      }
+
+      setUser(userData.user);
     };
 
     const {
