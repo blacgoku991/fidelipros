@@ -65,4 +65,5 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: Mail, label: "Emails programmés", path: "/admin/digest" },
   { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
   { icon: Wand2, label: "Démo Generator", path: "/admin/demos" },
+  { icon: Shield, label: "Journal d'audit", path: "/admin/audit" },
 ];
