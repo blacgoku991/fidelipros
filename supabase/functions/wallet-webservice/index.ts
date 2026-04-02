@@ -313,7 +313,7 @@ async function handleGetLatestPass(
 
   try {
     const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token);
-    return new Response(pkpass, {
+    return new Response(pkpass as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
