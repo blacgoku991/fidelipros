@@ -52,7 +52,7 @@ serve(async (req) => {
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY non configuré dans les secrets Supabase");
 
     const stripe = new Stripe(stripeKey, {
-      apiVersion: "2025-08-27.basil" as any,
+      apiVersion: "2023-10-16",
     });
 
     const body = await req.json();
