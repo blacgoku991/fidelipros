@@ -99,7 +99,8 @@ const AutomationsPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("automations").delete().eq("id", id);
+    const { error } = await supabase.from("automations").delete().eq("id", id);
+    if (error) { toast.error("Erreur lors de la suppression"); return; }
     toast.success("Automation supprimée");
     fetchAutomations();
   };
