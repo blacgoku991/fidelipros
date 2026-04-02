@@ -50,11 +50,12 @@ Deno.serve(async (req) => {
   const sbUrl = Deno.env.get("SUPABASE_URL")!;
   const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
-  // Auth: only service-role
+  // Auth: service-role key OR anon key (for pg_cron calls)
   const authHeader = req.headers.get("Authorization") || "";
-  const token = authHeader.replace("Bearer ", "");
-  if (token !== sbKey) {
-    return jsonResponse({ error: "Unauthorized — service-role key required" }, 401);
+  const token = authHeader.replace("Bearer ", "").trim();
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+  if (token !== sbKey && token !== anonKey) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
   }
 
   try {
