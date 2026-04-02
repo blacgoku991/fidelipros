@@ -474,6 +474,7 @@ async function buildPkpassForUpdate(
   const p7 = forge.pkcs7.createSignedData();
   p7.content = forge.util.createBuffer(manifestStr, "utf8");
   p7.addCertificate(signerCert);
+  p7.addCertificate(wwdrCert); // WWDR G4 required in Apple Wallet signature chain
   for (const cert of certificateChain) p7.addCertificate(cert);
   p7.addSigner({
     key: signerKey,
