@@ -17,14 +17,15 @@ import { toast } from "sonner";
 const PLANS: { key: PlanKey; Icon: React.ElementType; gradient: string }[] = [
   { key: "starter", Icon: Zap,   gradient: "from-violet-500 to-purple-600" },
   { key: "pro",     Icon: Crown, gradient: "from-amber-400 to-orange-500"  },
+  { key: "franchise", Icon: LayoutDashboard, gradient: "from-emerald-500 to-teal-600" },
 ];
 
 const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { business, loading: authLoading } = useAuth();
-  const { starter, pro } = usePricingPlans();
-  const pricingPlans: Record<PlanKey, ReturnType<typeof usePricingPlans>["starter"]> = { starter, pro };
+  const { starter, pro, franchise } = usePricingPlans();
+  const pricingPlans: Record<PlanKey, ReturnType<typeof usePricingPlans>["starter"]> = { starter, pro, franchise };
 
   const planParam = searchParams.get("plan") as PlanKey | null;
   const checkoutSuccess = searchParams.get("checkout");

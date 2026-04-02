@@ -15,11 +15,13 @@ import { motion, AnimatePresence } from "framer-motion";
 const planIcons: Record<PlanKey, React.ElementType> = {
   starter: Zap,
   pro: Crown,
+  franchise: CreditCard,
 };
 
 const planColors: Record<PlanKey, string> = {
   starter: "from-blue-500 to-cyan-500",
   pro: "from-violet-500 to-purple-600",
+  franchise: "from-emerald-500 to-teal-600",
 };
 
 const Register = () => {

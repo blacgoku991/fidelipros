@@ -135,12 +135,12 @@ export type Database = {
           id: string
           is_demo: boolean
           is_franchise: boolean
-          max_locations: number
           label_color: string | null
           latitude: number | null
           logo_url: string | null
           longitude: number | null
           loyalty_type: string | null
+          max_locations: number
           max_points_per_card: number | null
           name: string
           notif_custom_interval_hours: number | null
@@ -221,12 +221,12 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
-          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
           loyalty_type?: string | null
+          max_locations?: number
           max_points_per_card?: number | null
           name: string
           notif_custom_interval_hours?: number | null
@@ -307,12 +307,12 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
-          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
           loyalty_type?: string | null
+          max_locations?: number
           max_points_per_card?: number | null
           name?: string
           notif_custom_interval_hours?: number | null
@@ -754,28 +754,31 @@ export type Database = {
       }
       location_managers: {
         Row: {
+          created_at: string
           id: string
+          invited_at: string | null
           location_id: string
-          user_id: string
           role: string
-          invited_at: string
-          accepted_at: string | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
+          created_at?: string
           id?: string
+          invited_at?: string | null
           location_id: string
-          user_id: string
           role?: string
-          invited_at?: string
-          accepted_at?: string | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
+          created_at?: string
           id?: string
+          invited_at?: string | null
           location_id?: string
-          user_id?: string
           role?: string
-          invited_at?: string
-          accepted_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -793,14 +796,11 @@ export type Database = {
           business_id: string
           city: string | null
           created_at: string
-          email: string | null
           id: string
           is_active: boolean
           latitude: number | null
           longitude: number | null
-          manager_user_id: string | null
           name: string
-          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -808,14 +808,11 @@ export type Database = {
           business_id: string
           city?: string | null
           created_at?: string
-          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          manager_user_id?: string | null
           name: string
-          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -823,14 +820,11 @@ export type Database = {
           business_id?: string
           city?: string | null
           created_at?: string
-          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          manager_user_id?: string | null
           name?: string
-          phone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1130,6 +1124,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "points_history_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -1610,7 +1611,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "business_owner"
+      app_role: "super_admin" | "business_owner" | "location_manager"
       loyalty_level: "bronze" | "silver" | "gold"
       notification_type:
         | "proximity"
@@ -1753,7 +1754,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "business_owner"],
+      app_role: ["super_admin", "business_owner", "location_manager"],
       loyalty_level: ["bronze", "silver", "gold"],
       notification_type: [
         "proximity",
