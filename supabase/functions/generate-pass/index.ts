@@ -187,6 +187,8 @@ export async function buildPkpass(
   const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
+  const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
+  const lblColor = business.label_color ? hexToRgb(business.label_color) : autoLabelColor(business.primary_color || "#6B46C1");
   const level = (customer?.level || "bronze").toLowerCase();
   const pointsCurrent = card.current_points || 0;
   const pointsMax = card.max_points || 10;
@@ -206,9 +208,9 @@ export async function buildPkpass(
     organizationName: business.name,
     description: `Carte de fidélité ${business.name}`,
     logoText: business.name,
-    foregroundColor: "rgb(255, 255, 255)",
+    foregroundColor: fgColor,
     backgroundColor: bgColor,
-    labelColor: "rgb(200, 200, 200)",
+    labelColor: lblColor,
     webServiceURL,
     authenticationToken: authToken,
     barcode: {
@@ -691,4 +693,20 @@ function extractSigningMaterial(p12Base64: string, p12Password: string) {
 function hexToRgb(hex: string): string {
   const n = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#6B46C1";
   return `rgb(${parseInt(n.slice(1, 3), 16)}, ${parseInt(n.slice(3, 5), 16)}, ${parseInt(n.slice(5, 7), 16)})`;
+}
+
+function hexBrightness(hex: string): number {
+  const n = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#6B46C1";
+  const r = parseInt(n.slice(1, 3), 16);
+  const g = parseInt(n.slice(3, 5), 16);
+  const b = parseInt(n.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+function autoForeground(bgHex: string): string {
+  return hexBrightness(bgHex) > 160 ? "rgb(26, 26, 26)" : "rgb(255, 255, 255)";
+}
+
+function autoLabelColor(bgHex: string): string {
+  return hexBrightness(bgHex) > 160 ? "rgb(100, 100, 100)" : "rgb(200, 200, 200)";
 }

@@ -26,6 +26,13 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    // Validate authorization — require apikey header (set by supabase-js) or Authorization
+    const apiKey = req.headers.get("apikey") || "";
+    const authHeader = req.headers.get("Authorization") || "";
+    if (!apiKey && !authHeader) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+
     const sbUrl = Deno.env.get("SUPABASE_URL")!;
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
