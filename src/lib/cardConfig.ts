@@ -229,15 +229,13 @@ export function getProgressInfo(config: UnifiedCardConfig, customer: CardCustome
   };
 }
 
-// ─── Apple PassKit JSON mapping (for edge function) ──────────────────────
+// ─── Apple PassKit JSON mapping (for edge function) — Loyaltify-style ────
 
 export function buildApplePassJson(
   config: UnifiedCardConfig,
   customer: CardCustomerData,
 ) {
   const labels = getLoyaltyLabels(config.loyaltyType);
-  const remaining = Math.max(0, customer.maxPoints - customer.currentPoints);
-  const levelEmoji = customer.level === "gold" ? "⭐" : customer.level === "silver" ? "🥈" : "🥉";
 
   return {
     headerFields: [
@@ -255,56 +253,21 @@ export function buildApplePassJson(
             : "%@ points !",
       },
     ],
-    primaryFields: [
-      {
-        key: "name",
-        label: "",
-        value: customer.fullName,
-      },
-    ],
+    primaryFields: [],
     secondaryFields: [
       {
-        key: "level",
-        label: "STATUT",
-        value: `${levelEmoji} ${customer.level.toUpperCase()}`,
+        key: "member",
+        label: "MEMBRE",
+        value: customer.fullName || "Client",
       },
       {
-        key: "progress",
-        label: labels.progressLabel,
-        value: config.loyaltyType === "cashback"
-          ? `${customer.currentPoints},00 €`
-          : `${customer.currentPoints} / ${customer.maxPoints}`,
-        changeMessage: config.loyaltyType === "stamps"
-          ? `%@ ${labels.unitPlural} !`
-          : "%@ points !",
-      },
-      {
-        key: "next_reward",
-        label: "PROCHAINE",
-        value: remaining > 0
-          ? `encore ${remaining}`
-          : "🎁 Dispo !",
-        textAlignment: "PKTextAlignmentRight",
-      },
-    ],
-    auxiliaryFields: [
-      {
-        key: "visits",
-        label: "VISITES",
-        value: `${customer.totalVisits}`,
-      },
-      {
-        key: "streak",
-        label: "SÉRIE",
-        value: `${customer.currentStreak}`,
-      },
-      {
-        key: "rewards",
-        label: "RÉCOMPENSES",
+        key: "reward",
+        label: "RÉCOMPENSE",
         value: `${customer.rewardsEarned}`,
         textAlignment: "PKTextAlignmentRight",
       },
     ],
+    auxiliaryFields: [],
   };
 }
 
