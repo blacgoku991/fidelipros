@@ -186,7 +186,7 @@ serve(async (req) => {
         loyaltyClasses: [loyaltyClass],
         loyaltyObjects: [loyaltyObject],
       },
-      origins: ["https://fidelispro.vercel.app"],
+      origins: ["https://fidelipros.lovable.app"],
     };
 
     const jwt = await signJWT(jwtPayload, privateKeyPem);
