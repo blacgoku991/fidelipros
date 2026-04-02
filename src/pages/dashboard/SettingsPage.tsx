@@ -93,18 +93,18 @@ const SettingsPage = () => {
 
   useEffect(() => {
     if (business) {
-      setSlug((business as any).slug || "");
+      setSlug(business.slug || "");
     }
   }, [business]);
 
   useEffect(() => {
     if (business) {
-      setBirthdayEnabled((business as any).birthday_notif_enabled || false);
-      setBirthdayMessage((business as any).birthday_notif_message || "Joyeux anniversaire ! Un cadeau vous attend 🎂");
-      setWelcomePushEnabled((business as any).welcome_push_enabled ?? true);
-      setWelcomePushMessage((business as any).welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
-      setVipAutoEnabled((business as any).vip_auto_enabled || false);
-      setVipAutoThreshold((business as any).vip_auto_threshold || 50);
+      setBirthdayEnabled(business.birthday_notif_enabled || false);
+      setBirthdayMessage(business.birthday_notif_message || "Joyeux anniversaire ! Un cadeau vous attend 🎂");
+      setWelcomePushEnabled(business.welcome_push_enabled ?? true);
+      setWelcomePushMessage(business.welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
+      setVipAutoEnabled(business.vip_auto_enabled || false);
+      setVipAutoThreshold(business.vip_auto_threshold || 50);
     }
   }, [business]);
 
@@ -118,7 +118,7 @@ const SettingsPage = () => {
       setGeoMessage(business.geofence_message || "Passez nous voir, on vous attend ! 🎉");
       setGeoTimeStart(business.geofence_time_start || "09:00");
       setGeoTimeEnd(business.geofence_time_end || "20:00");
-      setSatellitePoints(Array.isArray((business as any).geofence_satellite_points) ? (business as any).geofence_satellite_points : []);
+      setSatellitePoints(Array.isArray(business.geofence_satellite_points) ? (business.geofence_satellite_points as { lat: number; lng: number }[]) : []);
     }
   }, [business]);
 
@@ -185,7 +185,7 @@ const SettingsPage = () => {
   };
 
   const handleSaveGeofencing = async () => {
-    if (!business) return;
+    if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingGeo(true);
     const { error } = await supabase.from("businesses").update({
       geofence_enabled: geoEnabled,
@@ -243,7 +243,7 @@ const SettingsPage = () => {
   };
 
   const handleSaveAutomation = async () => {
-    if (!business) return;
+    if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingAuto(true);
     const { error } = await supabase.from("businesses").update({
       birthday_notif_enabled: birthdayEnabled,
@@ -265,7 +265,7 @@ const SettingsPage = () => {
       .replace(/^-|-$/g, "");
 
   const handleSaveSlug = async () => {
-    if (!business || !slug.trim()) return;
+    if (!business || !slug.trim()) { if (!business) toast.error("Commerce non chargé"); return; }
     setSavingSlug(true);
     const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/^-|-$/g, "");
     setSlug(cleanSlug);
@@ -473,7 +473,7 @@ const SettingsPage = () => {
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Aperçu du widget</p>
             <div
               className="flex items-center gap-3 p-3.5 rounded-2xl text-white shadow-lg"
-              style={{ background: `linear-gradient(135deg, ${(business as any)?.accent_color || "#F59E0B"}f0, ${(business as any)?.accent_color || "#F59E0B"}cc)` }}
+              style={{ background: `linear-gradient(135deg, ${business?.accent_color || "#F59E0B"}f0, ${business?.accent_color || "#F59E0B"}cc)` }}
             >
               <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                 <Gift className="w-4 h-4 text-white" />
@@ -482,7 +482,7 @@ const SettingsPage = () => {
                 <p className="font-bold text-xs leading-tight">Rejoignez notre programme de fidélité 🎁</p>
                 <p className="text-[10px] text-white/80 mt-0.5 truncate">{business?.name || "Votre commerce"} — Cumulez des points à chaque visite</p>
               </div>
-              <span className="text-xs font-bold bg-white/95 px-3 py-1.5 rounded-lg shrink-0" style={{ color: (business as any)?.accent_color || "#F59E0B" }}>
+              <span className="text-xs font-bold bg-white/95 px-3 py-1.5 rounded-lg shrink-0" style={{ color: business?.accent_color || "#F59E0B" }}>
                 Rejoindre →
               </span>
             </div>

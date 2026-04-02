@@ -58,7 +58,7 @@ const AutomationsPage = () => {
     is_active: true,
   });
 
-  const businessId = (business as any)?.id;
+  const businessId = business?.id;
 
   useEffect(() => {
     if (businessId) fetchAutomations();

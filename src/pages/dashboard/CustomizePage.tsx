@@ -148,21 +148,24 @@ const CustomizePage = () => {
       latitude: business.latitude || null,
       longitude: business.longitude || null,
       geofence_message: business.geofence_message || "Passez nous voir, on vous attend ! 🎉",
-      foreground_color: (business as any).foreground_color || "",
-      label_color: (business as any).label_color || "",
+      foreground_color: business.foreground_color || "",
+      label_color: business.label_color || "",
     });
     setLogoUrl(business.logo_url || null);
     setStripImageUrl(business.card_bg_image_url || null);
   }, [business]);
 
   const handleSave = async () => {
-    if (!business) return;
+    if (!business) { toast.error("Impossible de sauvegarder : commerce non chargé"); return; }
     setSaving(true);
     const { name, description, address, city, phone, website, latitude, longitude, geofence_message, foreground_color, label_color, ...config } = form;
     const { error } = await supabase.from("businesses").update({
-      name, description, address, city, phone, website, latitude, longitude, geofence_message, ...config,
+      name, description, address, city, phone, website, latitude, longitude, geofence_message,
+      foreground_color: foreground_color || null,
+      label_color: label_color || null,
+      ...config,
     } as any).eq("id", business.id);
-    if (error) toast.error("Erreur de sauvegarde");
+    if (error) { console.error("Save error:", error); toast.error("Erreur de sauvegarde : " + error.message); }
     else toast.success("Configuration sauvegardée !");
     setSaving(false);
   };

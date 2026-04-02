@@ -129,7 +129,7 @@ const CampaignsPage = () => {
   const [scheduleDate, setScheduleDate] = useState("");
   const [scheduleTime, setScheduleTime] = useState("");
 
-  const businessName = (business as any)?.name || "FidéliPro";
+  const businessName = business?.name || "FidéliPro";
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ const CampaignsPage = () => {
     const { data } = await supabase
       .from("customers")
       .select("id, last_visit_at, level, created_at, customer_cards(current_points)")
-      .eq("business_id", (business as any).id);
+      .eq("business_id", business.id);
     if (data) setAllCustomers(data);
     return data || [];
   };
@@ -155,7 +155,7 @@ const CampaignsPage = () => {
     const { count } = await supabase
       .from("wallet_registrations")
       .select("id", { count: "exact", head: true })
-      .eq("business_id", (business as any).id);
+      .eq("business_id", business.id);
     setWalletCount(count || 0);
   };
 
@@ -164,7 +164,7 @@ const CampaignsPage = () => {
     const { data } = await supabase
       .from("notifications_log")
       .select("*")
-      .eq("business_id", (business as any).id)
+      .eq("business_id", business.id)
       .order("sent_at", { ascending: false })
       .limit(200);
     if (!data) return;
@@ -254,7 +254,7 @@ const CampaignsPage = () => {
 
   const resolveCustomers = async (): Promise<{ id: string }[]> => {
     if (!business) return [];
-    const bizId = (business as any).id;
+    const bizId = business.id;
     const now = new Date();
     const ago30 = new Date(now.getTime() - 30 * 86400000).toISOString();
 
@@ -294,7 +294,7 @@ const CampaignsPage = () => {
 
     const segLabel = [...selectedSegments].join(",");
     const logs = customers.map(c => ({
-      business_id: (business as any).id,
+      business_id: business.id,
       customer_id: c.id,
       title: title.trim() || businessName,
       message: message.trim(),
@@ -314,7 +314,7 @@ const CampaignsPage = () => {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          business_id: (business as any).id,
+          business_id: business.id,
           title: title.trim() || businessName,
           message: message.trim(),
           segment: segLabel,

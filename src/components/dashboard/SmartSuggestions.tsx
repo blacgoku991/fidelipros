@@ -16,7 +16,7 @@ interface Suggestion {
 
 export function SmartSuggestions() {
   const { business } = useAuth();
-  const businessId = (business as any)?.id;
+  const businessId = business?.id;
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
 
   useEffect(() => {
