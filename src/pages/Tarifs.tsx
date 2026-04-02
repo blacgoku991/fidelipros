@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, X, Zap, Crown, ArrowRight, ChevronDown } from "lucide-react";
+import { Check, X, Zap, Crown, ArrowRight, ChevronDown, Building2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import { Navbar } from "@/components/landing/Navbar";
@@ -44,21 +44,44 @@ const plans = [
       "Support prioritaire",
     ],
   },
+  {
+    key: "franchise",
+    name: "Franchise",
+    price: 149,
+    icon: Building2,
+    color: "from-emerald-500 to-teal-600",
+    description: "Pour les enseignes multi-sites. Un programme, plusieurs points de vente.",
+    features: [
+      "Tout Pro +",
+      "Jusqu'à 5 établissements inclus",
+      "Dashboard master multi-sites",
+      "Comparaison entre points de vente",
+      "Managers par établissement",
+      "Carte fidélité unifiée (1 carte = tous les points de vente)",
+      "+29€/établissement supplémentaire",
+      "Support dédié",
+    ],
+  },
 ];
 
 const comparison = [
-  { feature: "Clients", starter: "200", pro: "Illimités" },
-  { feature: "Scanner QR code", starter: true, pro: true },
-  { feature: "Cartes de fidélité digitales", starter: true, pro: true },
-  { feature: "Gestion récompenses", starter: true, pro: true },
-  { feature: "Apple Wallet", starter: false, pro: true },
-  { feature: "Google Wallet", starter: false, pro: true },
-  { feature: "Notifications push", starter: false, pro: true },
-  { feature: "Analytics avancés", starter: false, pro: true },
-  { feature: "Scoring client", starter: false, pro: true },
-  { feature: "Campagnes marketing", starter: false, pro: true },
-  { feature: "Géofencing", starter: false, pro: true },
-  { feature: "Support", starter: "Email", pro: "Prioritaire" },
+  { feature: "Clients", starter: "200", pro: "Illimités", franchise: "Illimités" },
+  { feature: "Scanner QR code", starter: true, pro: true, franchise: true },
+  { feature: "Cartes de fidélité digitales", starter: true, pro: true, franchise: true },
+  { feature: "Gestion récompenses", starter: true, pro: true, franchise: true },
+  { feature: "Apple Wallet", starter: false, pro: true, franchise: true },
+  { feature: "Google Wallet", starter: false, pro: true, franchise: true },
+  { feature: "Notifications push", starter: false, pro: true, franchise: true },
+  { feature: "Analytics avancés", starter: false, pro: true, franchise: true },
+  { feature: "Scoring client", starter: false, pro: true, franchise: true },
+  { feature: "Campagnes marketing", starter: false, pro: true, franchise: true },
+  { feature: "Géofencing", starter: false, pro: true, franchise: true },
+  { feature: "Multi-établissements", starter: false, pro: false, franchise: "5 inclus" },
+  { feature: "Dashboard master", starter: false, pro: false, franchise: true },
+  { feature: "Comparaison sites", starter: false, pro: false, franchise: true },
+  { feature: "Managers par site", starter: false, pro: false, franchise: true },
+  { feature: "Carte unifiée", starter: false, pro: false, franchise: true },
+  { feature: "Support", starter: "Email", pro: "Prioritaire", franchise: "Dédié" },
 ];
 
 const faqs = [
@@ -146,7 +169,7 @@ const Tarifs = () => {
 
       {/* Plan cards */}
       <section className="max-w-5xl mx-auto px-4 pb-20">
-        <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
             return (
@@ -239,6 +262,7 @@ const Tarifs = () => {
                   <td className="p-4 text-muted-foreground">{row.feature}</td>
                   <td className="p-4 text-center"><Cell value={row.starter} /></td>
                   <td className={`p-4 text-center ${plans[1].popular ? "bg-primary/5" : ""}`}><Cell value={row.pro} /></td>
+                  <td className="p-4 text-center"><Cell value={(row as any).franchise} /></td>
                 </motion.tr>
               ))}
             </tbody>

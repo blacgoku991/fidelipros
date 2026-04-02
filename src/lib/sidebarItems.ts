@@ -104,7 +104,7 @@ export const franchiseSidebarGroups: SidebarGroup[] = [
   },
 ];
 
-// Location manager sidebar (scoped view)
+// Location manager sidebar (full management of their location)
 export const locationManagerSidebarGroups: SidebarGroup[] = [
   {
     label: "",
@@ -116,7 +116,16 @@ export const locationManagerSidebarGroups: SidebarGroup[] = [
   {
     label: "Fidélité",
     items: [
+      { icon: Palette, label: "Carte de fidélité", path: "/dashboard/customize" },
       { icon: Users, label: "Clients", path: "/dashboard/clients" },
+      { icon: Gift, label: "Récompenses", path: "/dashboard/rewards" },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { icon: Send, label: "Campagnes", path: "/dashboard/campaigns" },
+      { icon: Zap, label: "Automations", path: "/dashboard/automations" },
     ],
   },
   {

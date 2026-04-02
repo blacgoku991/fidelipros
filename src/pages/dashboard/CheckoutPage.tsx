@@ -7,24 +7,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, CheckCircle, Loader2, Zap, Crown, Check,
-  ArrowRight, LayoutDashboard, RefreshCw, AlertCircle,
+  ArrowRight, LayoutDashboard, RefreshCw, AlertCircle, Building2,
 } from "lucide-react";
 import { type PlanKey } from "@/lib/stripePlans";
 import { usePricingPlans } from "@/hooks/usePricingPlans";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
-const PLANS: { key: PlanKey; Icon: React.ElementType; gradient: string }[] = [
-  { key: "starter", Icon: Zap,   gradient: "from-violet-500 to-purple-600" },
-  { key: "pro",     Icon: Crown, gradient: "from-amber-400 to-orange-500"  },
+const PLANS: { key: PlanKey; Icon: React.ElementType; gradient: string; subtitle: string }[] = [
+  { key: "starter", Icon: Zap,       gradient: "from-violet-500 to-purple-600", subtitle: "Pour démarrer" },
+  { key: "pro",     Icon: Crown,     gradient: "from-amber-400 to-orange-500",  subtitle: "Croissance rapide" },
+  { key: "franchise", Icon: Building2, gradient: "from-emerald-500 to-teal-600", subtitle: "Multi-sites" },
 ];
 
 const CheckoutPage = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { business, loading: authLoading } = useAuth();
-  const { starter, pro } = usePricingPlans();
-  const pricingPlans: Record<PlanKey, ReturnType<typeof usePricingPlans>["starter"]> = { starter, pro };
+  const { starter, pro, franchise } = usePricingPlans();
+  const pricingPlans: Record<PlanKey, ReturnType<typeof usePricingPlans>["starter"]> = { starter, pro, franchise };
 
   const planParam = searchParams.get("plan") as PlanKey | null;
   const checkoutSuccess = searchParams.get("checkout");
@@ -389,8 +390,8 @@ const CheckoutPage = () => {
                 </motion.div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-5">
-                {PLANS.map(({ key, Icon, gradient }) => {
+              <div className="grid md:grid-cols-3 gap-5">
+                {PLANS.map(({ key, Icon, gradient, subtitle }) => {
                   const plan    = pricingPlans[key];
                   const isCurrent  = isActive && currentPlan === key;
                   const isSelected = selectedPlan === key;
@@ -412,16 +413,18 @@ const CheckoutPage = () => {
                       ].join(" ")}
                     >
                       {/* Badge */}
-                      {(isCurrent || key === "pro") && (
+                      {(isCurrent || key === "pro" || key === "franchise") && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                           <Badge
                             className={
                               isCurrent
                                 ? "bg-emerald-500 text-white px-3 py-0.5 text-xs border-0"
-                                : "bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-0.5 text-xs border-0"
+                                : key === "franchise"
+                                  ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-3 py-0.5 text-xs border-0"
+                                  : "bg-gradient-to-r from-amber-400 to-orange-500 text-white px-3 py-0.5 text-xs border-0"
                             }
                           >
-                            {isCurrent ? "✓ Plan actuel" : "⭐ Populaire"}
+                            {isCurrent ? "✓ Plan actuel" : key === "franchise" ? "Multi-sites" : "⭐ Populaire"}
                           </Badge>
                         </div>
                       )}
@@ -435,7 +438,7 @@ const CheckoutPage = () => {
                           <div>
                             <h3 className="font-display font-bold text-lg">{plan.name}</h3>
                             <p className="text-xs text-muted-foreground">
-                              {key === "starter" ? "Pour démarrer" : "Croissance rapide"}
+                              {subtitle}
                             </p>
                           </div>
                         </div>
@@ -456,7 +459,7 @@ const CheckoutPage = () => {
                             }`}>
                               <Check className="w-2.5 h-2.5" />
                             </span>
-                            <span className={f === "Tout Starter +" ? "font-medium" : "text-muted-foreground"}>
+                            <span className={f.startsWith("Tout ") ? "font-medium" : "text-muted-foreground"}>
                               {f}
                             </span>
                           </li>
@@ -484,7 +487,7 @@ const CheckoutPage = () => {
                           {redirecting === key ? (
                             <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Changement…</>
                           ) : isActive ? (
-                            <><span>{key === "pro" ? "Passer au Pro" : "Passer au Starter"}</span><ArrowRight className="w-4 h-4 ml-2" /></>
+                            <><span>Passer au {plan.name}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : isSelected ? (
                             <><span>Continuer avec {plan.name}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : (
