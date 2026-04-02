@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       }
       const sbUrl = Deno.env.get("SUPABASE_URL")!;
       const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-      const { createClient: createAnonClient } = await import("npm:@supabase/supabase-js@2");
+      const { createClient: createAnonClient } = await import("https://esm.sh/@supabase/supabase-js@2.49.1");
       const anonSb = createAnonClient(sbUrl, anonKey);
       const token = authHeader.replace("Bearer ", "");
       const { error: authErr } = await anonSb.auth.getUser(token);
