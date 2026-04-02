@@ -142,7 +142,7 @@ serve(async (req) => {
     console.error(`[CHECKOUT] Error: ${msg}`);
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: 200,
     });
   }
 });

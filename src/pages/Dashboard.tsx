@@ -46,7 +46,11 @@ const Dashboard = () => {
   // Safety net: redirect to correct onboarding step based on business state
   useEffect(() => {
     if (loading || hasRedirected.current) return;
-    if (!business) return;
+    if (!business) {
+      hasRedirected.current = true;
+      navigate("/onboarding-business");
+      return;
+    }
     const name = business.name;
     const status = business.subscription_status;
     const onboardingCompleted = business.onboarding_completed;

@@ -133,10 +133,25 @@ const CheckoutPage = () => {
     localStorage.setItem("selectedPlan", plan);
     setCheckoutStarted(true);
     try {
-      const { data, error: fnErr } = await supabase.functions.invoke("create-checkout", {
+      const res = await supabase.functions.invoke("create-checkout", {
         body: { plan, origin: window.location.origin },
       });
-      if (fnErr || data?.error) throw new Error(fnErr?.message || data?.error);
+      // supabase-js puts non-2xx response body in error.context — extract real message
+      const data = res.data;
+      const fnErr = res.error;
+      if (fnErr) {
+        // Try to get the actual error message from the response body
+        let realMessage = fnErr.message;
+        try {
+          const ctx = (fnErr as any).context;
+          if (ctx?.body) {
+            const parsed = typeof ctx.body === "string" ? JSON.parse(ctx.body) : ctx.body;
+            if (parsed?.error) realMessage = parsed.error;
+          }
+        } catch {}
+        throw new Error(realMessage);
+      }
+      if (data?.error) throw new Error(data.error);
 
       // Plan switch scheduled at end of period (no redirect needed)
       if (data?.updated) {
