@@ -118,8 +118,20 @@ function paymentSucceededTemplate(businessName: string, email: string, plan: str
 }
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Auth: only service-role key
+  const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace("Bearer ", "");
+  if (token !== sbKey) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 401,
+    });
   }
 
   const resendKey = Deno.env.get("RESEND_API_KEY");
