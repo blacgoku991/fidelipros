@@ -118,7 +118,31 @@ const AdminBusinesses = () => {
     }
   };
 
-  const impersonateBusiness = (biz: any) => {
+  const impersonateBusiness = async (biz: any) => {
+    if (!user) return;
+
+    // Verify admin role server-side before allowing impersonation
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "super_admin")
+      .maybeSingle();
+
+    if (!roleData) {
+      toast.error("Accès refusé : rôle admin requis");
+      return;
+    }
+
+    // Write audit log
+    await supabase.from("admin_audit_logs").insert({
+      admin_user_id: user.id,
+      action: "impersonation_start",
+      target_business_id: biz.id,
+      target_user_id: biz.owner_id,
+      metadata: { business_name: biz.name },
+    });
+
     localStorage.setItem("impersonating_business", biz.id);
     localStorage.setItem("impersonating_business_name", biz.name);
     setImpersonating(biz.id);
