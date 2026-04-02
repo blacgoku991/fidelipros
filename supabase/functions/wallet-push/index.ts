@@ -297,10 +297,12 @@ Deno.serve(async (req) => {
           // If token is invalid, mark registration
           if (result.status === 410 || result.reason === "Unregistered") {
             logEntry.error_message = "Token invalid/unregistered";
+            // Only delete the specific registration, not all registrations with this token
             await supabase
               .from("wallet_registrations")
               .delete()
-              .eq("push_token", pushToken);
+              .eq("push_token", pushToken)
+              .eq("serial_number", reg.serial_number);
           }
         }
 
