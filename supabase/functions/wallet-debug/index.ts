@@ -1,15 +1,25 @@
 // wallet-debug — diagnostic endpoint for Apple Wallet registration state
 // Returns real DB state: wallet_registrations, apns_logs, customer_cards wallet info
-// NO AUTH REQUIRED — debug only, verify_jwt = false
+// REQUIRES service-role key or authenticated super_admin
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = [
+  "https://fidelipros.lovable.app",
+  "https://id-preview--a602f3ee-5c8a-4025-8469-788fb1c1e4c8.lovable.app",
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const json = (data: unknown, status = 200) =>
@@ -23,7 +33,33 @@ Deno.serve(async (req) => {
     const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
-    // No auth required — resolve business_id from query param or first business in DB
+    // Auth check: require service-role key or authenticated super_admin
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.replace("Bearer ", "");
+
+    let authorized = false;
+
+    // Check if it's a service-role call
+    if (token === sbKey) {
+      authorized = true;
+    } else if (token) {
+      // Check if authenticated user is a super_admin
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (!userErr && userData?.user) {
+        const { data: hasAdmin } = await supabase
+          .from("user_roles")
+          .select("id")
+          .eq("user_id", userData.user.id)
+          .eq("role", "super_admin")
+          .maybeSingle();
+        if (hasAdmin) authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      return json({ error: "Unauthorized — super_admin or service-role required" }, 401);
+    }
+
     const url = new URL(req.url);
     let businessId: string | null = url.searchParams.get("business_id");
 
