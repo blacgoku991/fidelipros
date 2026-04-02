@@ -551,9 +551,26 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
   return { logoPng, logo2xPng };
 }
 
-// ── Strip image generation ────────────────────────────────────────
+// ── Strip image — use card_bg_image_url if available, else generate visual ─────
 
-function generateStripImages(hexColor: string): { stripPng: Uint8Array; strip2xPng: Uint8Array } {
+async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
+  if (business.card_bg_image_url) {
+    try {
+      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const response = await fetch(imgUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        if (imageBytes.byteLength <= 60_000) {
+          console.log("[Pass WS] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.log(`[Pass WS] Strip image too large (${imageBytes.byteLength} bytes), using generated`);
+      }
+    } catch (err) {
+      console.error("[Pass WS] Failed to fetch strip image:", err);
+    }
+  }
+  const hexColor = business.primary_color || "#6B46C1";
   const stripPng = generateStripPng(320, 123, hexColor);
   const strip2xPng = generateStripPng(640, 246, hexColor);
   return { stripPng, strip2xPng };
@@ -569,12 +586,10 @@ function generateStripPng(width: number, height: number, hexColor: string): Uint
   for (let y = 0; y < height; y++) {
     rawData.push(0);
     for (let x = 0; x < width; x++) {
-      const stripe = ((x + y) % 16) < 4;
-      const lightness = stripe ? 20 : 0;
-      const gradientDarken = Math.floor((y / height) * 30);
-      const pr = Math.min(255, Math.max(0, r + lightness - gradientDarken));
-      const pg = Math.min(255, Math.max(0, g + lightness - gradientDarken));
-      const pb = Math.min(255, Math.max(0, b + lightness - gradientDarken));
+      const gradientDarken = Math.floor((y / height) * 25);
+      const pr = Math.max(0, r - gradientDarken);
+      const pg = Math.max(0, g - gradientDarken);
+      const pb = Math.max(0, b - gradientDarken);
       rawData.push(pr, pg, pb, 255);
     }
   }
