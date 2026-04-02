@@ -13,6 +13,21 @@ import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
 type Step = "landing" | "register" | "card";
 
+// ── Validation helpers ──
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+const PHONE_RE = /^(\+?\d{1,4}[\s.-]?)?(\(?\d{1,4}\)?[\s.-]?)?[\d\s.-]{4,14}$/;
+const DISPOSABLE_DOMAINS = ["yopmail.com","mailinator.com","guerrillamail.com","tempmail.com","throwaway.email","fakeinbox.com","sharklasers.com","guerrillamailblock.com","grr.la","dispostable.com","maildrop.cc","10minutemail.com"];
+
+function isDisposableEmail(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase();
+  return DISPOSABLE_DOMAINS.includes(domain);
+}
+
+function isValidName(name: string): boolean {
+  // At least 2 chars, contains at least one letter, no pure numbers/symbols
+  return name.trim().length >= 2 && /[a-zA-ZÀ-ÿ]/.test(name);
+}
+
 const BusinessPublicPage = () => {
   const { businessId } = useParams();
   const [business, setBusiness] = useState<any>(null);
@@ -22,11 +37,13 @@ const BusinessPublicPage = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
@@ -72,15 +89,12 @@ const BusinessPublicPage = () => {
       return;
     }
 
-    console.log("[QR Debug] Fetching business:", businessId);
-
     try {
-      // Use the REST API directly for anonymous access to avoid auth issues
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
       const response = await fetch(
-        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text`,
+        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,birthday_notif_enabled`,
         {
           headers: {
             apikey: supabaseKey,
@@ -90,23 +104,18 @@ const BusinessPublicPage = () => {
       );
 
       if (!response.ok) {
-        console.error("[QR Debug] HTTP error:", response.status, await response.text());
         setFetchError(`Erreur serveur (${response.status}). Réessayez.`);
         setLoading(false);
         return;
       }
 
       const data = await response.json();
-      console.log("[QR Debug] Result:", data);
-
       if (data && data.length > 0) {
         setBusiness(data[0]);
       } else {
-        console.warn("[QR Debug] No business found for ID:", businessId);
         setFetchError("Ce commerce n'existe pas ou le lien est invalide.");
       }
     } catch (err: any) {
-      console.error("[QR Debug] Fetch error:", err);
       setFetchError("Erreur de connexion. Vérifiez votre réseau.");
     }
 
@@ -123,23 +132,53 @@ const BusinessPublicPage = () => {
     document.cookie = `customer_last_card_code=${encodeURIComponent(card.card_code)}; path=/; max-age=31536000; SameSite=Lax`;
   }, [card?.card_code]);
 
-  const handleRegister = async () => {
-    if (!name.trim()) {
-      toast.error("Veuillez entrer votre nom");
-      return;
+  const validate = (): boolean => {
+    const errs: Record<string, string> = {};
+
+    if (!isValidName(name)) {
+      errs.name = "Entrez votre vrai nom (prénom et nom)";
     }
+
     if (!email.trim() && !phone.trim()) {
-      toast.error("Veuillez entrer votre email ou numéro de téléphone");
-      return;
+      errs.email = "Email ou téléphone requis";
+      errs.phone = "Email ou téléphone requis";
     }
-    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      toast.error("Adresse email invalide");
-      return;
+
+    if (email.trim()) {
+      if (!EMAIL_RE.test(email.trim())) {
+        errs.email = "Adresse email invalide (ex: jean@gmail.com)";
+      } else if (isDisposableEmail(email.trim())) {
+        errs.email = "Les adresses email temporaires ne sont pas acceptées";
+      }
     }
-    if (phone.trim() && !/^[\d\s+()-]{7,20}$/.test(phone.trim())) {
-      toast.error("Numéro de téléphone invalide");
-      return;
+
+    if (phone.trim()) {
+      if (!PHONE_RE.test(phone.trim())) {
+        errs.phone = "Numéro de téléphone invalide (ex: 06 12 34 56 78)";
+      } else if (phone.replace(/\D/g, "").length < 8) {
+        errs.phone = "Numéro trop court";
+      }
     }
+
+    if (birthday) {
+      const d = new Date(birthday);
+      const now = new Date();
+      const age = (now.getTime() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+      if (isNaN(d.getTime())) {
+        errs.birthday = "Date invalide";
+      } else if (age < 13) {
+        errs.birthday = "Vous devez avoir au moins 13 ans";
+      } else if (age > 120) {
+        errs.birthday = "Date invalide";
+      }
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (!validate()) return;
     if (!business) return;
     setSubmitting(true);
 
@@ -152,7 +191,7 @@ const BusinessPublicPage = () => {
         "Content-Type": "application/json",
       };
 
-      // Check if customer already exists by email or phone
+      // Check if customer already exists
       let existingCustomer = null;
       if (email.trim()) {
         const res = await fetch(
@@ -185,10 +224,8 @@ const BusinessPublicPage = () => {
         return;
       }
 
-      // Generate a UUID client-side so we don't need return=representation on customers
       const customerId = crypto.randomUUID();
 
-      // Create new customer with return=minimal (no SELECT needed)
       const custRes = await fetch(`${supabaseUrl}/rest/v1/customers`, {
         method: "POST",
         headers: { ...headers, Prefer: "return=minimal" },
@@ -198,12 +235,12 @@ const BusinessPublicPage = () => {
           full_name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
+          birthday: birthday || null,
         }),
       });
 
       if (!custRes.ok) {
-        const errText = await custRes.text();
-        console.error("Customer creation failed:", custRes.status, errText);
+        console.error("Customer creation failed:", custRes.status, await custRes.text());
         toast.error("Erreur lors de l'inscription. Réessayez.");
         setSubmitting(false);
         return;
@@ -214,9 +251,9 @@ const BusinessPublicPage = () => {
         full_name: name.trim(),
         email: email.trim() || null,
         phone: phone.trim() || null,
+        birthday: birthday || null,
       };
 
-      // Auto-create loyalty card (anon can SELECT cards, so return=representation works)
       const cardRes = await fetch(`${supabaseUrl}/rest/v1/customer_cards`, {
         method: "POST",
         headers: { ...headers, Prefer: "return=representation" },
@@ -228,8 +265,7 @@ const BusinessPublicPage = () => {
       });
 
       if (!cardRes.ok) {
-        const errText = await cardRes.text();
-        console.error("Card creation failed:", cardRes.status, errText);
+        console.error("Card creation failed:", cardRes.status, await cardRes.text());
         toast.error("Erreur lors de la création de la carte. Réessayez.");
         setSubmitting(false);
         return;
@@ -265,19 +301,16 @@ const BusinessPublicPage = () => {
             <AlertCircle className="w-8 h-8 text-destructive" />
           </div>
           <h1 className="text-2xl font-display font-bold">Commerce introuvable</h1>
-          <p className="text-muted-foreground text-sm">
-            {fetchError || "Ce lien n'est pas valide."}
-          </p>
+          <p className="text-muted-foreground text-sm">{fetchError || "Ce lien n'est pas valide."}</p>
           <Button onClick={fetchBusiness} variant="outline" className="gap-2 rounded-xl">
             <RefreshCw className="w-4 h-4" /> Réessayer
           </Button>
-          <p className="text-xs text-muted-foreground">
-            ID: {businessId || "manquant"}
-          </p>
         </div>
       </div>
     );
   }
+
+  const showBirthday = business.birthday_notif_enabled;
 
   return (
     <div
@@ -296,11 +329,7 @@ const BusinessPublicPage = () => {
             className="w-full max-w-md text-center space-y-6"
           >
             {business.logo_url ? (
-              <img
-                src={business.logo_url}
-                alt={business.name}
-                className="w-20 h-20 rounded-2xl mx-auto object-cover"
-              />
+              <img src={business.logo_url} alt={business.name} className="w-20 h-20 rounded-2xl mx-auto object-cover" />
             ) : (
               <div
                 className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center text-white font-display font-bold text-2xl"
@@ -311,31 +340,21 @@ const BusinessPublicPage = () => {
             )}
             <div>
               <h1 className="text-3xl font-display font-bold">{business.name}</h1>
-              {business.description && (
-                <p className="text-muted-foreground mt-2">{business.description}</p>
-              )}
+              {business.description && <p className="text-muted-foreground mt-2">{business.description}</p>}
             </div>
             <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
-              {business.city && (
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{business.city}</span>
-              )}
-              {business.phone && (
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{business.phone}</span>
-              )}
-              {business.website && (
-                <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" />{business.website}</span>
-              )}
+              {business.city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{business.city}</span>}
+              {business.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{business.phone}</span>}
+              {business.website && <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" />{business.website}</span>}
             </div>
 
             <div className="p-6 rounded-2xl bg-card border border-border/50 text-left space-y-3">
               <div className="flex items-center gap-2 text-sm">
                 <Star className="w-4 h-4 text-accent" />
                 <span>
-                  {business.loyalty_type === "stamps"
-                    ? "Gagnez des tampons à chaque visite"
-                    : business.loyalty_type === "cashback"
-                      ? "Cumulez du cashback sur vos achats"
-                      : "Gagnez des points à chaque visite"}
+                  {business.loyalty_type === "stamps" ? "Gagnez des tampons à chaque visite"
+                    : business.loyalty_type === "cashback" ? "Cumulez du cashback sur vos achats"
+                    : "Gagnez des points à chaque visite"}
                 </span>
               </div>
               <div className="flex items-center gap-2 text-sm">
@@ -368,22 +387,69 @@ const BusinessPublicPage = () => {
           >
             <div className="text-center">
               <h2 className="text-2xl font-display font-bold">Inscrivez-vous</h2>
-              <p className="text-muted-foreground text-sm mt-1">Rapide — 10 secondes</p>
+              <p className="text-muted-foreground text-sm mt-1">Quelques infos pour créer votre carte</p>
             </div>
             <div className="p-6 rounded-2xl bg-card border border-border/50 space-y-4">
-              <div className="space-y-2">
-                <Label>Votre nom <span className="text-destructive">*</span></Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jean Dupont" className="rounded-xl h-12" required />
+              {/* Nom */}
+              <div className="space-y-1.5">
+                <Label>Prénom et Nom <span className="text-destructive">*</span></Label>
+                <Input
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setErrors(prev => ({ ...prev, name: "" })); }}
+                  placeholder="Jean Dupont"
+                  className={`rounded-xl h-12 ${errors.name ? "border-destructive" : ""}`}
+                  autoComplete="name"
+                />
+                {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
               </div>
-              <div className="space-y-2">
-                <Label>Email <span className="text-destructive">*</span></Label>
-                <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jean@email.com" className="rounded-xl h-12" type="email" />
-                <p className="text-[10px] text-muted-foreground">Email ou téléphone requis</p>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <Label>Adresse email <span className="text-destructive">*</span></Label>
+                <Input
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: "" })); }}
+                  placeholder="jean.dupont@gmail.com"
+                  className={`rounded-xl h-12 ${errors.email ? "border-destructive" : ""}`}
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                />
+                {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
+                {!errors.email && <p className="text-[10px] text-muted-foreground">Pour recevoir vos offres exclusives</p>}
               </div>
-              <div className="space-y-2">
+
+              {/* Téléphone */}
+              <div className="space-y-1.5">
                 <Label>Téléphone</Label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+33 6 12 34 56 78" className="rounded-xl h-12" type="tel" />
+                <Input
+                  value={phone}
+                  onChange={(e) => { setPhone(e.target.value); setErrors(prev => ({ ...prev, phone: "" })); }}
+                  placeholder="06 12 34 56 78"
+                  className={`rounded-xl h-12 ${errors.phone ? "border-destructive" : ""}`}
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                />
+                {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
               </div>
+
+              {/* Anniversaire */}
+              {showBirthday && (
+                <div className="space-y-1.5">
+                  <Label>Date d'anniversaire 🎂</Label>
+                  <Input
+                    value={birthday}
+                    onChange={(e) => { setBirthday(e.target.value); setErrors(prev => ({ ...prev, birthday: "" })); }}
+                    className={`rounded-xl h-12 ${errors.birthday ? "border-destructive" : ""}`}
+                    type="date"
+                    max={new Date().toISOString().split("T")[0]}
+                  />
+                  {errors.birthday && <p className="text-xs text-destructive">{errors.birthday}</p>}
+                  {!errors.birthday && <p className="text-[10px] text-muted-foreground">Pour recevoir un cadeau le jour J !</p>}
+                </div>
+              )}
+
               <Button
                 onClick={handleRegister}
                 disabled={submitting}
@@ -406,12 +472,7 @@ const BusinessPublicPage = () => {
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-md space-y-6 text-center"
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", delay: 0.2 }}
-              className="text-5xl"
-            >
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", delay: 0.2 }} className="text-5xl">
               🎉
             </motion.div>
             <h2 className="text-2xl font-display font-bold">Votre carte est prête !</h2>
@@ -438,34 +499,15 @@ const BusinessPublicPage = () => {
 
             {/* Apple Wallet */}
             {isAppleDevice && card.card_code && (
-              <button
-                onClick={() => handleAddToWallet(card.card_code)}
-                disabled={walletLoading}
-                className="w-full flex justify-center"
-              >
-                <img
-                  src={addToWalletBadge}
-                  alt="Ajouter à Apple Cartes"
-                  className="h-14 hover:opacity-80 transition-opacity"
-                  style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }}
-                />
+              <button onClick={() => handleAddToWallet(card.card_code)} disabled={walletLoading} className="w-full flex justify-center">
+                <img src={addToWalletBadge} alt="Ajouter à Apple Cartes" className="h-14 hover:opacity-80 transition-opacity" style={{ filter: walletLoading ? "grayscale(1) opacity(0.5)" : "none" }} />
               </button>
             )}
 
-            {/* Google Wallet — only if available */}
+            {/* Google Wallet */}
             {!isAppleDevice && googleAvailable && card.card_code && (
-              <button
-                onClick={() => handleAddToGoogleWallet(card.card_code)}
-                disabled={googleWalletLoading}
-                className="w-full flex justify-center"
-              >
-                <div
-                  className="h-14 px-6 rounded-lg flex items-center gap-3 hover:opacity-80 transition-opacity"
-                  style={{
-                    backgroundColor: "#1f1f1f",
-                    filter: googleWalletLoading ? "grayscale(1) opacity(0.5)" : "none",
-                  }}
-                >
+              <button onClick={() => handleAddToGoogleWallet(card.card_code)} disabled={googleWalletLoading} className="w-full flex justify-center">
+                <div className="h-14 px-6 rounded-lg flex items-center gap-3 hover:opacity-80 transition-opacity" style={{ backgroundColor: "#1f1f1f", filter: googleWalletLoading ? "grayscale(1) opacity(0.5)" : "none" }}>
                   <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
                     <path d="M21.4 11.3l-1-1.6-2.1 1.2.1-2.4h-1.9l.1 2.4-2.1-1.2-1 1.6 2.1 1.2-2.1 1.2 1 1.6 2.1-1.2-.1 2.4h1.9l-.1-2.4 2.1 1.2 1-1.6-2.1-1.2 2.1-1.2z" fill="#FBBC04"/>
                     <path d="M7.5 20C4.5 20 2 17.5 2 14.5S4.5 9 7.5 9c1.7 0 3 .6 4 1.7l-1.6 1.5c-.6-.6-1.4-.9-2.4-.9-2 0-3.6 1.6-3.6 3.6s1.6 3.6 3.6 3.6c1.5 0 2.3-.6 2.8-1.1.4-.4.7-1 .8-1.8H7.5v-2.1h5.8c.1.3.1.7.1 1.1 0 1.3-.4 3-1.5 4.1-1.1 1.2-2.5 1.8-4.4 1.8z" fill="#4285F4"/>
@@ -478,12 +520,11 @@ const BusinessPublicPage = () => {
               </button>
             )}
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-center text-xs text-muted-foreground">
               Code : <span className="font-mono">{card.card_code}</span>
             </p>
-
-            <p className="text-sm text-muted-foreground">
-              {business.reward_description || "Récompense offerte"} après {card.max_points} points !
+            <p className="text-center text-xs text-muted-foreground">
+              Propulsé par <span className="font-semibold text-primary">FidéliPro</span>
             </p>
           </motion.div>
         )}

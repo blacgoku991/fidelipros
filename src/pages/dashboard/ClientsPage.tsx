@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown, Bell, Wallet, Cake, ExternalLink } from "lucide-react";
 import { CustomerTimeline } from "@/components/dashboard/CustomerTimeline";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -64,10 +65,12 @@ const ClientsPage = () => {
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newBirthday, setNewBirthday] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [selected, setSelected] = useState<any>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [clientHistory, setClientHistory] = useState<Record<string, any[]>>({});
+  const [clientNotifs, setClientNotifs] = useState<Record<string, any[]>>({});
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -85,17 +88,30 @@ const ClientsPage = () => {
     if (data) setClientHistory(prev => ({ ...prev, [customerId]: data }));
   };
 
+  const fetchNotifs = async (customerId: string) => {
+    if (clientNotifs[customerId]) return;
+    const { data } = await supabase
+      .from("notifications_log").select("*").eq("customer_id", customerId).eq("business_id", business!.id).order("sent_at", { ascending: false }).limit(30);
+    if (data) setClientNotifs(prev => ({ ...prev, [customerId]: data }));
+  };
+
   useEffect(() => { fetchCustomers(); }, [business]);
 
   const handleAddCustomer = async () => {
     if (!newName.trim() || !business) { toast.error("Le nom est requis"); return; }
     const { data: customer, error } = await supabase
-      .from("customers").insert({ business_id: business.id, full_name: newName.trim(), email: newEmail.trim() || null, phone: newPhone.trim() || null }).select().single();
+      .from("customers").insert({
+        business_id: business.id,
+        full_name: newName.trim(),
+        email: newEmail.trim() || null,
+        phone: newPhone.trim() || null,
+        birthday: newBirthday || null,
+      } as any).select().single();
     if (error) { toast.error("Erreur lors de l'ajout"); return; }
     await supabase.from("customer_cards").insert({ customer_id: customer.id, business_id: business.id, max_points: business.max_points_per_card || 10 });
     toast.success("Client ajouté !");
     setAddOpen(false);
-    setNewName(""); setNewEmail(""); setNewPhone("");
+    setNewName(""); setNewEmail(""); setNewPhone(""); setNewBirthday("");
     fetchCustomers();
   };
 
@@ -116,10 +132,10 @@ const ClientsPage = () => {
   };
 
   const exportCSV = () => {
-    const rows = [["Nom", "Email", "Téléphone", "Niveau", "Points", "Visites", "Streak", "Dernière visite", "Date inscription"]];
+    const rows = [["Nom", "Email", "Téléphone", "Anniversaire", "Niveau", "Points", "Visites", "Streak", "Dernière visite", "Date inscription"]];
     filtered.forEach(c => {
       rows.push([
-        c.full_name || "", c.email || "", c.phone || "", c.level || "bronze",
+        c.full_name || "", c.email || "", c.phone || "", c.birthday || "", c.level || "bronze",
         String(c.total_points || 0), String(c.total_visits || 0), String(c.current_streak || 0),
         c.last_visit_at ? new Date(c.last_visit_at).toLocaleDateString("fr-FR") : "",
         new Date(c.created_at).toLocaleDateString("fr-FR"),
@@ -203,8 +219,9 @@ const ClientsPage = () => {
               <DialogHeader><DialogTitle>Nouveau client</DialogTitle></DialogHeader>
               <div className="space-y-4 mt-4">
                 <div className="space-y-2"><Label>Nom complet *</Label><Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Jean Dupont" className="rounded-xl" /></div>
-                <div className="space-y-2"><Label>Email</Label><Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="jean@email.com" className="rounded-xl" /></div>
-                <div className="space-y-2"><Label>Téléphone</Label><Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="+33 6 12 34 56 78" className="rounded-xl" /></div>
+                <div className="space-y-2"><Label>Email</Label><Input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="jean@gmail.com" type="email" className="rounded-xl" /></div>
+                <div className="space-y-2"><Label>Téléphone</Label><Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="06 12 34 56 78" type="tel" className="rounded-xl" /></div>
+                <div className="space-y-2"><Label>Date d'anniversaire</Label><Input value={newBirthday} onChange={(e) => setNewBirthday(e.target.value)} type="date" className="rounded-xl" /></div>
                 <Button onClick={handleAddCustomer} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">Ajouter</Button>
               </div>
             </DialogContent>
@@ -300,7 +317,7 @@ const ClientsPage = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-                  onClick={() => { setSelected(customer); fetchHistory(customer.id); }}
+                  onClick={() => { setSelected(customer); fetchHistory(customer.id); fetchNotifs(customer.id); }}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -378,11 +395,13 @@ const ClientsPage = () => {
 
       {/* Detail Sheet */}
       <Sheet open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <SheetContent className="overflow-y-auto">
+        <SheetContent className="overflow-y-auto sm:max-w-lg">
           {selected && (() => {
             const card = selected.customer_cards?.[0];
             const history = clientHistory[selected.id] || [];
+            const notifs = clientNotifs[selected.id] || [];
             const copyField = (val: string, label: string) => { navigator.clipboard.writeText(val); toast.success(`${label} copié`); };
+            const walletInstalled = card?.wallet_pass_installed;
             return (
               <>
                 <SheetHeader>
@@ -390,91 +409,166 @@ const ClientsPage = () => {
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${getAvatarColor(selected.full_name)} flex items-center justify-center text-white text-xl font-bold shrink-0`}>
                       {(selected.full_name || "?")[0].toUpperCase()}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <SheetTitle className="text-lg">{selected.full_name || "Client"}</SheetTitle>
-                      <p className="text-sm text-muted-foreground capitalize">{selected.level || "bronze"}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <Badge className={`gap-1 text-[10px] ${levelColors[selected.level] || ""}`}>
+                          {selected.level || "bronze"}
+                        </Badge>
+                        {walletInstalled && (
+                          <Badge variant="outline" className="gap-1 text-[10px]">
+                            <Wallet className="w-3 h-3" /> Wallet
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </SheetHeader>
-                <div className="mt-6 space-y-5">
-                  <div className="space-y-3">
-                    {selected.email && (
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-                        <div className="flex items-center gap-2 text-sm min-w-0"><Mail className="w-4 h-4 text-muted-foreground shrink-0" /><span className="truncate">{selected.email}</span></div>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.email, "Email")}><Copy className="w-3.5 h-3.5" /></Button>
+
+                <Tabs defaultValue="info" className="mt-4">
+                  <TabsList className="w-full grid grid-cols-3">
+                    <TabsTrigger value="info" className="text-xs">Fiche</TabsTrigger>
+                    <TabsTrigger value="history" className="text-xs">Historique</TabsTrigger>
+                    <TabsTrigger value="notifs" className="text-xs">Notifications</TabsTrigger>
+                  </TabsList>
+
+                  {/* ── Tab: Info ── */}
+                  <TabsContent value="info" className="mt-4 space-y-5">
+                    {/* Contact info */}
+                    <div className="space-y-2.5">
+                      {selected.email && (
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                          <div className="flex items-center gap-2 text-sm min-w-0"><Mail className="w-4 h-4 text-muted-foreground shrink-0" /><span className="truncate">{selected.email}</span></div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.email, "Email")}><Copy className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      )}
+                      {selected.phone && (
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                          <div className="flex items-center gap-2 text-sm min-w-0"><Phone className="w-4 h-4 text-muted-foreground shrink-0" /><span className="truncate">{selected.phone}</span></div>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.phone, "Téléphone")}><Copy className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      )}
+                      {selected.birthday && (
+                        <div className="flex items-center gap-2 p-3 rounded-xl bg-secondary/50 text-sm">
+                          <Cake className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <span>{new Date(selected.birthday).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Stats grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                        <p className="text-xl font-display font-bold">{selected.total_points || 0}</p>
+                        <p className="text-[11px] text-muted-foreground">Points</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                        <p className="text-xl font-display font-bold">{selected.total_visits || 0}</p>
+                        <p className="text-[11px] text-muted-foreground">Visites</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                        <p className="text-xl font-display font-bold flex items-center justify-center gap-1">{selected.current_streak || 0} <Flame className="w-4 h-4 text-accent" /></p>
+                        <p className="text-[11px] text-muted-foreground">Streak</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-secondary/50 text-center">
+                        <p className="text-xl font-display font-bold capitalize">{selected.level || "bronze"}</p>
+                        <p className="text-[11px] text-muted-foreground">Niveau</p>
+                      </div>
+                    </div>
+
+                    {/* Card info */}
+                    {card && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Carte de fidélité</p>
+                        <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
+                          <div className="text-sm font-mono">{card.card_code || "—"}</div>
+                          <div className="flex items-center gap-1">
+                            {card.card_code && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(card.card_code, "Code carte")}><Copy className="w-3.5 h-3.5" /></Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild>
+                                  <Link to={`/card/${card.card_code}`} target="_blank"><ExternalLink className="w-3.5 h-3.5" /></Link>
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Award className="w-3 h-3" />
+                          {card.current_points}/{card.max_points} points • {card.rewards_earned || 0} récompense(s)
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={card.is_active ? "default" : "destructive"} className="text-[10px]">{card.is_active ? "Active" : "Désactivée"}</Badge>
+                          {walletInstalled && (
+                            <Badge variant="outline" className="text-[10px] gap-1"><Wallet className="w-3 h-3" /> Installée le {card.wallet_installed_at ? new Date(card.wallet_installed_at).toLocaleDateString("fr-FR") : "—"}</Badge>
+                          )}
+                        </div>
                       </div>
                     )}
-                    {selected.phone && (
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-                        <div className="flex items-center gap-2 text-sm min-w-0"><Phone className="w-4 h-4 text-muted-foreground shrink-0" /><span className="truncate">{selected.phone}</span></div>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(selected.phone, "Téléphone")}><Copy className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
-                      <p className="text-xl font-display font-bold">{selected.total_points || 0}</p>
-                      <p className="text-[11px] text-muted-foreground">Points</p>
+                    {/* Meta */}
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2"><Calendar className="w-3 h-3" />Inscrit le {new Date(selected.created_at).toLocaleDateString("fr-FR")}</div>
+                      {selected.last_visit_at && <div className="flex items-center gap-2"><Calendar className="w-3 h-3" />Dernière visite : {new Date(selected.last_visit_at).toLocaleDateString("fr-FR")}</div>}
                     </div>
-                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
-                      <p className="text-xl font-display font-bold">{selected.total_visits || 0}</p>
-                      <p className="text-[11px] text-muted-foreground">Visites</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
-                      <p className="text-xl font-display font-bold flex items-center justify-center gap-1">{selected.current_streak || 0} <Flame className="w-4 h-4 text-accent" /></p>
-                      <p className="text-[11px] text-muted-foreground">Streak</p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-secondary/50 text-center">
-                      <p className="text-xl font-display font-bold capitalize">{selected.level || "bronze"}</p>
-                      <p className="text-[11px] text-muted-foreground">Niveau</p>
-                    </div>
-                  </div>
 
-                  {card && (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Carte de fidélité</p>
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50">
-                        <div className="text-sm font-mono">{card.card_code || "—"}</div>
-                        {card.card_code && <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => copyField(card.card_code, "Code carte")}><Copy className="w-3.5 h-3.5" /></Button>}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Award className="w-3 h-3" />
-                        {card.current_points}/{card.max_points} points • {card.rewards_earned || 0} récompense(s)
-                      </div>
-                      <Badge variant={card.is_active ? "default" : "destructive"} className="text-[10px]">{card.is_active ? "Active" : "Désactivée"}</Badge>
+                    {/* Delete */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10 gap-2"><Trash2 className="w-4 h-4" /> Supprimer ce client</Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Supprimer {selected.full_name} ?</AlertDialogTitle>
+                          <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => { handleDeleteCustomer(selected.id, selected.full_name || "Client"); setSelected(null); }} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TabsContent>
+
+                  {/* ── Tab: History ── */}
+                  <TabsContent value="history" className="mt-4">
+                    <div className="max-h-[500px] overflow-y-auto">
+                      {history.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-8">Aucun historique</p>
+                      ) : (
+                        <CustomerTimeline history={history} customer={selected} />
+                      )}
                     </div>
-                  )}
+                  </TabsContent>
 
-                  {/* Timeline */}
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Chronologie</p>
-                    <div className="max-h-[280px] overflow-y-auto">
-                      <CustomerTimeline history={history} customer={selected} />
+                  {/* ── Tab: Notifications ── */}
+                  <TabsContent value="notifs" className="mt-4">
+                    <div className="max-h-[500px] overflow-y-auto space-y-3">
+                      {notifs.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-8">Aucune notification envoyée</p>
+                      ) : (
+                        notifs.map((n: any) => (
+                          <div key={n.id} className="p-3 rounded-xl bg-secondary/50 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Bell className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="text-sm font-medium truncate">{n.title}</span>
+                              </div>
+                              <Badge variant="outline" className="text-[9px] shrink-0">
+                                {n.type === "custom" ? "Campagne" : n.type === "win_back" ? "Relance" : n.type === "points_reminder" ? "Rappel" : n.type}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{n.message}</p>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                              <span>{new Date(n.sent_at).toLocaleDateString("fr-FR")} à {new Date(n.sent_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                              <Badge variant={n.delivery_status === "sent" ? "default" : "secondary"} className="text-[9px]">{n.delivery_status || "sent"}</Badge>
+                            </div>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  </div>
-
-                  <div className="space-y-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2"><Calendar className="w-3 h-3" />Inscrit le {new Date(selected.created_at).toLocaleDateString("fr-FR")}</div>
-                    {selected.last_visit_at && <div className="flex items-center gap-2"><Calendar className="w-3 h-3" />Dernière visite : {new Date(selected.last_visit_at).toLocaleDateString("fr-FR")}</div>}
-                  </div>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full rounded-xl text-destructive border-destructive/30 hover:bg-destructive/10 gap-2"><Trash2 className="w-4 h-4" /> Supprimer ce client</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer {selected.full_name} ?</AlertDialogTitle>
-                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="rounded-xl">Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => { handleDeleteCustomer(selected.id, selected.full_name || "Client"); setSelected(null); }} className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
+                  </TabsContent>
+                </Tabs>
               </>
             );
           })()}

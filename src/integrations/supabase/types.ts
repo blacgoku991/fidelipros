@@ -514,6 +514,7 @@ export type Database = {
       customers: {
         Row: {
           badges: string[] | null
+          birthday: string | null
           business_id: string
           created_at: string
           current_streak: number | null
@@ -531,6 +532,7 @@ export type Database = {
         }
         Insert: {
           badges?: string[] | null
+          birthday?: string | null
           business_id: string
           created_at?: string
           current_streak?: number | null
@@ -548,6 +550,7 @@ export type Database = {
         }
         Update: {
           badges?: string[] | null
+          birthday?: string | null
           business_id?: string
           created_at?: string
           current_streak?: number | null
