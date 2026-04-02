@@ -64,13 +64,15 @@ const AdminBusinesses = () => {
   };
 
   const updatePlan = async (id: string, plan: string) => {
-    await supabase.from("businesses").update({ subscription_plan: plan as any }).eq("id", id);
+    const { error } = await supabase.from("businesses").update({ subscription_plan: plan as any }).eq("id", id);
+    if (error) { toast.error("Erreur lors de la mise à jour du plan"); return; }
     toast.success("Plan mis à jour");
     fetchAll();
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("businesses").update({ subscription_status: status as any }).eq("id", id);
+    const { error } = await supabase.from("businesses").update({ subscription_status: status as any }).eq("id", id);
+    if (error) { toast.error("Erreur lors de la mise à jour du statut"); return; }
     toast.success("Statut mis à jour");
     fetchAll();
   };

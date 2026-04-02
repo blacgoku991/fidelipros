@@ -106,7 +106,8 @@ const AutomationsPage = () => {
   };
 
   const handleToggle = async (id: string, active: boolean) => {
-    await supabase.from("automations").update({ is_active: active } as any).eq("id", id);
+    const { error } = await supabase.from("automations").update({ is_active: active } as any).eq("id", id);
+    if (error) { toast.error("Erreur lors de la mise à jour"); return; }
     fetchAutomations();
   };
 
