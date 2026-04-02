@@ -184,7 +184,7 @@ export async function buildPkpass(
   // Fetch business logo for icons (square) and logo (rectangular)
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business);
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business, card);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
@@ -249,14 +249,7 @@ export async function buildPkpass(
           textAlignment: "PKTextAlignmentRight",
         },
       ],
-      auxiliaryFields: [
-        ...(latestOffer ? [{
-          key: "offer",
-          label: "",
-          value: latestOffer,
-          changeMessage: "%@",
-        }] : []),
-      ],
+      auxiliaryFields: [],
       backFields: [
         {
           key: "reward_info",
@@ -532,9 +525,9 @@ function deflateRaw(data: Uint8Array): Uint8Array {
   return new Uint8Array(blocks);
 }
 
-// ── Strip image (banner) — use card_bg_image_url if available ─────
+// ── Strip image (banner) — use card_bg_image_url if available, else generate visual ─────
 
-async function fetchOrGenerateStrip(business: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
+async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
     try {
       const imgUrl = business.card_bg_image_url.split("?")[0];
@@ -552,34 +545,164 @@ async function fetchOrGenerateStrip(business: any): Promise<{ stripPng: Uint8Arr
     }
   }
   const hexColor = business.primary_color || "#6B46C1";
-  const stripPng = generateStripPng(320, 123, hexColor);
-  const strip2xPng = generateStripPng(640, 246, hexColor);
+  const loyaltyType = business.loyalty_type || "stamps";
+  const current = card.current_points || 0;
+  const max = card.max_points || 10;
+  const stripPng = generateStripWithVisuals(320, 123, hexColor, loyaltyType, current, max);
+  const strip2xPng = generateStripWithVisuals(640, 246, hexColor, loyaltyType, current, max);
   return { stripPng, strip2xPng };
 }
 
-function generateStripPng(width: number, height: number, hexColor: string): Uint8Array {
+function generateStripWithVisuals(
+  width: number, height: number, hexColor: string,
+  loyaltyType: string, current: number, max: number
+): Uint8Array {
   const hex = /^#[0-9A-Fa-f]{6}$/.test(hexColor) ? hexColor : "#6B46C1";
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
 
-  // Create strip with diagonal pattern overlay
   const rawData: number[] = [];
+  const scale = width / 320; // 1x or 2x
+
+  // Pre-compute stamp/progress positions
+  const stamps = loyaltyType === "stamps" ? buildStampPositions(width, height, current, max, scale) : null;
+  const progressBar = (loyaltyType === "points" || loyaltyType === "cashback")
+    ? buildProgressBar(width, height, current, max, scale) : null;
+
   for (let y = 0; y < height; y++) {
     rawData.push(0); // filter byte
     for (let x = 0; x < width; x++) {
-      // Diagonal stripe pattern: every 8px, slightly lighter
-      const stripe = ((x + y) % 16) < 4;
-      const lightness = stripe ? 20 : 0;
-      // Gradient from top to bottom (slightly darker at bottom)
-      const gradientDarken = Math.floor((y / height) * 30);
-      const pr = Math.min(255, Math.max(0, r + lightness - gradientDarken));
-      const pg = Math.min(255, Math.max(0, g + lightness - gradientDarken));
-      const pb = Math.min(255, Math.max(0, b + lightness - gradientDarken));
-      rawData.push(pr, pg, pb, 255);
+      // Base: subtle gradient background
+      const gradientDarken = Math.floor((y / height) * 25);
+      let pr = Math.max(0, r - gradientDarken);
+      let pg = Math.max(0, g - gradientDarken);
+      let pb = Math.max(0, b - gradientDarken);
+      let pa = 255;
+
+      if (stamps) {
+        // Draw stamp circles
+        const stampResult = getStampPixel(x, y, stamps, pr, pg, pb);
+        if (stampResult) {
+          pr = stampResult.r; pg = stampResult.g; pb = stampResult.b;
+        }
+      } else if (progressBar) {
+        // Draw progress bar
+        const barResult = getProgressPixel(x, y, progressBar, pr, pg, pb);
+        if (barResult) {
+          pr = barResult.r; pg = barResult.g; pb = barResult.b;
+        }
+      }
+
+      rawData.push(pr, pg, pb, pa);
     }
   }
 
+  return buildPngFromRaw(width, height, rawData);
+}
+
+// ── Stamp circle helpers ──────────────────────────────────────────
+
+interface StampCircle { cx: number; cy: number; radius: number; filled: boolean; }
+
+function buildStampPositions(w: number, h: number, current: number, max: number, scale: number): StampCircle[] {
+  const circles: StampCircle[] = [];
+  const count = Math.min(max, 12); // Cap at 12 visible stamps
+  const radius = Math.floor(16 * scale);
+  const spacing = Math.floor(w / (count + 1));
+  const cy = Math.floor(h / 2);
+
+  for (let i = 0; i < count; i++) {
+    circles.push({
+      cx: spacing * (i + 1),
+      cy,
+      radius,
+      filled: i < current,
+    });
+  }
+  return circles;
+}
+
+function getStampPixel(x: number, y: number, stamps: StampCircle[], bgR: number, bgG: number, bgB: number) {
+  for (const s of stamps) {
+    const dx = x - s.cx;
+    const dy = y - s.cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist <= s.radius) {
+      // Inside circle
+      if (s.filled) {
+        // Filled stamp: bright white circle with slight shadow
+        return { r: 255, g: 255, b: 255 };
+      } else {
+        // Empty stamp: semi-transparent ring (lighter than bg)
+        if (dist > s.radius - 2) {
+          // Ring border
+          return { r: Math.min(255, bgR + 60), g: Math.min(255, bgG + 60), b: Math.min(255, bgB + 60) };
+        }
+        // Inner: slightly lighter than background
+        return { r: Math.min(255, bgR + 20), g: Math.min(255, bgG + 20), b: Math.min(255, bgB + 20) };
+      }
+    }
+    // Circle border glow for filled stamps
+    if (s.filled && dist <= s.radius + 1.5) {
+      return { r: Math.min(255, bgR + 40), g: Math.min(255, bgG + 40), b: Math.min(255, bgB + 40) };
+    }
+  }
+  return null;
+}
+
+// ── Progress bar helpers ──────────────────────────────────────────
+
+interface ProgressBarDef { x: number; y: number; w: number; h: number; fillRatio: number; }
+
+function buildProgressBar(canvasW: number, canvasH: number, current: number, max: number, scale: number): ProgressBarDef {
+  const barH = Math.floor(14 * scale);
+  const margin = Math.floor(30 * scale);
+  return {
+    x: margin,
+    y: Math.floor(canvasH / 2) - Math.floor(barH / 2),
+    w: canvasW - margin * 2,
+    h: barH,
+    fillRatio: Math.min(1, max > 0 ? current / max : 0),
+  };
+}
+
+function getProgressPixel(x: number, y: number, bar: ProgressBarDef, bgR: number, bgG: number, bgB: number) {
+  if (x >= bar.x && x <= bar.x + bar.w && y >= bar.y && y <= bar.y + bar.h) {
+    const barRadius = Math.floor(bar.h / 2);
+    // Rounded ends check
+    const relX = x - bar.x;
+    const relY = y - bar.y;
+    const centerY = bar.h / 2;
+
+    // Left rounded end
+    if (relX < barRadius) {
+      const dx = relX - barRadius;
+      const dy = relY - centerY;
+      if (dx * dx + dy * dy > barRadius * barRadius) return null;
+    }
+    // Right rounded end
+    if (relX > bar.w - barRadius) {
+      const dx = relX - (bar.w - barRadius);
+      const dy = relY - centerY;
+      if (dx * dx + dy * dy > barRadius * barRadius) return null;
+    }
+
+    const fillWidth = bar.w * bar.fillRatio;
+    if (relX <= fillWidth) {
+      // Filled portion: white
+      return { r: 255, g: 255, b: 255 };
+    }
+    // Unfilled portion: lighter than bg
+    return { r: Math.min(255, bgR + 30), g: Math.min(255, bgG + 30), b: Math.min(255, bgB + 30) };
+  }
+  return null;
+}
+
+// ── Build PNG from raw pixel data ─────────────────────────────────
+
+function buildPngFromRaw(width: number, height: number, rawData: number[]): Uint8Array {
   const rawBytes = new Uint8Array(rawData);
   const compressed = deflateRaw(rawBytes);
 
