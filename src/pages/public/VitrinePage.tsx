@@ -16,7 +16,7 @@ const VitrinePage = () => {
   const [showQr, setShowQr] = useState(false);
 
   const appBase = import.meta.env.VITE_APP_URL || window.location.origin;
-  const joinUrl = business ? `${appBase}/b/${business.id}` : "";
+  const joinUrl = business ? `${appBase}/b/${business.id}?source=vitrine` : "";
 
   // Dynamic OG meta tags for social sharing
   useEffect(() => {
@@ -91,6 +91,18 @@ const VitrinePage = () => {
           return;
         }
         setBusiness(biz);
+
+        // Track vitrine visit for conversion funnel
+        try {
+          const sessionId = sessionStorage.getItem("fp_session") || crypto.randomUUID();
+          sessionStorage.setItem("fp_session", sessionId);
+          await supabase.from("vitrine_visits").insert({
+            business_id: biz.id,
+            source: new URLSearchParams(window.location.search).get("utm_source") || "direct",
+            referrer: document.referrer || null,
+            session_id: sessionId,
+          });
+        } catch { /* non-blocking */ }
 
         const { data: rw } = await supabase
           .from("rewards")

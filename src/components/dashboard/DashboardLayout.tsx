@@ -42,7 +42,7 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
         </div>
 
         {/* Page content */}
-        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-20 lg:pb-6">
           <SubscriptionGuard>
             {children}
           </SubscriptionGuard>

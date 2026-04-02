@@ -29,17 +29,18 @@ import { AnimatePresence, motion } from "framer-motion";
 
 /* ── Stamp grid for preview ── */
 function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?: number }) {
+  const cols = Math.min(total, total <= 6 ? total : total <= 12 ? 6 : 5);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(5, 1fr)`, gap: `${6 * s}px`, padding: `${10 * s}px ${16 * s}px` }}>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: `${5 * s}px`, padding: `${8 * s}px ${14 * s}px` }}>
       {Array.from({ length: total }, (_, i) => (
         <div
           key={i}
           style={{
-            width: `${28 * s}px`, height: `${28 * s}px`, borderRadius: "50%",
+            width: `${24 * s}px`, height: `${24 * s}px`, borderRadius: "50%",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: `${14 * s}px`, color: "#fff",
-            background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
-            border: `${1.5 * s}px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
+            fontSize: `${12 * s}px`, color: "#fff",
+            background: i < filled ? "rgba(255,255,255,0.9)" : "transparent",
+            border: `${2 * s}px solid rgba(255,255,255,${i < filled ? "0.9" : "0.6"})`,
           }}
         >
           {i < filled ? "✓" : ""}

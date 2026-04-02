@@ -26,13 +26,13 @@ export function StatsCard({ label, value, icon: Icon, change, index = 0, tooltip
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
-      className="group relative overflow-hidden p-5 rounded-2xl bg-card border border-border/40 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/15 hover:-translate-y-1 transition-all duration-300"
+      className="group relative overflow-hidden p-3 sm:p-5 rounded-2xl bg-card border border-border/40 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/15 hover:-translate-y-1 transition-all duration-300"
     >
       <div className={`absolute -top-6 -right-6 w-24 h-24 rounded-full bg-gradient-to-br ${gradient} opacity-[0.07] group-hover:opacity-[0.14] transition-opacity`} />
 
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-          <Icon className="w-5 h-5 text-white" />
+      <div className="flex items-start justify-between mb-2 sm:mb-4">
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
         </div>
         <div className="flex items-center gap-1.5">
           {change && (
@@ -52,7 +52,7 @@ export function StatsCard({ label, value, icon: Icon, change, index = 0, tooltip
           )}
         </div>
       </div>
-      <p className="text-2xl font-display font-bold tracking-tight">{value}</p>
+      <p className="text-xl sm:text-2xl font-display font-bold tracking-tight">{value}</p>
       <p className="text-xs text-muted-foreground mt-1 font-medium">{label}</p>
     </motion.div>
   );

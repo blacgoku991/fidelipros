@@ -26,7 +26,7 @@ interface CampaignSummary {
   segment: string;
   sentAt: string;
   count: number;
-  status: "sent" | "draft";
+  status: "sent" | "draft" | "scheduled";
 }
 
 // ─── Segment config ───────────────────────────────────────────────────────────
@@ -161,33 +161,67 @@ const CampaignsPage = () => {
 
   const fetchCampaigns = async () => {
     if (!business) return;
-    const { data } = await supabase
+
+    // Fetch from notification_campaigns (includes both sent and scheduled)
+    const { data: campaigns } = await supabase
+      .from("notification_campaigns")
+      .select("*")
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    // Fetch legacy notifications_log entries (for backwards compatibility)
+    const { data: logs } = await supabase
       .from("notifications_log")
       .select("*")
       .eq("business_id", business.id)
       .order("sent_at", { ascending: false })
       .limit(200);
-    if (!data) return;
 
-    const groups: Record<string, any[]> = {};
-    data.forEach(l => {
-      const key = `${l.message}__${new Date(l.sent_at).toDateString()}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(l);
-    });
+    const summaries: CampaignSummary[] = [];
 
-    const summaries: CampaignSummary[] = Object.entries(groups).map(([, logs]) => ({
-      id: logs[0].id,
-      title: logs[0].title || businessName,
-      message: logs[0].message,
-      segment: logs[0].segment || "all",
-      sentAt: logs[0].sent_at,
-      count: logs.length,
-      status: "sent",
-    }));
+    // Add notification_campaigns entries
+    if (campaigns) {
+      for (const c of campaigns) {
+        summaries.push({
+          id: c.id,
+          title: c.title || businessName,
+          message: c.message,
+          segment: c.segment || "all",
+          sentAt: c.send_at || c.created_at,
+          count: c.recipients_count || 0,
+          status: c.status === "scheduled" ? "scheduled" : "sent",
+        });
+      }
+    }
 
+    // Add grouped notifications_log entries that aren't already covered by campaigns
+    if (logs) {
+      const campaignMessages = new Set(summaries.map(s => s.message));
+      const groups: Record<string, any[]> = {};
+      logs.forEach(l => {
+        if (campaignMessages.has(l.message)) return; // Skip duplicates
+        const key = `${l.message}__${new Date(l.sent_at).toDateString()}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(l);
+      });
+      for (const [, grp] of Object.entries(groups)) {
+        summaries.push({
+          id: grp[0].id,
+          title: grp[0].title || businessName,
+          message: grp[0].message,
+          segment: grp[0].segment || "all",
+          sentAt: grp[0].sent_at,
+          count: grp.length,
+          status: "sent",
+        });
+      }
+    }
+
+    // Sort by date descending
+    summaries.sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime());
     setCampaignSummaries(summaries);
-    setTotalNotified(summaries.reduce((sum, s) => sum + s.count, 0));
+    setTotalNotified(summaries.filter(s => s.status === "sent").reduce((sum, s) => sum + s.count, 0));
   };
 
   const fetchSegmentCounts = async () => {
@@ -287,8 +321,33 @@ const CampaignsPage = () => {
   const handleSend = async () => {
     if (!message.trim() || !business) { toast.error("Écrivez un message"); return; }
     if (targetCount === 0) { toast.error("Aucun client dans ce segment"); return; }
-    setSending(true);
 
+    // Scheduled campaign: insert into notification_campaigns and let the cron handle delivery
+    if (scheduled && scheduleDate && scheduleTime) {
+      const sendAt = new Date(`${scheduleDate}T${scheduleTime}`);
+      if (sendAt <= new Date()) { toast.error("La date doit être dans le futur"); return; }
+      setSending(true);
+      const segLabel = [...selectedSegments].join(",");
+      const { error } = await supabase.from("notification_campaigns").insert({
+        business_id: business.id,
+        title: businessName,
+        message: message.trim(),
+        segment: segLabel,
+        send_mode: "scheduled",
+        send_at: sendAt.toISOString(),
+        status: "scheduled",
+        recipients_count: targetCount,
+      } as any);
+      setSending(false);
+      if (error) { toast.error("Erreur de programmation"); return; }
+      toast.success(`⏰ Campagne programmée pour le ${sendAt.toLocaleDateString("fr-FR")} à ${sendAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
+      resetForm();
+      fetchCampaigns();
+      return;
+    }
+
+    // Immediate send
+    setSending(true);
     const customers = await resolveCustomers();
     if (customers.length === 0) { toast.error("Aucun client trouvé"); setSending(false); return; }
 
@@ -305,6 +364,17 @@ const CampaignsPage = () => {
 
     const { error } = await supabase.from("notifications_log").insert(logs);
     if (error) { toast.error("Erreur d'envoi"); setSending(false); return; }
+
+    // Also record in notification_campaigns for history
+    await supabase.from("notification_campaigns").insert({
+      business_id: business.id,
+      title: businessName,
+      message: message.trim(),
+      segment: segLabel,
+      send_mode: "immediate",
+      status: "sent",
+      recipients_count: customers.length,
+    } as any);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -436,8 +506,12 @@ const CampaignsPage = () => {
               >
                 <div className="flex items-start justify-between gap-2 mb-1.5">
                   <p className="text-sm font-semibold truncate flex-1 leading-tight">{c.title}</p>
-                  <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px] font-medium shrink-0 px-1.5">
-                    Envoyée
+                  <Badge className={`text-[10px] font-medium shrink-0 px-1.5 ${
+                    c.status === "scheduled"
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                  }`}>
+                    {c.status === "scheduled" ? "Programmée" : "Envoyée"}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-1 mb-2 leading-relaxed">{c.message}</p>
@@ -727,7 +801,9 @@ const CampaignsPage = () => {
                     className="sm:ml-auto bg-gradient-primary text-primary-foreground rounded-xl gap-2 px-6 font-semibold h-11 w-full sm:w-auto"
                   >
                     {sending ? (
-                      <><Bell className="w-4 h-4 animate-bounce" /> Envoi en cours…</>
+                      <><Bell className="w-4 h-4 animate-bounce" /> {scheduled ? "Programmation…" : "Envoi en cours…"}</>
+                    ) : scheduled && scheduleDate && scheduleTime ? (
+                      <><Calendar className="w-4 h-4" /> Programmer la campagne</>
                     ) : (
                       <><Send className="w-4 h-4" /> Envoyer la campagne</>
                     )}
