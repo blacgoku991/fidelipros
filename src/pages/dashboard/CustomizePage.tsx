@@ -138,7 +138,7 @@ const CustomizePage = () => {
       reward_alert_threshold: business.reward_alert_threshold || 2,
       geofence_enabled: business.geofence_enabled ?? false,
       geofence_radius: business.geofence_radius || 200,
-      onboarding_mode: business.onboarding_mode || "instant",
+      onboarding_mode: (business.onboarding_mode || "instant") as BusinessConfig["onboarding_mode"],
       feature_gamification: business.feature_gamification ?? true,
       feature_notifications: business.feature_notifications ?? true,
       feature_wallet: business.feature_wallet ?? false,
