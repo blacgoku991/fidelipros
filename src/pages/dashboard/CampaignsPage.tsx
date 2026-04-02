@@ -254,7 +254,7 @@ const CampaignsPage = () => {
 
   const resolveCustomers = async (): Promise<{ id: string }[]> => {
     if (!business) return [];
-    const bizId = (business as any).id;
+    const bizId = business.id;
     const now = new Date();
     const ago30 = new Date(now.getTime() - 30 * 86400000).toISOString();
 
