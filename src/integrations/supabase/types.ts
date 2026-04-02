@@ -460,6 +460,51 @@ export type Database = {
           },
         ]
       }
+      customer_reviews: {
+        Row: {
+          business_id: string
+          comment: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          comment?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          comment?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reviews_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_scores: {
         Row: {
           business_id: string
@@ -1317,6 +1362,41 @@ export type Database = {
         }
         Relationships: []
       }
+      vitrine_visits: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          referrer: string | null
+          session_id: string | null
+          source: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          referrer?: string | null
+          session_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          referrer?: string | null
+          session_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vitrine_visits_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_apns_logs: {
         Row: {
           apns_response: string | null
@@ -1421,6 +1501,47 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      webhook_endpoints: {
+        Row: {
+          business_id: string
+          created_at: string
+          events: string[] | null
+          id: string
+          is_active: boolean
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          is_active?: boolean
+          secret: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          is_active?: boolean
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
