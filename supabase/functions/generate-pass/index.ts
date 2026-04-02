@@ -694,3 +694,19 @@ function hexToRgb(hex: string): string {
   const n = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#6B46C1";
   return `rgb(${parseInt(n.slice(1, 3), 16)}, ${parseInt(n.slice(3, 5), 16)}, ${parseInt(n.slice(5, 7), 16)})`;
 }
+
+function hexBrightness(hex: string): number {
+  const n = /^#[0-9A-Fa-f]{6}$/.test(hex) ? hex : "#6B46C1";
+  const r = parseInt(n.slice(1, 3), 16);
+  const g = parseInt(n.slice(3, 5), 16);
+  const b = parseInt(n.slice(5, 7), 16);
+  return (r * 299 + g * 587 + b * 114) / 1000;
+}
+
+function autoForeground(bgHex: string): string {
+  return hexBrightness(bgHex) > 160 ? "rgb(26, 26, 26)" : "rgb(255, 255, 255)";
+}
+
+function autoLabelColor(bgHex: string): string {
+  return hexBrightness(bgHex) > 160 ? "rgb(100, 100, 100)" : "rgb(200, 200, 200)";
+}

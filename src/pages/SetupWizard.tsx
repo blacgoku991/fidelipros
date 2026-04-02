@@ -48,39 +48,17 @@ const SetupWizard = () => {
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessSlug, setBusinessSlug] = useState<string | null>(null);
 
-  // ── Vérification paiement après redirect Stripe ──────────────────────────
-  const isCheckoutSuccess = searchParams.get("checkout") === "success";
-  const sessionId = searchParams.get("session_id");
-  const [checkingPayment, setCheckingPayment] = useState(isCheckoutSuccess);
-  const [paymentError, setPaymentError] = useState(false);
-  const [pollProgress, setPollProgress] = useState(5);
-  const retryCount = useRef(0);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  // ── Payment verification is handled by CheckoutPage — skip duplicate polling ──
+  // CheckoutPage redirects to /setup after successful activation.
+  // If we arrive with checkout=success, just clear the params and proceed.
   useEffect(() => {
     if (!isCheckoutSuccess) return;
-    const verify = async () => {
-      try {
-        const { data } = await supabase.functions.invoke("check-subscription", {
-          body: sessionId ? { session_id: sessionId } : {},
-        });
-        if (data?.subscribed === true || data?.active === true) {
-          setPollProgress(100);
-          setTimeout(() => window.location.replace("/dashboard"), 600);
-          return;
-        }
-      } catch { /* retry */ }
-      retryCount.current += 1;
-      setPollProgress(Math.min(90, Math.round((retryCount.current / MAX_RETRIES) * 90) + 5));
-      if (retryCount.current < MAX_RETRIES) {
-        retryTimer.current = setTimeout(verify, 2000);
-      } else {
-        setCheckingPayment(false);
-        setPaymentError(true);
-      }
-    };
-    verify();
-    return () => { if (retryTimer.current) clearTimeout(retryTimer.current); };
+    // Remove checkout params from URL to avoid re-triggering
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.delete("checkout");
+    newUrl.searchParams.delete("session_id");
+    window.history.replaceState({}, "", newUrl.toString());
+    setCheckingPayment(false);
   }, []);
 
   // Step 2 — commerce info
