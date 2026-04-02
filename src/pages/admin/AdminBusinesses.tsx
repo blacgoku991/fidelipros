@@ -275,6 +275,10 @@ const AdminBusinesses = () => {
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Détails" onClick={() => navigate(`/admin/businesses/${biz.id}`)}>
                         <ExternalLink className="w-4 h-4" />
                       </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" title="Supprimer"
+                        onClick={() => setDeleteTarget(biz)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
