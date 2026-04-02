@@ -123,7 +123,7 @@ const CampaignsPage = () => {
   const [scheduled, setScheduled] = useState(false);
 
   // ── Form ──────────────────────────────────────────────────────────────────
-  const [title, setTitle] = useState("");
+  
   const [message, setMessage] = useState("");
   const [selectedSegments, setSelectedSegments] = useState<Set<SegmentKey>>(new Set(["all"]));
   const [scheduleDate, setScheduleDate] = useState("");
@@ -296,7 +296,7 @@ const CampaignsPage = () => {
     const logs = customers.map(c => ({
       business_id: business.id,
       customer_id: c.id,
-      title: title.trim() || businessName,
+      title: businessName,
       message: message.trim(),
       type: "custom" as const,
       segment: segLabel,
@@ -315,7 +315,7 @@ const CampaignsPage = () => {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           business_id: business.id,
-          title: title.trim() || businessName,
+          title: businessName,
           message: message.trim(),
           segment: segLabel,
           channels: { web_push: false, apple_wallet: true },
@@ -333,14 +333,13 @@ const CampaignsPage = () => {
   };
 
   const saveDraft = () => {
-    if (!title.trim() && !message.trim()) { toast.error("Ajoutez un titre ou un message"); return; }
+    if (!message.trim()) { toast.error("Ajoutez un message"); return; }
     toast.success("Brouillon sauvegardé");
     resetForm();
   };
 
   const resetForm = () => {
     setCreating(false);
-    setTitle("");
     setMessage("");
     setSelectedSegments(new Set(["all"]));
     setScheduled(false);
@@ -515,7 +514,7 @@ const CampaignsPage = () => {
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Message</p>
                   <p className="text-sm leading-relaxed">{selectedCampaign.message}</p>
                 </div>
-                <IPhonePreview title={selectedCampaign.title} message={selectedCampaign.message} />
+                <IPhonePreview title={businessName} message={selectedCampaign.message} />
               </motion.div>
             )}
 
@@ -544,16 +543,6 @@ const CampaignsPage = () => {
                   <div className="flex flex-col sm:flex-row gap-6">
                     {/* Fields */}
                     <div className="flex-1 space-y-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Titre</Label>
-                        <Input
-                          value={title}
-                          onChange={e => setTitle(e.target.value.slice(0, 60))}
-                          placeholder="Ex : Offre spéciale weekend 🎉"
-                          className="h-11 rounded-xl"
-                          maxLength={60}
-                        />
-                      </div>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Message *</Label>
@@ -585,7 +574,7 @@ const CampaignsPage = () => {
                     {/* iPhone preview */}
                     <div className="shrink-0 hidden sm:block">
                       <IPhonePreview
-                        title={title || businessName}
+                        title={businessName}
                         message={message || "Votre message apparaîtra ici…"}
                       />
                     </div>
