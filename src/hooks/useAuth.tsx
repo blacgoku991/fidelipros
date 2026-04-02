@@ -24,10 +24,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
+
+  const clearAuthState = () => {
+    setUser(null);
+    setRole(null);
+    setBusiness(null);
+    setLocationId(null);
+    setLocationName(null);
+  };
 
   useEffect(() => {
     let active = true;
@@ -37,50 +46,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
 
       if (error || !data.session) {
-        setUser(null);
-        setRole(null);
-        setBusiness(null);
-        setLocationId(null);
-        setLocationName(null);
+        clearAuthState();
+        setAuthReady(true);
         setLoading(false);
         return;
       }
 
-      // Verify the user still exists (handles deleted accounts with stale sessions)
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (!active) return;
 
       if (userError || !userData.user) {
         console.warn("[Auth] Session exists but user is invalid/deleted, signing out");
         await supabase.auth.signOut();
-        setUser(null);
-        setRole(null);
-        setBusiness(null);
-        setLocationId(null);
-        setLocationName(null);
+        if (!active) return;
+        clearAuthState();
+        setAuthReady(true);
         setLoading(false);
         return;
       }
 
       setUser(userData.user);
+      setAuthReady(true);
     };
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!active) return;
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!active || event === "INITIAL_SESSION") return;
 
       if (!session) {
-        setUser(null);
-        setRole(null);
-        setBusiness(null);
-        setLocationId(null);
-        setLocationName(null);
+        clearAuthState();
+        setAuthReady(true);
         setLoading(false);
         return;
       }
 
+      setLoading(true);
       setUser(session.user);
+      setAuthReady(true);
     });
 
     bootSession();
@@ -95,7 +98,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
 
     const loadUserContext = async () => {
-      if (!user) return;
+      if (!authReady) return;
+
+      if (!user) {
+        setRole(null);
+        setBusiness(null);
+        setLocationId(null);
+        setLocationName(null);
+        setLoading(false);
+        return;
+      }
 
       const [rolesRes, bizRes] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1),
@@ -107,7 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userRole = rolesRes.data?.[0]?.role ?? null;
       setRole(userRole);
 
-      // Admin impersonation: only allow if role is verified as super_admin from DB
       let resolvedBusiness = bizRes.data ?? null;
       let resolvedLocationId: string | null = null;
       let resolvedLocationName: string | null = null;
@@ -129,7 +140,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } else if (userRole === "location_manager") {
-        // Location manager: find their location and parent business
         const { data: lmData } = await supabase
           .from("location_managers")
           .select("location_id, merchant_locations(business_id, name)")
@@ -152,12 +162,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (parentBiz) resolvedBusiness = parentBiz;
           }
         }
-      } else {
-        // Not super_admin — clear any stale impersonation state
-        if (localStorage.getItem("impersonating_business")) {
-          localStorage.removeItem("impersonating_business");
-          localStorage.removeItem("impersonating_business_name");
-        }
+      } else if (localStorage.getItem("impersonating_business")) {
+        localStorage.removeItem("impersonating_business");
+        localStorage.removeItem("impersonating_business_name");
       }
 
       setBusiness(resolvedBusiness);
@@ -165,7 +172,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLocationName(resolvedLocationName);
       setLoading(false);
 
-      // Subscription gate: redirect unpaid users to checkout
       const biz = resolvedBusiness;
       const path = window.location.pathname;
       const isExempt =
@@ -178,7 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         biz.subscription_status === "past_due" ||
         biz.subscription_status === "canceled"
       );
-      // Location managers are covered by the franchise owner's subscription
+
       if (
         isBlocked &&
         path.startsWith("/dashboard") &&
@@ -194,20 +200,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [authReady, user, navigate]);
 
   const isFranchiseOwner = !!(business as any)?.is_franchise && role !== "location_manager" && !locationId;
 
   const refreshBusiness = async () => {
     if (!user) return;
-    // Respect admin impersonation only if role is verified super_admin
     const impersonatedId = localStorage.getItem("impersonating_business");
     if (role === "super_admin" && impersonatedId) {
       const { data: roleCheck } = await supabase
         .from("user_roles").select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
       if (roleCheck) {
         const { data } = await supabase.from("businesses").select("*").eq("id", impersonatedId).maybeSingle();
-        if (data) { setBusiness(data); return; }
+        if (data) {
+          setBusiness(data);
+          return;
+        }
       } else {
         localStorage.removeItem("impersonating_business");
         localStorage.removeItem("impersonating_business_name");

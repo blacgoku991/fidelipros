@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { lovable } from "@/integrations/lovable/index";
 import { AuthNavbar } from "@/components/AuthNavbar";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +21,7 @@ const benefits = [
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, role, loading: authLoading } = useAuth("");
   const accountExistsEmail = (location.state as any)?.accountExistsEmail as string | undefined;
   const [email, setEmail] = useState(accountExistsEmail ?? "");
   const [password, setPassword] = useState("");
@@ -27,24 +29,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
-  // Redirect already-authenticated users
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: roles } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id);
-        if (roles?.some((r) => r.role === "super_admin")) {
-          navigate("/admin", { replace: true });
-        } else {
-          navigate("/dashboard", { replace: true });
-        }
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+    if (authLoading || !user) return;
+    navigate(role === "super_admin" ? "/admin" : "/dashboard", { replace: true });
+  }, [authLoading, user, role, navigate]);
 
   const handleForgotPassword = async () => {
     const target = email.trim();
