@@ -11,6 +11,9 @@ interface AuthContextType {
   loading: boolean;
   role: string | null;
   business: Business | null;
+  locationId: string | null;
+  locationName: string | null;
+  isFranchiseOwner: boolean;
   logout: () => Promise<void>;
   refreshBusiness: () => Promise<void>;
 }
@@ -23,6 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [business, setBusiness] = useState<Business | null>(null);
+  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationName, setLocationName] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setRole(null);
         setBusiness(null);
+        setLocationId(null);
+        setLocationName(null);
         setLoading(false);
         return;
       }
@@ -51,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setRole(null);
         setBusiness(null);
+        setLocationId(null);
+        setLocationName(null);
         setLoading(false);
         return;
       }
@@ -84,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Admin impersonation: only allow if role is verified as super_admin from DB
       let resolvedBusiness = bizRes.data ?? null;
+      let resolvedLocationId: string | null = null;
+      let resolvedLocationName: string | null = null;
+
       if (userRole === "super_admin") {
         const impersonatedId = localStorage.getItem("impersonating_business");
         if (impersonatedId) {
@@ -96,9 +108,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (impBiz) {
             resolvedBusiness = impBiz;
           } else {
-            // Invalid impersonation target — clean up
             localStorage.removeItem("impersonating_business");
             localStorage.removeItem("impersonating_business_name");
+          }
+        }
+      } else if (userRole === "location_manager") {
+        // Location manager: find their location and parent business
+        const { data: lmData } = await supabase
+          .from("location_managers")
+          .select("location_id, merchant_locations(business_id, name)")
+          .eq("user_id", user.id)
+          .limit(1);
+        if (!active) return;
+
+        if (lmData && lmData.length > 0) {
+          const lm = lmData[0] as any;
+          resolvedLocationId = lm.location_id;
+          resolvedLocationName = lm.merchant_locations?.name || null;
+          const parentBizId = lm.merchant_locations?.business_id;
+          if (parentBizId) {
+            const { data: parentBiz } = await supabase
+              .from("businesses")
+              .select("*")
+              .eq("id", parentBizId)
+              .maybeSingle();
+            if (!active) return;
+            if (parentBiz) resolvedBusiness = parentBiz;
           }
         }
       } else {
@@ -110,6 +145,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setBusiness(resolvedBusiness);
+      setLocationId(resolvedLocationId);
+      setLocationName(resolvedLocationName);
       setLoading(false);
 
       // Subscription gate: redirect unpaid users to checkout
@@ -125,10 +162,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         biz.subscription_status === "past_due" ||
         biz.subscription_status === "canceled"
       );
+      // Location managers are covered by the franchise owner's subscription
       if (
         isBlocked &&
         path.startsWith("/dashboard") &&
-        !isExempt
+        !isExempt &&
+        userRole !== "location_manager"
       ) {
         navigate(`/dashboard/checkout?plan=${biz.subscription_plan || "starter"}`, { replace: true });
       }
@@ -141,19 +180,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [user]);
 
+  const isFranchiseOwner = !!(business as any)?.is_franchise && role !== "location_manager" && !locationId;
+
   const refreshBusiness = async () => {
     if (!user) return;
     // Respect admin impersonation only if role is verified super_admin
     const impersonatedId = localStorage.getItem("impersonating_business");
     if (role === "super_admin" && impersonatedId) {
-      // Re-verify role from DB before trusting impersonation
       const { data: roleCheck } = await supabase
         .from("user_roles").select("role").eq("user_id", user.id).eq("role", "super_admin").maybeSingle();
       if (roleCheck) {
         const { data } = await supabase.from("businesses").select("*").eq("id", impersonatedId).maybeSingle();
         if (data) { setBusiness(data); return; }
       } else {
-        // Role revoked — clear impersonation
         localStorage.removeItem("impersonating_business");
         localStorage.removeItem("impersonating_business_name");
       }
@@ -168,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, role, business, logout, refreshBusiness }}>
+    <AuthContext.Provider value={{ user, loading, role, business, locationId, locationName, isFranchiseOwner, logout, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );

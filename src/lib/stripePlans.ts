@@ -28,6 +28,21 @@ export const STRIPE_PLANS = {
       "Clients illimités",
     ],
   },
+  franchise: {
+    product_id: "prod_FRANCHISE_PLACEHOLDER",
+    price_id: "price_FRANCHISE_PLACEHOLDER",
+    name: "Franchise",
+    price: 149,
+    features: [
+      "Tout Pro +",
+      "Jusqu'à 5 établissements inclus",
+      "Dashboard multi-sites",
+      "Comparaison entre points de vente",
+      "Managers par établissement",
+      "Carte fidélité unifiée",
+      "+29€/établissement supplémentaire",
+    ],
+  },
 } as const;
 
 export type PlanKey = keyof typeof STRIPE_PLANS;

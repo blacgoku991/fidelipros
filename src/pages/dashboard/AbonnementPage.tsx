@@ -10,16 +10,17 @@ import {
 } from "@/components/ui/dialog";
 import {
   CreditCard, ExternalLink, AlertTriangle, RefreshCw, Zap, Crown, Check, Loader2,
-  Shield, Receipt, ArrowRight,
+  Shield, Receipt, ArrowRight, Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { STRIPE_PLANS, type PlanKey } from "@/lib/stripePlans";
 import { motion } from "framer-motion";
 
-const planIcons: Record<string, React.ElementType> = { starter: Zap, pro: Crown };
+const planIcons: Record<string, React.ElementType> = { starter: Zap, pro: Crown, franchise: Building2 };
 const planGradients: Record<string, string> = {
   starter: "from-violet-500 to-purple-600",
   pro: "from-amber-400 to-orange-500",
+  franchise: "from-emerald-500 to-teal-600",
 };
 
 const statusConfig: Record<string, { label: string; color: string; dot: string }> = {

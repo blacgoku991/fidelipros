@@ -1,7 +1,7 @@
 import {
   BarChart3, Users, Settings, Palette, Gift, Send,
   LayoutDashboard, Building2, Globe, Mail, CreditCard, Tag, ScanLine, MessageSquare,
-  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target, Wand2, Shield,
+  QrCode, Zap, MapPin, CalendarDays, TrendingUp, Target, Wand2, Shield, GitCompareArrows, UserCog,
 } from "lucide-react";
 
 export interface SidebarItem {
@@ -56,6 +56,82 @@ export const businessSidebarGroups: SidebarGroup[] = [
 
 // Flat list for backward compat
 export const businessSidebarItems: SidebarItem[] = businessSidebarGroups.flatMap(g => g.items);
+
+// Franchise owner sidebar
+export const franchiseSidebarGroups: SidebarGroup[] = [
+  {
+    label: "",
+    items: [
+      { icon: BarChart3, label: "Vue d'ensemble", path: "/dashboard" },
+      { icon: ScanLine, label: "Scanner", path: "/dashboard/scanner" },
+    ],
+  },
+  {
+    label: "Franchise",
+    items: [
+      { icon: Building2, label: "Établissements", path: "/dashboard/locations" },
+      { icon: GitCompareArrows, label: "Comparaison", path: "/dashboard/locations/compare" },
+      { icon: UserCog, label: "Managers", path: "/dashboard/managers" },
+    ],
+  },
+  {
+    label: "Fidélité",
+    items: [
+      { icon: Palette, label: "Carte de fidélité", path: "/dashboard/customize" },
+      { icon: Users, label: "Clients", path: "/dashboard/clients" },
+      { icon: Gift, label: "Récompenses", path: "/dashboard/rewards" },
+    ],
+  },
+  {
+    label: "Marketing",
+    items: [
+      { icon: Send, label: "Campagnes", path: "/dashboard/campaigns" },
+      { icon: Zap, label: "Automations", path: "/dashboard/automations" },
+    ],
+  },
+  {
+    label: "Analyse",
+    items: [
+      { icon: TrendingUp, label: "Statistiques", path: "/dashboard/analytics" },
+    ],
+  },
+  {
+    label: "",
+    items: [
+      { icon: CreditCard, label: "Abonnement", path: "/dashboard/abonnement" },
+      { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
+    ],
+  },
+];
+
+// Location manager sidebar (scoped view)
+export const locationManagerSidebarGroups: SidebarGroup[] = [
+  {
+    label: "",
+    items: [
+      { icon: BarChart3, label: "Dashboard", path: "/dashboard" },
+      { icon: ScanLine, label: "Scanner", path: "/dashboard/scanner" },
+    ],
+  },
+  {
+    label: "Fidélité",
+    items: [
+      { icon: Users, label: "Clients", path: "/dashboard/clients" },
+    ],
+  },
+  {
+    label: "Analyse",
+    items: [
+      { icon: TrendingUp, label: "Statistiques", path: "/dashboard/analytics" },
+    ],
+  },
+  {
+    label: "",
+    items: [
+      { icon: Settings, label: "Paramètres", path: "/dashboard/settings" },
+    ],
+  },
+];
 
 export const adminSidebarItems: SidebarItem[] = [
   { icon: LayoutDashboard, label: "Vue d'ensemble", path: "/admin" },

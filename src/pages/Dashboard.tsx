@@ -33,6 +33,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { queueScan, getPendingScans, removeScan, getPendingCount } from "@/lib/offlineScanQueue";
 import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
+import { FranchiseOverview } from "@/components/dashboard/FranchiseOverview";
 
 const levelConfig: Record<string, { bg: string; text: string; label: string; emoji: string }> = {
   bronze: { bg: "bg-amber-500/10", text: "text-amber-700 dark:text-amber-400", label: "Bronze", emoji: "🥉" },
@@ -41,7 +42,7 @@ const levelConfig: Record<string, { bg: string; text: string; label: string; emo
 };
 
 const Dashboard = () => {
-  const { user, business, loading } = useAuth();
+  const { user, business, loading, locationId, isFranchiseOwner } = useAuth();
   const navigate = useNavigate();
   const { permissions, requestNotifications, requestGeolocation } = usePermissions();
   const hasRedirected = useRef(false);
@@ -128,16 +129,18 @@ const Dashboard = () => {
     const { count: rewardCount } = await supabase
       .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0);
     const today = new Date().toISOString().split("T")[0];
-    const { count: scansCount } = await supabase
-      .from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", today);
-    
+    let scansTodayQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", today);
+    if (locationId) scansTodayQ = scansTodayQ.eq("location_id", locationId);
+    const { count: scansCount } = await scansTodayQ;
+
     // 30 days ago stats for trends
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
     const sixtyDaysAgo = new Date(Date.now() - 60 * 86400000).toISOString();
     const { count: clientsPrev } = await supabase
       .from("customers").select("*", { count: "exact", head: true }).eq("business_id", business.id).lte("created_at", thirtyDaysAgo);
-    const { count: scansPrev } = await supabase
-      .from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", sixtyDaysAgo).lte("created_at", thirtyDaysAgo);
+    let scansPrevQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", sixtyDaysAgo).lte("created_at", thirtyDaysAgo);
+    if (locationId) scansPrevQ = scansPrevQ.eq("location_id", locationId);
+    const { count: scansPrev } = await scansPrevQ;
     const { count: rewardsPrev } = await supabase
       .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0).lte("updated_at", thirtyDaysAgo);
 
@@ -293,6 +296,7 @@ const Dashboard = () => {
     const { error: histErr } = await supabase.from("points_history").insert({
       customer_id: customer.id, business_id: business.id, card_id: card.id,
       points_added: pointsToAdd, action: "scan", scanned_by: user.id,
+      ...(locationId ? { location_id: locationId } : {}),
     });
     if (histErr) { /* silent — non-critical insert */ }
 
@@ -385,6 +389,9 @@ const Dashboard = () => {
       {business && !(business as any).onboarding_tour_completed && (
         <OnboardingTour businessId={business.id} />
       )}
+
+      {/* ── Franchise overview ── */}
+      {isFranchiseOwner && <FranchiseOverview />}
 
       {/* ── Onboarding checklist ── */}
       {!allOnboardingDone && (

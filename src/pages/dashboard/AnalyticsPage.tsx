@@ -11,7 +11,7 @@ import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, BarC
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
 const AnalyticsPage = () => {
-  const { business } = useAuth();
+  const { business, locationId } = useAuth();
   const businessId = business?.id;
   const [stats, setStats] = useState({ totalScans: 0, activeClients: 0, rewardsEarned: 0, walletInstalls: 0, returnRate: 0, avgVisits: 0 });
   const [scansTrend, setScansTrend] = useState<any[]>([]);
@@ -26,10 +26,13 @@ const AnalyticsPage = () => {
   }, [businessId]);
 
   const fetchAll = async () => {
+    let scansQuery = supabase.from("points_history").select("*").eq("business_id", businessId);
+    if (locationId) scansQuery = scansQuery.eq("location_id", locationId);
+
     const [customersRes, cardsRes, scansRes, walletRes] = await Promise.all([
       supabase.from("customers").select("*").eq("business_id", businessId),
       supabase.from("customer_cards").select("*").eq("business_id", businessId),
-      supabase.from("points_history").select("*").eq("business_id", businessId).order("created_at", { ascending: false }),
+      scansQuery.order("created_at", { ascending: false }),
       supabase.from("wallet_registrations").select("*", { count: "exact", head: true }).eq("business_id", businessId),
     ]);
 
