@@ -305,7 +305,10 @@ async function handleGetLatestPass(
 
   await supabase
     .from("customer_cards")
-    .update({ wallet_last_fetched_at: new Date().toISOString() })
+    .update({
+      wallet_last_fetched_at: new Date().toISOString(),
+      wallet_change_message: null, // Clear campaign message after iOS fetches the pass
+    })
     .eq("id", card.id);
 
   try {
@@ -372,34 +375,42 @@ async function buildPkpassForUpdate(
       headerFields: [
         {
           key: "points",
-          label: "POINTS",
-          value: pointsCurrent,
+          label: business.loyalty_type === "stamps" ? "TAMPONS" : business.loyalty_type === "cashback" ? "CAGNOTTE" : business.loyalty_type === "subscription" ? "PLAN" : "POINTS",
+          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Premium ✓" : pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          changeMessage: "Vous avez gagné %@ points !",
+          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : business.loyalty_type === "cashback" ? "%@ de cagnotte !" : "%@ points !",
         },
       ],
-      primaryFields: [{ key: "name", label: "CLIENT", value: customer?.full_name || "Client" }],
+      primaryFields: [{ key: "name", label: "", value: customer?.full_name || "Client" }],
       secondaryFields: [
         { key: "level", label: "STATUT", value: `${levelEmoji} ${level.toUpperCase()}` },
-        { key: "progress", label: "PROGRESSION", value: `${pointsCurrent} / ${pointsMax}` },
+        {
+          key: "progress",
+          label: business.loyalty_type === "stamps" ? "PROGRESSION" : business.loyalty_type === "cashback" ? "SOLDE" : business.loyalty_type === "subscription" ? "STATUT" : "OBJECTIF",
+          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Actif" : `${pointsCurrent} / ${pointsMax}`,
+          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : "%@ points !",
+        },
         {
           key: "next_reward",
           label: "PROCHAINE",
-          value: pointsToReward > 0 ? `${pointsToReward} pts restants` : "🎁 Disponible !",
+          value: pointsToReward > 0 ? `encore ${pointsToReward}` : "🎁 Dispo !",
           textAlignment: "PKTextAlignmentRight",
         },
       ],
       auxiliaryFields: [
-        {
+        { key: "visits", label: "VISITES", value: `${customer?.total_visits || 0}` },
+        { key: "streak", label: "SÉRIE", value: `${customer?.current_streak || 0}` },
+        { key: "rewards", label: "RÉCOMPENSES", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
+        ...(latestOffer ? [{
           key: "offer",
           label: "",
-          value: latestOffer || " ",
+          value: latestOffer,
           changeMessage: "%@",
-        },
+        }] : []),
       ],
       backFields: [
         { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },
-        { key: "visits", label: "📊 Statistiques", value: `Visites : ${customer?.total_visits || 0}\nStreak : ${customer?.current_streak || 0} jours` },
+        { key: "visits_back", label: "📊 Statistiques", value: `Visites : ${customer?.total_visits || 0}\nStreak : ${customer?.current_streak || 0} jours` },
         { key: "info", label: "ℹ️ À propos", value: `Programme de fidélité ${business.name}.` },
         { key: "powered", label: "", value: "Propulsé par FidéliPro" },
       ],
