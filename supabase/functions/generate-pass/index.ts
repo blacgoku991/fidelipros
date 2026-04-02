@@ -227,8 +227,8 @@ export async function buildPkpass(
       headerFields: [
         {
           key: "points",
-          label: business.loyalty_type === "stamps" ? "TAMPONS" : business.loyalty_type === "cashback" ? "CAGNOTTE" : "POINTS",
-          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : pointsCurrent,
+          label: business.loyalty_type === "stamps" ? "TAMPONS" : business.loyalty_type === "cashback" ? "CAGNOTTE" : business.loyalty_type === "subscription" ? "PLAN" : "POINTS",
+          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Premium ✓" : pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
           changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : business.loyalty_type === "cashback" ? "%@ de cagnotte !" : "%@ points !",
         },
@@ -248,9 +248,9 @@ export async function buildPkpass(
         },
         {
           key: "progress",
-          label: "PROGRESSION",
-          value: `${pointsCurrent} / ${pointsMax}`,
-          changeMessage: "%@ points !",
+          label: business.loyalty_type === "stamps" ? "PROGRESSION" : business.loyalty_type === "cashback" ? "SOLDE" : business.loyalty_type === "subscription" ? "STATUT" : "OBJECTIF",
+          value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Actif" : `${pointsCurrent} / ${pointsMax}`,
+          changeMessage: business.loyalty_type === "stamps" ? "%@ tampons !" : "%@ points !",
         },
         {
           key: "next_reward",
