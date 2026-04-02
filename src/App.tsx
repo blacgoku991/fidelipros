@@ -51,6 +51,9 @@ const BusinessPublicPage = lazy(() => import("./pages/public/BusinessPublicPage"
 const CardViewPage = lazy(() => import("./pages/public/CardViewPage"));
 const VitrinePage = lazy(() => import("./pages/public/VitrinePage"));
 const DemoPage = lazy(() => import("./pages/public/DemoPage"));
+const LegalPage = lazy(() => import("./pages/LegalPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const CguPage = lazy(() => import("./pages/CguPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +122,9 @@ const App = () => (
                 <Route path="/tarifs" element={<Tarifs />} />
                 <Route path="/faq" element={<FaqPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/legal" element={<LegalPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/cgu" element={<CguPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>

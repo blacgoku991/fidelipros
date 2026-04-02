@@ -15,10 +15,10 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 const TRIGGER_TYPES = [
-  { value: "inactive_days", label: "Client inactif", icon: Clock, desc: "Relance après X jours d'inactivité" },
-  { value: "reward_reached", label: "Récompense atteinte", icon: Gift, desc: "Notifier quand le client atteint sa récompense" },
-  { value: "birthday", label: "Anniversaire", icon: Calendar, desc: "Message automatique le jour de l'anniversaire" },
-  { value: "nearby", label: "Proximité", icon: MapPin, desc: "Notification quand le client passe à proximité" },
+  { value: "inactive_days", label: "Client inactif", icon: Clock, desc: "Relance après X jours d'inactivité", disabled: false },
+  { value: "reward_reached", label: "Récompense atteinte", icon: Gift, desc: "Notifier quand le client atteint sa récompense", disabled: false },
+  { value: "birthday", label: "Anniversaire", icon: Calendar, desc: "Message automatique le jour de l'anniversaire", disabled: false },
+  { value: "nearby", label: "Proximité (bientôt)", icon: MapPin, desc: "Bientôt disponible — Notification quand le client passe à proximité", disabled: true },
 ];
 
 const SEGMENTS = [
@@ -147,8 +147,8 @@ const AutomationsPage = () => {
                   <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {TRIGGER_TYPES.map(t => (
-                      <SelectItem key={t.value} value={t.value}>
-                        <span className="flex items-center gap-2">
+                      <SelectItem key={t.value} value={t.value} disabled={t.disabled}>
+                        <span className={`flex items-center gap-2 ${t.disabled ? "opacity-50" : ""}`}>
                           <t.icon className="w-4 h-4" /> {t.label}
                         </span>
                       </SelectItem>

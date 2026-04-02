@@ -50,9 +50,10 @@ const RewardsPage = () => {
   const handleAdd = async () => {
     if (!form.title.trim() || !business) { toast.error("Titre requis"); return; }
     if (form.points_required < 1) { toast.error("Les points requis doivent être au minimum 1"); return; }
-    await supabase.from("rewards").insert({
+    const { error } = await supabase.from("rewards").insert({
       business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
     });
+    if (error) { toast.error("Erreur lors de la création"); return; }
     toast.success("Récompense créée !");
     setAddOpen(false);
     setForm({ title: "", description: "", points_required: 10 });
@@ -65,12 +66,14 @@ const RewardsPage = () => {
   };
 
   const toggleReward = async (id: string, active: boolean) => {
-    await supabase.from("rewards").update({ is_active: !active }).eq("id", id);
+    const { error } = await supabase.from("rewards").update({ is_active: !active }).eq("id", id);
+    if (error) { toast.error("Erreur lors de la mise à jour"); return; }
     fetchRewards();
   };
 
   const deleteReward = async (id: string) => {
-    await supabase.from("rewards").delete().eq("id", id);
+    const { error } = await supabase.from("rewards").delete().eq("id", id);
+    if (error) { toast.error("Erreur lors de la suppression"); return; }
     toast.success("Récompense supprimée");
     fetchRewards();
   };

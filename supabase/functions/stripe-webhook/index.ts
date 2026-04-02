@@ -94,6 +94,8 @@ serve(async (req) => {
         if (userId) {
           await supabase.from("businesses").update({
             subscription_status: "canceled",
+            subscription_plan: null,
+            stripe_subscription_id: null,
           }).eq("owner_id", userId);
         }
         break;

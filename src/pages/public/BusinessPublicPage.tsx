@@ -450,6 +450,10 @@ const BusinessPublicPage = () => {
                 </div>
               )}
 
+              <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
+                En créant votre carte, vous acceptez que vos données soient traitées par {business.name} via FidéliPro pour la gestion de votre programme de fidélité.{" "}
+                <a href="/privacy" target="_blank" rel="noopener" className="underline hover:text-foreground">Politique de confidentialité</a>
+              </p>
               <Button
                 onClick={handleRegister}
                 disabled={submitting}

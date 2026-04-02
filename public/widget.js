@@ -24,12 +24,21 @@
     xhr.send();
   }
 
+  function escapeHtml(str) {
+    var div = document.createElement("div");
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+  }
+
+  function isValidHexColor(color) {
+    return /^#[0-9A-Fa-f]{3,8}$/.test(color);
+  }
+
   function injectBanner(business) {
-    var accentColor = business.accent_color || "#F59E0B";
-    var joinUrl = window.location.origin + "/b/" + business.id;
-    if (business.slug) {
-      joinUrl = "https://app.fidelispro.fr/b/" + business.id;
-    }
+    var rawColor = business.accent_color || "#F59E0B";
+    var accentColor = isValidHexColor(rawColor) ? rawColor : "#F59E0B";
+    var safeName = escapeHtml(business.name || "");
+    var joinUrl = "https://app.fidelispro.fr/b/" + encodeURIComponent(business.id);
 
     var banner = document.createElement("div");
     banner.id = "fidelispro-widget";
@@ -55,58 +64,49 @@
     ].join("");
     document.head.appendChild(style);
 
-    banner.innerHTML = [
-      '<div style="',
-      "background: linear-gradient(135deg, " + accentColor + "f0, " + accentColor + "cc);",
-      "backdrop-filter: blur(12px);",
-      "-webkit-backdrop-filter: blur(12px);",
-      "border-radius: 18px;",
-      "padding: 14px 18px;",
-      "display: flex;",
-      "align-items: center;",
-      "gap: 14px;",
-      "box-shadow: 0 8px 32px " + accentColor + "40, 0 2px 8px rgba(0,0,0,0.15);",
-      "border: 1px solid " + accentColor + "30;",
-      '">',
-      '<div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">',
-      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">',
-      '<path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/>',
-      '<path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/>',
-      "</svg>",
-      "</div>",
-      '<div style="flex:1;min-width:0;">',
-      '<p style="margin:0;color:#fff;font-weight:700;font-size:13px;line-height:1.3;">Rejoignez notre programme de fidélité 🎁</p>',
-      '<p style="margin:3px 0 0;color:rgba(255,255,255,0.85);font-size:11px;">' + business.name + " — Cumulez des points à chaque visite</p>",
-      "</div>",
-      '<a href="' + joinUrl + '" target="_blank" rel="noopener" style="',
-      "flex-shrink:0;",
-      "background:rgba(255,255,255,0.95);",
-      "color:" + accentColor + ";",
-      "font-weight:700;",
-      "font-size:12px;",
-      "padding:8px 14px;",
-      "border-radius:10px;",
-      "text-decoration:none;",
-      "white-space:nowrap;",
-      "transition:all 0.15s;",
-      '">',
-      "Rejoindre →",
-      "</a>",
-      '<button onclick="document.getElementById(\'fidelispro-widget\').remove()" style="',
-      "flex-shrink:0;",
-      "background:rgba(255,255,255,0.2);",
-      "border:none;",
-      "color:#fff;",
-      "width:26px;height:26px;",
-      "border-radius:8px;",
-      "cursor:pointer;",
-      "display:flex;align-items:center;justify-content:center;",
-      "font-size:14px;",
-      "line-height:1;",
-      '">✕</button>',
-      "</div>",
-    ].join("");
+    // Build DOM safely — no innerHTML with user data
+    var container = document.createElement("div");
+    container.style.cssText = "background:linear-gradient(135deg," + accentColor + "f0," + accentColor + "cc);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:18px;padding:14px 18px;display:flex;align-items:center;gap:14px;box-shadow:0 8px 32px " + accentColor + "40,0 2px 8px rgba(0,0,0,0.15);border:1px solid " + accentColor + "30";
 
+    // Icon
+    var iconWrap = document.createElement("div");
+    iconWrap.style.cssText = "width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0";
+    iconWrap.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>';
+    container.appendChild(iconWrap);
+
+    // Text area
+    var textDiv = document.createElement("div");
+    textDiv.style.cssText = "flex:1;min-width:0";
+    var titleP = document.createElement("p");
+    titleP.style.cssText = "margin:0;color:#fff;font-weight:700;font-size:13px;line-height:1.3";
+    titleP.textContent = "Rejoignez notre programme de fidélité \uD83C\uDF81";
+    var subtitleP = document.createElement("p");
+    subtitleP.style.cssText = "margin:3px 0 0;color:rgba(255,255,255,0.85);font-size:11px";
+    subtitleP.textContent = safeName + " — Cumulez des points à chaque visite";
+    textDiv.appendChild(titleP);
+    textDiv.appendChild(subtitleP);
+    container.appendChild(textDiv);
+
+    // Join link
+    var joinLink = document.createElement("a");
+    joinLink.href = joinUrl;
+    joinLink.target = "_blank";
+    joinLink.rel = "noopener";
+    joinLink.style.cssText = "flex-shrink:0;background:rgba(255,255,255,0.95);color:" + accentColor + ";font-weight:700;font-size:12px;padding:8px 14px;border-radius:10px;text-decoration:none;white-space:nowrap;transition:all 0.15s";
+    joinLink.textContent = "Rejoindre \u2192";
+    container.appendChild(joinLink);
+
+    // Close button
+    var closeBtn = document.createElement("button");
+    closeBtn.style.cssText = "flex-shrink:0;background:rgba(255,255,255,0.2);border:none;color:#fff;width:26px;height:26px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1";
+    closeBtn.textContent = "\u2715";
+    closeBtn.addEventListener("click", function() {
+      var w = document.getElementById("fidelispro-widget");
+      if (w) w.remove();
+    });
+    container.appendChild(closeBtn);
+
+    banner.appendChild(container);
     document.body.appendChild(banner);
   }
 

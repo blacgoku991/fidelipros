@@ -174,8 +174,14 @@ export function buildApplePassFields(
     value: String(customer.rewardsEarned),
   });
 
-  // ── Auxiliary: empty for clean design
+  // ── Auxiliary: clean design, only show expiry if enabled
   const auxiliaryFields: PassField[] = [];
+  if (config.showExpiration) {
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    const expiryStr = expiryDate.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    auxiliaryFields.push({ key: "expiry", label: "Expire", value: expiryStr });
+  }
 
   return { headerFields, primaryFields, secondaryFields, auxiliaryFields };
 }

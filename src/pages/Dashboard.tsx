@@ -229,7 +229,7 @@ const Dashboard = () => {
       newTotalPoints >= 25 ? "gold" : newTotalPoints >= 10 ? "silver" : "bronze";
     const levelChanged = newLevel !== prevLevel && (newLevel === "silver" || newLevel === "gold");
 
-    await supabase.from("customers").update({
+    const { error: custErr } = await supabase.from("customers").update({
       total_points: newTotalPoints,
       total_visits: (customer.total_visits || 0) + 1,
       current_streak: newStreak,
@@ -237,6 +237,7 @@ const Dashboard = () => {
       last_visit_at: new Date().toISOString(),
       level: newLevel,
     }).eq("id", customer.id);
+    if (custErr) console.error("Customer update failed:", custErr);
 
     // Send level-up Apple Wallet notification
     if (levelChanged) {
@@ -254,10 +255,11 @@ const Dashboard = () => {
       } catch { /* non-blocking */ }
     }
 
-    await supabase.from("points_history").insert({
+    const { error: histErr } = await supabase.from("points_history").insert({
       customer_id: customer.id, business_id: business.id, card_id: card.id,
       points_added: pointsToAdd, action: "scan", scanned_by: user.id,
     });
+    if (histErr) console.error("Points history insert failed:", histErr);
 
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);

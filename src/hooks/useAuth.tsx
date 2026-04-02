@@ -133,6 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshBusiness = async () => {
     if (!user) return;
+    // Respect admin impersonation
+    const impersonatedId = localStorage.getItem("impersonating_business");
+    if (role === "super_admin" && impersonatedId) {
+      const { data } = await supabase.from("businesses").select("*").eq("id", impersonatedId).maybeSingle();
+      if (data) { setBusiness(data); return; }
+    }
     const { data } = await supabase.from("businesses").select("*").eq("owner_id", user.id).maybeSingle();
     setBusiness(data ?? null);
   };

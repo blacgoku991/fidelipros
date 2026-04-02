@@ -149,9 +149,10 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[CHECKOUT] Error: ${msg}`);
+    const isUserError = msg.includes("non authentifié") || msg.includes("non spécifié") || msg.includes("invalide") || msg.includes("déjà abonné");
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: isUserError ? 400 : 500,
     });
   }
 });

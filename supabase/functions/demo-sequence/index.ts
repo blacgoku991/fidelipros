@@ -26,11 +26,25 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Validate authorization — require apikey header (set by supabase-js) or Authorization
+    // Validate authorization — require service-role key or valid JWT
     const apiKey = req.headers.get("apikey") || "";
     const authHeader = req.headers.get("Authorization") || "";
-    if (!apiKey && !authHeader) {
-      return json({ error: "Unauthorized" }, 401);
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const isServiceRole = apiKey === serviceRoleKey || authHeader === `Bearer ${serviceRoleKey}`;
+    if (!isServiceRole) {
+      // If not service-role, verify JWT is valid
+      if (!authHeader) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+      const sbUrl = Deno.env.get("SUPABASE_URL")!;
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+      const { createClient: createAnonClient } = await import("npm:@supabase/supabase-js@2");
+      const anonSb = createAnonClient(sbUrl, anonKey);
+      const token = authHeader.replace("Bearer ", "");
+      const { error: authErr } = await anonSb.auth.getUser(token);
+      if (authErr) {
+        return json({ error: "Invalid token" }, 401);
+      }
     }
 
     const sbUrl = Deno.env.get("SUPABASE_URL")!;

@@ -90,7 +90,7 @@ export function Footer() {
             <ul className="space-y-3">
               <li><a href={legalUrl} className="text-sm text-muted-foreground hover:text-primary transition-colors">Mentions légales</a></li>
               <li><a href={privacyUrl} className="text-sm text-muted-foreground hover:text-primary transition-colors">Confidentialité</a></li>
-              <li><span className="text-xs text-muted-foreground/60">Conforme RGPD</span></li>
+              <li><a href="/cgu" className="text-sm text-muted-foreground hover:text-primary transition-colors">CGU</a></li>
             </ul>
           </div>
         </motion.div>
