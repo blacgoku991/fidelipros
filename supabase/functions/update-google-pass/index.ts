@@ -15,6 +15,14 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+/** Constant-time string comparison to prevent timing attacks */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
+}
+
 function base64urlEncode(data: string | Uint8Array): string {
   let b64: string;
   if (typeof data === "string") {
@@ -125,7 +133,7 @@ Deno.serve(async (req) => {
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
-    const isServiceRole = token === sbKey;
+    const isServiceRole = safeEqual(token, sbKey);
     if (!isServiceRole) {
       const { data: userData, error: authErr } = await supabase.auth.getUser(token);
       if (authErr || !userData?.user) return json({ error: "Token invalide" }, 401);

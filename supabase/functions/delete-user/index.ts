@@ -63,9 +63,11 @@ serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[delete-user] ERROR:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    const safeMessages = ["Non authentifié", "Accès réservé aux super admins", "user_id requis", "Impossible de supprimer votre propre compte"];
+    const isSafe = safeMessages.some(s => msg.includes(s));
+    return new Response(JSON.stringify({ error: isSafe ? msg : "Erreur lors de la suppression" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: isSafe ? 400 : 500,
     });
   }
 });

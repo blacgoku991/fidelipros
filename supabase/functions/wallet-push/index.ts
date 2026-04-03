@@ -5,6 +5,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
+/** Constant-time string comparison to prevent timing attacks */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
+}
+
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
   ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
@@ -49,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     // Check if token is the service role key (internal call)
-    const isServiceRole = token === sbKey;
+    const isServiceRole = safeEqual(token, sbKey);
 
     if (!isServiceRole) {
       // Validate user JWT and verify business ownership
@@ -384,7 +392,7 @@ Deno.serve(async (req) => {
     }, 200);
   } catch (err: any) {
     console.error("[Wallet Push] Error:", err);
-    return jsonResponse({ error: "Internal error", details: String(err) }, 500);
+    return jsonResponse({ error: "Internal error" }, 500);
   }
 });
 

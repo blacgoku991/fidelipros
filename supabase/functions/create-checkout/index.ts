@@ -55,6 +55,9 @@ serve(async (req) => {
     const plan = body?.plan;
     if (!plan || typeof plan !== "string") throw new Error("Plan non spécifié");
 
+    const VALID_PLANS = ["starter", "pro", "franchise", "enterprise"];
+    if (!VALID_PLANS.includes(plan)) throw new Error("Plan invalide");
+
     const rawOrigin = body?.origin || req.headers.get("origin") || "";
     const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
 
@@ -150,10 +153,11 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error(`[CHECKOUT] Error: ${msg}`);
-    const isUserError = msg.includes("non authentifié") || msg.includes("non spécifié") || msg.includes("invalide") || msg.includes("déjà abonné");
-    return new Response(JSON.stringify({ error: msg }), {
+    const safeMessages = ["Non authentifié", "non spécifié", "invalide", "déjà abonné"];
+    const isSafe = safeMessages.some(s => msg.toLowerCase().includes(s.toLowerCase()));
+    return new Response(JSON.stringify({ error: isSafe ? msg : "Erreur lors du paiement" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: isUserError ? 400 : 500,
+      status: isSafe ? 400 : 500,
     });
   }
 });

@@ -23,8 +23,12 @@ const PRODUCT_TO_PLAN: Record<string, string> = {
 async function resolveProductPlan(supabaseAdmin: any, productId: string, metadataPlan: string | undefined): Promise<string> {
   // 1. Check hardcoded map
   if (PRODUCT_TO_PLAN[productId]) return PRODUCT_TO_PLAN[productId];
-  // 2. Check metadata
-  if (metadataPlan) return metadataPlan;
+  // 2. Check metadata (with whitelist validation)
+  const validPlans = ["starter", "pro", "franchise", "enterprise"];
+  if (metadataPlan && validPlans.includes(metadataPlan)) return metadataPlan;
+  if (metadataPlan && !validPlans.includes(metadataPlan)) {
+    console.warn(`[CHECK-SUB] Invalid plan in metadata: ${metadataPlan}, ignoring`);
+  }
   // 3. Check site_settings for franchise product
   const { data } = await supabaseAdmin
     .from("site_settings")
@@ -209,9 +213,11 @@ serve(async (req) => {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     log("ERROR", { message: msg });
-    return new Response(JSON.stringify({ error: msg }), {
+    const safeMessages = ["No auth header", "Auth failed", "STRIPE_SECRET_KEY not set"];
+    const isSafe = safeMessages.some(s => msg.includes(s));
+    return new Response(JSON.stringify({ error: isSafe ? msg : "Internal error" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
+      status: isSafe ? 400 : 500,
     });
   }
 });

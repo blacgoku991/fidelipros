@@ -18,6 +18,14 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+/** Constant-time string comparison to prevent timing attacks */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return result === 0;
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -40,7 +48,7 @@ Deno.serve(async (req) => {
     let authorized = false;
 
     // Check if it's a service-role call
-    if (token === sbKey) {
+    if (safeEqual(token, sbKey)) {
       authorized = true;
     } else if (token) {
       // Check if authenticated user is a super_admin
@@ -203,6 +211,6 @@ Deno.serve(async (req) => {
     return json(summary);
   } catch (err: any) {
     console.error("[wallet-debug] Error:", err);
-    return json({ error: "Internal error", details: String(err) }, 500);
+    return json({ error: "Internal error" }, 500);
   }
 });

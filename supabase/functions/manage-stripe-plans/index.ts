@@ -57,6 +57,13 @@ serve(async (req) => {
 
     const body = await req.json();
     const { action } = body;
+    const VALID_ACTIONS = ["create_products", "update_price", "sync_subscription"];
+    if (!action || !VALID_ACTIONS.includes(action)) {
+      return new Response(JSON.stringify({ error: "Action invalide" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
     console.log("[manage-stripe-plans] action reçue:", action);
 
     // ── Lire les settings actuels ──────────────────────────────────────
@@ -223,10 +230,14 @@ serve(async (req) => {
 
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[manage-stripe-plans] ERREUR 400:", msg);
-    return new Response(JSON.stringify({ error: msg }), {
+    console.error("[manage-stripe-plans] ERREUR:", msg);
+    // Only expose safe user-facing messages, not internal details
+    const safeMessages = ["Non authentifié", "Accès réservé aux super admins", "STRIPE_SECRET_KEY non configuré",
+      "plan et price requis", "Action invalide"];
+    const isSafe = safeMessages.some(s => msg.includes(s)) || msg.startsWith("Produit Stripe non trouvé");
+    return new Response(JSON.stringify({ error: isSafe ? msg : "Erreur interne" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 400,
+      status: isSafe ? 400 : 500,
     });
   }
 });

@@ -5,10 +5,10 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 serve(async (req) => {
-  // Only accept service-role or cron calls
+  // Only accept service-role calls (cron or internal)
   const authHeader = req.headers.get("authorization") || "";
-  const isServiceRole = authHeader.includes(SUPABASE_SERVICE_ROLE_KEY);
-  if (!isServiceRole && !authHeader.includes("Bearer")) {
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (!token || token !== SUPABASE_SERVICE_ROLE_KEY) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 
@@ -34,7 +34,9 @@ serve(async (req) => {
   for (const campaign of campaigns) {
     try {
       // Resolve customers by segment
-      const segments = (campaign.segment || "all").split(",").map((s: string) => s.trim());
+      const VALID_SEGMENTS = ["all", "bronze", "silver", "gold", "vip", "inactive"];
+      const segments = (campaign.segment || "all").split(",").map((s: string) => s.trim()).filter((s: string) => VALID_SEGMENTS.includes(s));
+      if (segments.length === 0) segments.push("all");
       const customerIds = new Set<string>();
 
       for (const seg of segments) {
