@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Save, Zap, Loader2, CheckCircle2 } from "lucide-react";
 
-const PLAN_KEYS = ["starter", "pro"] as const;
+const PLAN_KEYS = ["starter", "pro", "franchise"] as const;
 
 interface PlanForm {
   name: string;
@@ -20,16 +20,18 @@ interface PlanForm {
 }
 
 const DEFAULTS: Record<string, PlanForm> = {
-  starter: { name: "Starter", price: "29", features: "", stripe_product: "", stripe_price: "" },
-  pro:     { name: "Pro",     price: "59", features: "", stripe_product: "", stripe_price: "" },
+  starter:   { name: "Starter",   price: "29",  features: "", stripe_product: "", stripe_price: "" },
+  pro:       { name: "Pro",       price: "59",  features: "", stripe_product: "", stripe_price: "" },
+  franchise: { name: "Franchise", price: "149", features: "", stripe_product: "", stripe_price: "" },
 };
 
 async function fetchSettings(): Promise<Record<string, string>> {
   const { data } = await supabase.from("site_settings").select("key, value").in("key", [
     "plan_starter_name", "plan_starter_price", "plan_starter_features",
     "plan_pro_name",     "plan_pro_price",     "plan_pro_features",
-    "stripe_product_starter", "stripe_product_pro",
-    "stripe_price_starter",   "stripe_price_pro",
+    "plan_franchise_name", "plan_franchise_price", "plan_franchise_features",
+    "stripe_product_starter", "stripe_product_pro", "stripe_product_franchise",
+    "stripe_price_starter",   "stripe_price_pro",   "stripe_price_franchise",
   ]);
   const cfg: Record<string, string> = {};
   data?.forEach(r => { cfg[r.key] = r.value; });
@@ -73,6 +75,13 @@ const AdminPlans = () => {
             stripe_product:  data.stripe_product_pro   || "",
             stripe_price:    data.stripe_price_pro     || "",
           },
+          franchise: {
+            name:            data.plan_franchise_name    || "Franchise",
+            price:           data.plan_franchise_price   || "149",
+            features:        featuresFromJson(data.plan_franchise_features),
+            stripe_product:  data.stripe_product_franchise || "",
+            stripe_price:    data.stripe_price_franchise   || "",
+          },
         });
         setInitialized(true);
       }
@@ -83,7 +92,7 @@ const AdminPlans = () => {
     setForms(prev => ({ ...prev, [plan]: { ...prev[plan], [field]: value } }));
   };
 
-  const savePlan = async (plan: "starter" | "pro") => {
+  const savePlan = async (plan: "starter" | "pro" | "franchise") => {
     const f = forms[plan];
     const priceNum = parseInt(f.price);
     if (!f.name.trim() || isNaN(priceNum) || priceNum <= 0) {
@@ -156,8 +165,10 @@ const AdminPlans = () => {
     }
   };
 
-  const starterHasStripe = !!((cfg as any)?.stripe_price_starter);
-  const proHasStripe     = !!((cfg as any)?.stripe_price_pro);
+  const starterHasStripe   = !!((cfg as any)?.stripe_price_starter);
+  const proHasStripe       = !!((cfg as any)?.stripe_price_pro);
+  const franchiseHasStripe = !!((cfg as any)?.stripe_price_franchise);
+  const allHaveStripe = starterHasStripe && proHasStripe && franchiseHasStripe;
 
   return (
     <AdminLayout
@@ -170,7 +181,7 @@ const AdminPlans = () => {
           className="gap-2 bg-gradient-primary text-primary-foreground rounded-xl"
         >
           {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          {starterHasStripe && proHasStripe ? "Recréer les prix Stripe" : "Créer les produits Stripe"}
+          {allHaveStripe ? "Recréer les prix Stripe" : "Créer les produits Stripe"}
         </Button>
       }
     >
@@ -179,7 +190,7 @@ const AdminPlans = () => {
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl">
           {PLAN_KEYS.map(plan => {
             const f = forms[plan];
             const hasStripe = !!(cfg?.[`stripe_price_${plan}`]);

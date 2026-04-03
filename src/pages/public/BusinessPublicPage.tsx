@@ -238,7 +238,6 @@ const BusinessPublicPage = () => {
           email: email.trim() || null,
           phone: phone.trim() || null,
           birthday: birthday || null,
-          registration_source: registrationSource,
         }),
       });
 

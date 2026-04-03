@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ const CATEGORIES = [
 const Onboarding = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user, business, loading: authLoading } = useAuth();
   const plan = searchParams.get("plan") || "pro";
 
   const [loading, setLoading] = useState(true);
@@ -30,45 +32,32 @@ const Onboarding = () => {
   });
 
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const user = session?.user;
-        if (!user) { navigate("/login"); return; }
+    if (authLoading) return;
 
-        // If business already exists, check if it needs onboarding or payment
-        const { data: business } = await supabase
-          .from("businesses")
-          .select("id, name, subscription_status, subscription_plan")
-          .eq("owner_id", user.id)
-          .maybeSingle();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
-        if (business) {
-          const name = business.name;
-          const status = business.subscription_status;
-          if (!name || name === "Mon Commerce") {
-            navigate(`/onboarding-business?plan=${plan}`);
-          } else if (status === "inactive") {
-            navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`);
-          } else {
-            navigate("/dashboard");
-          }
-          return;
-        }
-
-        // Pre-fill from user metadata if available
-        const meta = user.user_metadata;
-        if (meta?.full_name || meta?.name) {
-          setForm(f => ({ ...f, businessName: meta.full_name || meta.name || "" }));
-        }
-      } catch {
-        navigate("/login");
-      } finally {
-        setLoading(false);
+    if (business) {
+      const name = business.name;
+      const status = business.subscription_status;
+      if (!name || name === "Mon Commerce") {
+        navigate(`/onboarding-business?plan=${plan}`, { replace: true });
+      } else if (status === "inactive") {
+        navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`, { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
       }
-    };
-    checkUser();
-  }, []);
+      return;
+    }
+
+    const meta = user.user_metadata;
+    if (meta?.full_name || meta?.name) {
+      setForm(f => ({ ...f, businessName: meta.full_name || meta.name || "" }));
+    }
+    setLoading(false);
+  }, [authLoading, user, business, navigate, plan]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,10 +66,12 @@ const Onboarding = () => {
       return;
     }
 
-    setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { navigate("/login"); return; }
+    if (!user) {
+      navigate("/login", { replace: true });
+      return;
+    }
 
+    setSaving(true);
     const { error } = await supabase.from("businesses").insert({
       owner_id: user.id,
       name: form.businessName.trim(),
@@ -97,7 +88,6 @@ const Onboarding = () => {
       return;
     }
 
-    // Update profile
     await supabase.from("profiles").upsert({
       id: user.id,
       full_name: form.businessName.trim(),
@@ -108,7 +98,7 @@ const Onboarding = () => {
     navigate(`/dashboard/checkout?plan=${plan}`);
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -118,7 +108,6 @@ const Onboarding = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-card items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-white blur-3xl" />
@@ -143,14 +132,12 @@ const Onboarding = () => {
         </div>
       </div>
 
-      {/* Right panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <motion.div
           className="w-full max-w-sm"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
             <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
               <CreditCard className="w-4 h-4 text-primary-foreground" />

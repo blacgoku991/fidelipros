@@ -1,6 +1,6 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
-import forge from "npm:node-forge@1.3.1";
-import JSZip from "npm:jszip@3.10.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import forge from "https://esm.sh/node-forge@1.3.1";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || []);
     console.log("[generate-pass] pkpass généré — taille:", pkpassBuffer.byteLength, "bytes");
 
-    return new Response(pkpassBuffer, {
+    return new Response(pkpassBuffer as unknown as BodyInit, {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/vnd.apple.pkpass",

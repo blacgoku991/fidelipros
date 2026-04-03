@@ -139,12 +139,12 @@ export type Database = {
           id: string
           is_demo: boolean
           is_franchise: boolean
-          max_locations: number
           label_color: string | null
           latitude: number | null
           logo_url: string | null
           longitude: number | null
           loyalty_type: string | null
+          max_locations: number
           max_points_per_card: number | null
           name: string
           notif_custom_interval_hours: number | null
@@ -156,10 +156,6 @@ export type Database = {
           onboarding_mode: string | null
           owner_id: string
           phone: string | null
-          pos_api_key: string | null
-          pos_enabled: boolean | null
-          pos_system_type: string | null
-          pos_webhook_url: string | null
           points_per_euro: number | null
           points_per_visit: number | null
           primary_color: string | null
@@ -233,12 +229,12 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
-          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
           loyalty_type?: string | null
+          max_locations?: number
           max_points_per_card?: number | null
           name: string
           notif_custom_interval_hours?: number | null
@@ -250,10 +246,6 @@ export type Database = {
           onboarding_mode?: string | null
           owner_id: string
           phone?: string | null
-          pos_api_key?: string | null
-          pos_enabled?: boolean | null
-          pos_system_type?: string | null
-          pos_webhook_url?: string | null
           points_per_euro?: number | null
           points_per_visit?: number | null
           primary_color?: string | null
@@ -327,12 +319,12 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
-          max_locations?: number
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
           longitude?: number | null
           loyalty_type?: string | null
+          max_locations?: number
           max_points_per_card?: number | null
           name?: string
           notif_custom_interval_hours?: number | null
@@ -344,10 +336,6 @@ export type Database = {
           onboarding_mode?: string | null
           owner_id?: string
           phone?: string | null
-          pos_api_key?: string | null
-          pos_enabled?: boolean | null
-          pos_system_type?: string | null
-          pos_webhook_url?: string | null
           points_per_euro?: number | null
           points_per_visit?: number | null
           primary_color?: string | null
@@ -483,6 +471,51 @@ export type Database = {
           },
           {
             foreignKeyName: "customer_cards_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_reviews: {
+        Row: {
+          business_id: string
+          comment: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          comment?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          comment?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_reviews_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -733,28 +766,31 @@ export type Database = {
       }
       location_managers: {
         Row: {
+          created_at: string
           id: string
+          invited_at: string | null
           location_id: string
-          user_id: string
           role: string
-          invited_at: string
-          accepted_at: string | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
+          created_at?: string
           id?: string
+          invited_at?: string | null
           location_id: string
-          user_id: string
           role?: string
-          invited_at?: string
-          accepted_at?: string | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
+          created_at?: string
           id?: string
+          invited_at?: string | null
           location_id?: string
-          user_id?: string
           role?: string
-          invited_at?: string
-          accepted_at?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -772,14 +808,11 @@ export type Database = {
           business_id: string
           city: string | null
           created_at: string
-          email: string | null
           id: string
           is_active: boolean
           latitude: number | null
           longitude: number | null
-          manager_user_id: string | null
           name: string
-          phone: string | null
           updated_at: string
         }
         Insert: {
@@ -787,14 +820,11 @@ export type Database = {
           business_id: string
           city?: string | null
           created_at?: string
-          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          manager_user_id?: string | null
           name: string
-          phone?: string | null
           updated_at?: string
         }
         Update: {
@@ -802,14 +832,11 @@ export type Database = {
           business_id?: string
           city?: string | null
           created_at?: string
-          email?: string | null
           id?: string
           is_active?: boolean
           latitude?: number | null
           longitude?: number | null
-          manager_user_id?: string | null
           name?: string
-          phone?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1111,6 +1138,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "points_history_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_locations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -1394,6 +1428,41 @@ export type Database = {
         }
         Relationships: []
       }
+      vitrine_visits: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          referrer: string | null
+          session_id: string | null
+          source: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          referrer?: string | null
+          session_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          referrer?: string | null
+          session_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vitrine_visits_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wallet_apns_logs: {
         Row: {
           apns_response: string | null
@@ -1499,6 +1568,47 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_endpoints: {
+        Row: {
+          business_id: string
+          created_at: string
+          events: string[] | null
+          id: string
+          is_active: boolean
+          secret: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          is_active?: boolean
+          secret: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          events?: string[] | null
+          id?: string
+          is_active?: boolean
+          secret?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_endpoints_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1513,7 +1623,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "super_admin" | "business_owner"
+      app_role: "super_admin" | "business_owner" | "location_manager"
       loyalty_level: "bronze" | "silver" | "gold"
       notification_type:
         | "proximity"
@@ -1656,7 +1766,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "business_owner"],
+      app_role: ["super_admin", "business_owner", "location_manager"],
       loyalty_level: ["bronze", "silver", "gold"],
       notification_type: [
         "proximity",

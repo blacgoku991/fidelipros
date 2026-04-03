@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
@@ -128,11 +128,12 @@ serve(async (req) => {
           } else {
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             if (customer.email) {
-              const { data: user } = await supabase.auth.admin.getUserByEmail(customer.email);
-              if (user?.user) {
+              const { data: users } = await supabase.auth.admin.listUsers();
+              const user = users?.users?.find((u: any) => u.email === customer.email);
+              if (user) {
                 await supabase.from("businesses").update({
                   subscription_status: "past_due",
-                }).eq("owner_id", user.user.id);
+                }).eq("owner_id", user.id);
               }
             }
           }
@@ -160,9 +161,10 @@ serve(async (req) => {
         } else {
           const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
           if (customer.email) {
-            const { data: authUser } = await supabase.auth.admin.getUserByEmail(customer.email);
-            if (authUser?.user) {
-              userId = authUser.user.id;
+            const { data: users } = await supabase.auth.admin.listUsers();
+            const authUser = users?.users?.find((u: any) => u.email === customer.email);
+            if (authUser) {
+              userId = authUser.id;
               const { data: foundBiz } = await supabase
                 .from("businesses")
                 .select("id")

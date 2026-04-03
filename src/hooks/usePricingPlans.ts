@@ -17,7 +17,7 @@ function parseFeatures(json: string | undefined, fallback: readonly string[]): s
   try { return JSON.parse(json); } catch { return [...fallback]; }
 }
 
-export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; isLoading: boolean } {
+export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; franchise: PricingPlan; isLoading: boolean } {
   const { data: s, isLoading } = useSiteSettings();
 
   const starter: PricingPlan = {
@@ -42,5 +42,16 @@ export function usePricingPlans(): { starter: PricingPlan; pro: PricingPlan; isL
     cta: "Démarrer maintenant",
   };
 
-  return { starter, pro, isLoading };
+  const franchise: PricingPlan = {
+    key: "franchise",
+    name: s?.plan_franchise_name || STRIPE_PLANS.franchise.name,
+    price: parseInt(s?.plan_franchise_price || "") || STRIPE_PLANS.franchise.price,
+    features: parseFeatures(s?.plan_franchise_features, STRIPE_PLANS.franchise.features),
+    price_id: s?.stripe_price_franchise || STRIPE_PLANS.franchise.price_id,
+    product_id: s?.stripe_product_franchise || STRIPE_PLANS.franchise.product_id,
+    popular: false,
+    cta: "Passer en Franchise",
+  };
+
+  return { starter, pro, franchise, isLoading };
 }

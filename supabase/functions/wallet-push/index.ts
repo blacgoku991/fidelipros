@@ -1,7 +1,7 @@
 // Edge function: Real APNs push for Apple Wallet pass updates
 // Uses token-based (P8/JWT) authentication — works with Deno's HTTP/2 fetch
 
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
 
@@ -243,15 +243,15 @@ Deno.serve(async (req) => {
     }
 
     // ── REAL APNs Push via Token-Based Auth ──────────────────────────
-    const p8Key = Deno.env.get("APPLE_P8_KEY")!;
-    const keyId = Deno.env.get("APPLE_KEY_ID")!;
-    const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
+    const p8Key = Deno.env.get("APPLE_P8_KEY") || "";
+    const keyId = Deno.env.get("APPLE_KEY_ID") || "";
+    const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
 
-    if (!p8Key || !keyId) {
-      console.error("[Wallet Push] Missing APPLE_P8_KEY or APPLE_KEY_ID");
+    if (!p8Key || !keyId || !teamId) {
+      console.error("[Wallet Push] Missing APNs credentials", { hasP8: !!p8Key, hasKeyId: !!keyId, hasTeamId: !!teamId });
       return jsonResponse({
         success: false,
-        error: "APNs credentials not configured (P8 key / Key ID missing)",
+        error: "APNs credentials not configured (P8 key / Key ID / Team ID missing)",
         total_registrations: registrations.length,
       }, 500);
     }
@@ -297,10 +297,12 @@ Deno.serve(async (req) => {
           // If token is invalid, mark registration
           if (result.status === 410 || result.reason === "Unregistered") {
             logEntry.error_message = "Token invalid/unregistered";
+            // Only delete the specific registration, not all registrations with this token
             await supabase
               .from("wallet_registrations")
               .delete()
-              .eq("push_token", pushToken);
+              .eq("push_token", pushToken)
+              .eq("serial_number", reg.serial_number);
           }
         }
 
@@ -338,6 +340,35 @@ Deno.serve(async (req) => {
         }
       : null;
 
+    // ── Also update Google Wallet passes (fire and forget) ──────────
+    let googleUpdated = 0;
+    try {
+      const sbUrl = Deno.env.get("SUPABASE_URL")!;
+      const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const cardIdsToUpdate = [...new Set(cardUpdateResults.filter((r: any) => r.updated).map((r: any) => r.serial_number))];
+
+      if (cardIdsToUpdate.length > 0) {
+        const gr = await fetch(`${sbUrl}/functions/v1/update-google-pass`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sbKey}`,
+          },
+          body: JSON.stringify({
+            business_id,
+            card_ids: cardIdsToUpdate,
+            ...(act === "campaign" && change_message ? { message: change_message } : {}),
+          }),
+        });
+        const grData = await gr.json().catch(() => ({}));
+        googleUpdated = grData.updated || 0;
+        console.log(`[Wallet Push] Google Wallet updated: ${googleUpdated}`);
+      }
+    } catch (e) {
+      console.error("[Wallet Push] Google Wallet update error (non-blocking):", e);
+    }
+
     return jsonResponse({
       success: true,
       action_type: act,
@@ -346,6 +377,7 @@ Deno.serve(async (req) => {
       unique_devices: uniqueTokens.size,
       pushed: successCount,
       failed: failCount,
+      google_updated: googleUpdated,
       card_updates: cardUpdateResults,
       apns_results: pushResults,
       ...(testNotificationLog ? { test_notification_log: testNotificationLog } : {}),
@@ -391,7 +423,7 @@ async function createApnsJwt(
   // Import as ECDSA P-256 key
   const cryptoKey = await crypto.subtle.importKey(
     "pkcs8",
-    bin,
+    bin.buffer as ArrayBuffer,
     { name: "ECDSA", namedCurve: "P-256" },
     false,
     ["sign"]

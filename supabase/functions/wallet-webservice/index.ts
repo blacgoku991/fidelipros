@@ -1,11 +1,40 @@
 // Apple PassKit Web Service — handles device registration, pass updates
 // Spec: https://developer.apple.com/documentation/walletpasses/adding-a-web-service-to-update-passes
 
-import { createClient } from "npm:@supabase/supabase-js@2";
-import forge from "npm:node-forge@1.3.1";
-import JSZip from "npm:jszip@3.10.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import forge from "https://esm.sh/node-forge@1.3.1";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const PASS_TYPE_ID = Deno.env.get("APPLE_PASS_TYPE_ID") || "pass.app.lovable.fidelispro";
+
+// Apple Worldwide Developer Relations Certification Authority G4
+// Required in the PKCS7 signature chain for valid .pkpass files
+const WWDR_G4_PEM = `-----BEGIN CERTIFICATE-----
+MIIEVTCCAz2gAwIBAgIUE9x3lVJx5T3GMujM/+Uh88zFztIwDQYJKoZIhvcNAQEL
+BQAwYjELMAkGA1UEBhMCVVMxEzARBgNVBAoTCkFwcGxlIEluYy4xJjAkBgNVBAsT
+HUFwcGxlIENlcnRpZmljYXRpb24gQXV0aG9yaXR5MRYwFAYDVQQDEw1BcHBsZSBS
+b290IENBMB4XDTIwMTIxNjE5MzYwNFoXDTMwMTIxMDAwMDAwMFowdTFEMEIGA1UE
+Aww7QXBwbGUgV29ybGR3aWRlIERldmVsb3BlciBSZWxhdGlvbnMgQ2VydGlmaWNh
+dGlvbiBBdXRob3JpdHkxCzAJBgNVBAsMAkc0MRMwEQYDVQQKDApBcHBsZSBJbmMu
+MQswCQYDVQQGEwJVUzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBANAf
+eKp6JzKwRl/nF3bYoJ0OKY6tPTKlxGs3yeRBkWq3eXFdDDQEYHX3rkOPR8SGHgjo
+v9Y5Ui8eZ/xx8YJtPH4GUnadLLzVQ+mxtLxAOnhRXVGhJeG+bJGdayFZGEHVD41t
+QSo5SiHgkJ9OE0/QjJoyuNdqkh4laqQyziIZhQVg3AJK8lrrd3kCfcCXVGySjnYB
+5kaP5eYq+6KwrRitbTOFOCOL6oqW7Z+uZk+jDEAnbZXQYojZQykn/e2kv1MukBVl
+PNkuYmQzHWxq3Y4hqqRfFcYw7V/mjDaSlLfcOQIA+2SM1AyB8j/VNJeHdSbCb64D
+YyEMe9QbsWLFApy9/a8CAwEAAaOB7zCB7DASBgNVHRMBAf8ECDAGAQH/AgEAMB8G
+A1UdIwQYMBaAFCvQaUeUdgn+9GuNLkCm90dNfwheMEQGCCsGAQUFBwEBBDgwNjA0
+BggrBgEFBQcwAYYoaHR0cDovL29jc3AuYXBwbGUuY29tL29jc3AwMy1hcHBsZXJv
+b3RjYTAuBgNVHR8EJzAlMCOgIaAfhh1odHRwOi8vY3JsLmFwcGxlLmNvbS9yb290
+LmNybDAdBgNVHQ4EFgQUW9n6HeeaGgujmXYiUIY+kchbd6gwDgYDVR0PAQH/BAQD
+AgEGMBAGCiqGSIb3Y2QGAgEEAgUAMA0GCSqGSIb3DQEBCwUAA4IBAQA/Vj2e5bbD
+eeZFIGi9v3OLLBKeAuOugCKMBB7DUshwgKj7zqew1UJEggOCTwb8O0kU+9h0UoWv
+p50h5wESA5/NQFjQAde/MoMrU1goPO6cn1R2PWQnxn6NHThNLa6B5rmluJyJlPef
+x4elUWY0GzlxOSTjh2fvpbFoe4zuPfeutnvi0v/fYcZqdUmVIkSoBPyUuAsuORFJ
+EtHlgepZAE9bPFo22noicwkJac3AfOriJP6YRLj477JxPxpd1F1+M02cHSS+APCQ
+A1iZQT0xWmJArzmoUUOSqwSonMJNsUvSq3xKX+udO7xPiEAGE/+QF4oIRynoYpgp
+pU8RBWk6z/Kf
+-----END CERTIFICATE-----`;
 
 const ICON_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAAgklEQVR4nGPkF9f6z0BnwERvCwfMUhZcEh9eXL1LqeECEtrK2MSx+pQaFuIzhxE9ISErxOVSUi1EN4eJWIWkAmT96D7GGryUWkjInJGTZUYtHbV01NJRS0ctHSSW0rrlgGIpvoqXEgvR61WM5go1LEQG2CryAWk5YPUprcHgSb20BgDttTV1QCPBRwAAAABJRU5ErkJggg==";
@@ -38,12 +67,9 @@ Deno.serve(async (req) => {
     const config = {
       alive: true,
       timestamp: new Date().toISOString(),
-      PASS_TYPE_ID,
-      SUPABASE_URL: Deno.env.get("SUPABASE_URL"),
       has_p12: !!Deno.env.get("APPLE_PASS_CERTIFICATE"),
       has_team_id: !!Deno.env.get("APPLE_TEAM_ID"),
       has_service_role: !!Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-      webServiceURL_expected: `${Deno.env.get("SUPABASE_URL")}/functions/v1/wallet-webservice`,
     };
     console.log(`[PassKit WS] PING →`, JSON.stringify(config));
     return new Response(JSON.stringify(config, null, 2), {
@@ -128,10 +154,8 @@ async function handleRegisterDevice(
     console.log(`[PassKit WS]   ✗ No card found for serialNumber=${serialNumber}`);
     return new Response("Unauthorized", { status: 401 });
   }
-  if (card.wallet_auth_token !== authToken) {
-    console.log(`[PassKit WS]   ✗ Auth token MISMATCH`);
-    console.log(`[PassKit WS]     pass token (len=${authToken.length}): ${authToken.slice(0, 8)}...${authToken.slice(-8)}`);
-    console.log(`[PassKit WS]     DB   token (len=${card.wallet_auth_token?.length ?? 0}): ${card.wallet_auth_token?.slice(0, 8) ?? "NULL"}...${card.wallet_auth_token?.slice(-8) ?? ""}`);
+  if (!card.wallet_auth_token || card.wallet_auth_token !== authToken) {
+    console.log(`[PassKit WS]   ✗ Auth token MISMATCH or NULL`);
     console.log(`[PassKit WS]     DB wallet_auth_token IS NULL: ${card.wallet_auth_token === null}`);
     return new Response("Unauthorized", { status: 401 });
   }
@@ -170,6 +194,44 @@ async function handleRegisterDevice(
     .from("customer_cards")
     .update({ wallet_installed_at: new Date().toISOString() })
     .eq("id", card.id);
+
+  // ── Notification de bienvenue automatique ───────────────────────────
+  try {
+    const { data: business } = await supabase
+      .from("businesses")
+      .select("welcome_push_enabled, welcome_push_message, name")
+      .eq("id", card.business_id)
+      .single();
+
+    if (business?.welcome_push_enabled !== false) {
+      const welcomeMsg = business?.welcome_push_message ||
+        `Bienvenue chez ${business?.name || "nous"} ! Votre carte de fidélité est prête 🎉`;
+
+      // Petit délai pour laisser iOS finir l'enregistrement du pass
+      await new Promise((r) => setTimeout(r, 3000));
+
+      const sbUrl = Deno.env.get("SUPABASE_URL")!;
+      const sbKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+      const pushRes = await fetch(`${sbUrl}/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sbKey}`,
+        },
+        body: JSON.stringify({
+          business_id: card.business_id,
+          card_ids: [card.id],
+          change_message: welcomeMsg,
+          action_type: "campaign",
+        }),
+      });
+      const pushData = await pushRes.json().catch(() => ({}));
+      console.log(`[PassKit WS] ✓ Welcome push sent: pushed=${pushData.pushed || 0}`);
+    }
+  } catch (welcomeErr) {
+    console.error(`[PassKit WS] Welcome push error (non-blocking):`, welcomeErr);
+  }
 
   console.log(`[PassKit WS] Device registered successfully`);
   return new Response("", { status: 201 });
@@ -303,6 +365,14 @@ async function handleGetLatestPass(
 
   if (!business) return new Response("Not found", { status: 404 });
 
+  // Fetch active rewards for this business (same as generate-pass)
+  const { data: rewards } = await supabase
+    .from("rewards")
+    .select("title, description, points_required")
+    .eq("business_id", card.business_id)
+    .eq("is_active", true)
+    .order("points_required", { ascending: true });
+
   await supabase
     .from("customer_cards")
     .update({
@@ -312,8 +382,8 @@ async function handleGetLatestPass(
     .eq("id", card.id);
 
   try {
-    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token);
-    return new Response(pkpass, {
+    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || []);
+    return new Response(pkpass as unknown as BodyInit, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.apple.pkpass",
@@ -333,18 +403,21 @@ async function buildPkpassForUpdate(
   card: any,
   business: any,
   customer: any,
-  authToken: string
+  authToken: string,
+  rewards: any[] = []
 ): Promise<Uint8Array> {
-  const teamId = Deno.env.get("APPLE_TEAM_ID")!.trim();
+  const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
+  if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
   const p12Base64 = Deno.env.get("APPLE_PASS_CERTIFICATE")!;
   const p12Password = Deno.env.get("APPLE_PASS_PASSWORD")!;
 
   const { signerCert, signerKey, certificateChain } = extractSigningMaterial(p12Base64, p12Password);
+  const wwdrCert = forge.pki.certificateFromPem(WWDR_G4_PEM);
 
   // Fetch business logo for icons and logo
   const { iconPng, icon2xPng, icon3xPng } = await fetchOrGenerateIcons(business);
   const { logoPng, logo2xPng } = await fetchOrGenerateLogo(business);
-  const { stripPng, strip2xPng } = generateStripImages(business.primary_color || "#6B46C1");
+  const { stripPng, strip2xPng } = await fetchOrGenerateStrip(business, card);
 
   const bgColor = hexToRgb(business.primary_color || "#6B46C1");
   const fgColor = business.foreground_color ? hexToRgb(business.foreground_color) : autoForeground(business.primary_color || "#6B46C1");
@@ -389,17 +462,47 @@ async function buildPkpassForUpdate(
         { key: "reward", label: "RÉCOMPENSE", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
       ],
       auxiliaryFields: [
-        ...(latestOffer ? [{
-          key: "offer",
-          label: "",
-          value: latestOffer,
-          changeMessage: "%@",
+        ...(rewards.length > 0 ? [{
+          key: "next_reward",
+          label: "PROCHAINE RÉCOMPENSE",
+          value: (() => {
+            const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
+            if (!nextReward) return business.reward_description || "Récompense offerte !";
+            return `${nextReward.title} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`;
+          })(),
+        }] : business.reward_description ? [{
+          key: "next_reward",
+          label: "RÉCOMPENSE",
+          value: `${business.reward_description} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
         }] : []),
       ],
       backFields: [
-        { key: "reward_info", label: "🎁 Récompense", value: business.reward_description || "Récompense offerte !" },
-        { key: "stats", label: "📊 Statistiques", value: `Points : ${pointsCurrent}/${pointsMax}\nVisites : ${customer?.total_visits || 0}\nNiveau : ${level.toUpperCase()}\nStreak : ${customer?.current_streak || 0} jours` },
-        { key: "info", label: "ℹ️ À propos", value: `Programme de fidélité ${business.name}.` },
+        ...(latestOffer ? [{
+          key: "latest_offer",
+          label: "📢 Dernière notification",
+          value: latestOffer,
+          changeMessage: "%@",
+        }] : []),
+        {
+          key: "reward_info",
+          label: "🎁 Récompense",
+          value: business.reward_description || "Récompense offerte !",
+        },
+        ...(rewards.length > 0 ? [{
+          key: "rewards_catalog",
+          label: "🏆 Récompenses disponibles",
+          value: rewards.map((r: any) => `• ${r.title} — ${r.points_required} ${business.loyalty_type === "stamps" ? "tampons" : "pts"}${r.description ? ` (${r.description})` : ""}`).join("\n"),
+        }] : []),
+        {
+          key: "stats",
+          label: "📊 Statistiques",
+          value: `Points : ${pointsCurrent}/${pointsMax}\nVisites : ${customer?.total_visits || 0}\nNiveau : ${level.toUpperCase()}\nStreak : ${customer?.current_streak || 0} jours`,
+        },
+        {
+          key: "info",
+          label: "ℹ️ À propos",
+          value: `Programme de fidélité ${business.name}.\n${business.address ? `Adresse : ${business.address}` : ""}\n${business.phone ? `Tél : ${business.phone}` : ""}`.trim(),
+        },
         { key: "powered", label: "", value: "Propulsé par FidéliPro" },
       ],
     },
@@ -448,6 +551,7 @@ async function buildPkpassForUpdate(
   const p7 = forge.pkcs7.createSignedData();
   p7.content = forge.util.createBuffer(manifestStr, "utf8");
   p7.addCertificate(signerCert);
+  p7.addCertificate(wwdrCert); // WWDR G4 required in Apple Wallet signature chain
   for (const cert of certificateChain) p7.addCertificate(cert);
   p7.addSigner({
     key: signerKey,
@@ -524,35 +628,158 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
   return { logoPng, logo2xPng };
 }
 
-// ── Strip image generation ────────────────────────────────────────
+// ── Strip image — use card_bg_image_url if available, else generate visual ─────
 
-function generateStripImages(hexColor: string): { stripPng: Uint8Array; strip2xPng: Uint8Array } {
-  const stripPng = generateStripPng(320, 123, hexColor);
-  const strip2xPng = generateStripPng(640, 246, hexColor);
+async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
+  if (business.card_bg_image_url) {
+    try {
+      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const response = await fetch(imgUrl);
+      if (response.ok) {
+        const imageBytes = new Uint8Array(await response.arrayBuffer());
+        if (imageBytes.byteLength <= 60_000) {
+          console.log("[Pass WS] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.log(`[Pass WS] Strip image too large (${imageBytes.byteLength} bytes), using generated`);
+      }
+    } catch (err) {
+      console.error("[Pass WS] Failed to fetch strip image:", err);
+    }
+  }
+  const hexColor = business.primary_color || "#6B46C1";
+  const loyaltyType = business.loyalty_type || "stamps";
+  const current = card.current_points || 0;
+  const max = card.max_points || 10;
+  const stripPng = generateStripWithVisuals(320, 123, hexColor, loyaltyType, current, max);
+  const strip2xPng = generateStripWithVisuals(640, 246, hexColor, loyaltyType, current, max);
   return { stripPng, strip2xPng };
 }
 
-function generateStripPng(width: number, height: number, hexColor: string): Uint8Array {
+// ── Strip with stamp circles or progress bar (same as generate-pass) ──
+
+interface StampCircle { cx: number; cy: number; radius: number; filled: boolean; }
+interface ProgressBarDef { x: number; y: number; w: number; h: number; fillRatio: number; }
+
+function generateStripWithVisuals(
+  width: number, height: number, hexColor: string,
+  loyaltyType: string, current: number, max: number
+): Uint8Array {
   const hex = /^#[0-9A-Fa-f]{6}$/.test(hexColor) ? hexColor : "#6B46C1";
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
 
   const rawData: number[] = [];
+  const scale = width / 320;
+
+  const stamps = loyaltyType === "stamps" ? buildStampPositions(width, height, current, max, scale) : null;
+  const progressBar = (loyaltyType === "points" || loyaltyType === "cashback")
+    ? buildProgressBar(width, height, current, max, scale) : null;
+
   for (let y = 0; y < height; y++) {
     rawData.push(0);
     for (let x = 0; x < width; x++) {
-      const stripe = ((x + y) % 16) < 4;
-      const lightness = stripe ? 20 : 0;
-      const gradientDarken = Math.floor((y / height) * 30);
-      const pr = Math.min(255, Math.max(0, r + lightness - gradientDarken));
-      const pg = Math.min(255, Math.max(0, g + lightness - gradientDarken));
-      const pb = Math.min(255, Math.max(0, b + lightness - gradientDarken));
+      const gradientDarken = Math.floor((y / height) * 25);
+      let pr = Math.max(0, r - gradientDarken);
+      let pg = Math.max(0, g - gradientDarken);
+      let pb = Math.max(0, b - gradientDarken);
+
+      if (stamps) {
+        const stampResult = getStampPixel(x, y, stamps, pr, pg, pb);
+        if (stampResult) { pr = stampResult.r; pg = stampResult.g; pb = stampResult.b; }
+      } else if (progressBar) {
+        const barResult = getProgressPixel(x, y, progressBar, pr, pg, pb);
+        if (barResult) { pr = barResult.r; pg = barResult.g; pb = barResult.b; }
+      }
+
       rawData.push(pr, pg, pb, 255);
     }
   }
 
   return buildPngFromRaw(width, height, new Uint8Array(rawData));
+}
+
+function buildStampPositions(w: number, h: number, current: number, max: number, scale: number): StampCircle[] {
+  const circles: StampCircle[] = [];
+  const count = Math.min(max, 12);
+  const maxPerRow = count <= 5 ? count : count <= 10 ? 5 : 6;
+  const rows = Math.ceil(count / maxPerRow);
+  const radius = Math.floor((rows > 1 ? 12 : 18) * scale);
+  const rowSpacing = Math.floor(h / (rows + 1));
+
+  let idx = 0;
+  for (let row = 0; row < rows; row++) {
+    const itemsInRow = Math.min(maxPerRow, count - idx);
+    const colSpacing = Math.floor(w / (itemsInRow + 1));
+    const cy = rowSpacing * (row + 1);
+    for (let col = 0; col < itemsInRow; col++) {
+      circles.push({ cx: colSpacing * (col + 1), cy, radius, filled: idx < current });
+      idx++;
+    }
+  }
+  return circles;
+}
+
+function getStampPixel(x: number, y: number, stamps: StampCircle[], bgR: number, bgG: number, bgB: number) {
+  for (const s of stamps) {
+    const dx = x - s.cx;
+    const dy = y - s.cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const borderWidth = Math.max(2, Math.floor(s.radius * 0.15));
+
+    if (s.filled) {
+      if (dist <= s.radius) return { r: 255, g: 255, b: 255 };
+      if (dist <= s.radius + 2) return { r: Math.min(255, bgR + 80), g: Math.min(255, bgG + 80), b: Math.min(255, bgB + 80) };
+    } else {
+      if (dist <= s.radius && dist > s.radius - borderWidth) return { r: 255, g: 255, b: 255 };
+      if (dist <= s.radius - borderWidth) return { r: Math.min(255, bgR + 15), g: Math.min(255, bgG + 15), b: Math.min(255, bgB + 15) };
+    }
+  }
+  return null;
+}
+
+function buildProgressBar(canvasW: number, canvasH: number, current: number, max: number, scale: number): ProgressBarDef {
+  const barH = Math.floor(20 * scale);
+  const margin = Math.floor(25 * scale);
+  return {
+    x: margin,
+    y: Math.floor(canvasH / 2) - Math.floor(barH / 2),
+    w: canvasW - margin * 2,
+    h: barH,
+    fillRatio: Math.min(1, max > 0 ? current / max : 0),
+  };
+}
+
+function getProgressPixel(x: number, y: number, bar: ProgressBarDef, bgR: number, bgG: number, bgB: number) {
+  if (x >= bar.x && x < bar.x + bar.w && y >= bar.y && y < bar.y + bar.h) {
+    const borderRadius = Math.floor(bar.h / 2);
+    const relX = x - bar.x;
+    const relY = y - bar.y;
+    const centerY = bar.h / 2;
+
+    // Rounded corners check
+    const isInLeftCap = relX < borderRadius;
+    const isInRightCap = relX > bar.w - borderRadius;
+    if (isInLeftCap) {
+      const dx = relX - borderRadius;
+      const dy = relY - centerY;
+      if (Math.sqrt(dx * dx + dy * dy) > borderRadius) return null;
+    }
+    if (isInRightCap) {
+      const dx = relX - (bar.w - borderRadius);
+      const dy = relY - centerY;
+      if (Math.sqrt(dx * dx + dy * dy) > borderRadius) return null;
+    }
+
+    const fillWidth = bar.w * bar.fillRatio;
+    if (relX <= fillWidth) {
+      return { r: 255, g: 255, b: 255 };
+    } else {
+      return { r: Math.min(255, bgR + 20), g: Math.min(255, bgG + 20), b: Math.min(255, bgB + 20) };
+    }
+  }
+  return null;
 }
 
 function generateSolidColorPng(width: number, height: number, hexColor: string): Uint8Array {

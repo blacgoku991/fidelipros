@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
 
     // ── Envoi Apple Wallet push ───────────────────────────────────────────
     let walletSent = 0;
+    let walletError: string | null = null;
     try {
       const wr = await fetch(`${sbUrl}/functions/v1/wallet-push`, {
         method: "POST",
@@ -82,15 +83,49 @@ Deno.serve(async (req) => {
       const wrText = await wr.text();
       try {
         const walletResult = JSON.parse(wrText);
+        if (!walletResult.success && walletResult.error) {
+          walletError = walletResult.error;
+          console.error("Wallet push failed:", walletError);
+        }
         walletSent = walletResult.pushed || 0;
       } catch {
+        walletError = "Wallet push returned non-JSON response";
         console.error("Wallet push returned non-JSON:", wrText.substring(0, 200));
       }
     } catch (e) {
+      walletError = String(e);
       console.error("Wallet push error:", e);
     }
 
-    return json({ wallet: walletSent, webpush: 0 });
+    // ── Mise à jour Google Wallet passes ─────────────────────────────────
+    let googleUpdated = 0;
+    try {
+      const gr = await fetch(`${sbUrl}/functions/v1/update-google-pass`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sbKey}`,
+        },
+        body: JSON.stringify({
+          business_id: verifiedBusinessId,
+          message: change_message || message,
+        }),
+      });
+      const grText = await gr.text();
+      try {
+        const googleResult = JSON.parse(grText);
+        googleUpdated = googleResult.updated || 0;
+        if (googleResult.skipped) {
+          console.log("Google Wallet update skipped (not configured)");
+        }
+      } catch {
+        console.error("Google Wallet update returned non-JSON:", grText.substring(0, 200));
+      }
+    } catch (e) {
+      console.error("Google Wallet update error:", e);
+    }
+
+    return json({ wallet: walletSent, google: googleUpdated, webpush: 0, ...(walletError ? { wallet_error: walletError } : {}) });
   } catch (err) {
     console.error("send-notifications error:", err);
     return json({ error: "Internal server error" }, 500);

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
@@ -66,8 +66,9 @@ serve(async (req) => {
       .in("key", [
         "plan_starter_name", "plan_starter_price",
         "plan_pro_name",     "plan_pro_price",
-        "stripe_product_starter", "stripe_product_pro",
-        "stripe_price_starter",   "stripe_price_pro",
+        "plan_franchise_name", "plan_franchise_price",
+        "stripe_product_starter", "stripe_product_pro", "stripe_product_franchise",
+        "stripe_price_starter",   "stripe_price_pro",   "stripe_price_franchise",
       ]);
 
     console.log("[manage-stripe-plans] site_settings lues:", rows?.length ?? 0, "rows, settingsErr:", settingsErr?.message ?? null);
@@ -87,9 +88,12 @@ serve(async (req) => {
     if (action === "create_products") {
       const results: Record<string, string> = {};
 
-      for (const plan of ["starter", "pro"] as const) {
-        const name   = cfg[`plan_${plan}_name`]?.trim()  || (plan === "starter" ? "Starter" : "Pro");
-        const amount = parseInt(cfg[`plan_${plan}_price`]) || (plan === "starter" ? 29 : 59);
+      const defaultPrices: Record<string, number> = { starter: 29, pro: 59, franchise: 149 };
+      const defaultNames: Record<string, string> = { starter: "Starter", pro: "Pro", franchise: "Franchise" };
+
+      for (const plan of ["starter", "pro", "franchise"] as const) {
+        const name   = cfg[`plan_${plan}_name`]?.trim()  || defaultNames[plan];
+        const amount = parseInt(cfg[`plan_${plan}_price`]) || defaultPrices[plan];
 
         // Trouver ou créer le produit Stripe
         // On utilise list+metadata au lieu de search (plus fiable)
@@ -98,7 +102,7 @@ serve(async (req) => {
         if (!productId) {
           // Chercher un produit existant via list (evite l'API search qui peut échouer)
           const existing = await stripe.products.list({ limit: 100, active: true });
-          const found = existing.data.find(p => p.metadata?.plan === plan);
+          const found = existing.data.find((p: any) => p.metadata?.plan === plan);
           if (found) {
             productId = found.id;
           } else {
@@ -143,7 +147,7 @@ serve(async (req) => {
     // ── ACTION : mettre à jour le prix d'un plan spécifique ───────────
     if (action === "update_price") {
       const { plan, price: newAmount, name: newName } = body as {
-        plan: "starter" | "pro"; price: number; name?: string;
+        plan: "starter" | "pro" | "franchise"; price: number; name?: string;
       };
       if (!plan || !newAmount) throw new Error("plan et price requis");
 
@@ -176,7 +180,7 @@ serve(async (req) => {
 
     // ── ACTION : synchroniser la souscription Stripe d'un business ────
     if (action === "sync_subscription") {
-      const { business_id, new_plan } = body as { business_id: string; new_plan: "starter" | "pro" };
+      const { business_id, new_plan } = body as { business_id: string; new_plan: "starter" | "pro" | "franchise" };
       if (!business_id || !new_plan) throw new Error("business_id et new_plan requis");
 
       // Get business

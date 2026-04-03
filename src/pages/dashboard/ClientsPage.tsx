@@ -108,8 +108,24 @@ const ClientsPage = () => {
         birthday: newBirthday || null,
       } as any).select().single();
     if (error) { toast.error("Erreur lors de l'ajout"); return; }
-    const { error: cardErr } = await supabase.from("customer_cards").insert({ customer_id: customer.id, business_id: business.id, max_points: business.max_points_per_card || 10 });
-    if (cardErr) { toast.error("Client créé mais erreur lors de la création de la carte"); } else { toast.success("Client ajouté !"); }
+    const { data: newCard, error: cardErr } = await supabase.from("customer_cards").insert({ customer_id: customer.id, business_id: business.id, max_points: business.max_points_per_card || 10 }).select().single();
+    if (cardErr) { toast.error("Client créé mais erreur lors de la création de la carte"); } else {
+      toast.success("Client ajouté !");
+      // Send welcome push if enabled
+      if (business.welcome_push_enabled !== false && newCard) {
+        try {
+          const { data: { session: wSess } } = await supabase.auth.getSession();
+          const wToken = wSess?.access_token ?? "";
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const welcomeMsg = business.welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉";
+          await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${wToken}` },
+            body: JSON.stringify({ business_id: business.id, customer_id: customer.id, change_message: welcomeMsg }),
+          });
+        } catch { /* non-blocking */ }
+      }
+    }
     setAddOpen(false);
     setNewName(""); setNewEmail(""); setNewPhone(""); setNewBirthday("");
     fetchCustomers();
