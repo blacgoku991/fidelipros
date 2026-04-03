@@ -35,21 +35,11 @@ const AdminEmailDigest = () => {
   };
 
   const invokeDigest = async (merchantId: string) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-    const res = await fetch(`${supabaseUrl}/functions/v1/weekly-digest`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        apikey: key,
-      },
-      body: JSON.stringify({ merchant_id: merchantId }),
+    const { data, error } = await supabase.functions.invoke("weekly-digest", {
+      body: { merchant_id: merchantId },
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Erreur");
-    return data.results?.[0] || data;
+    if (error) throw new Error(error.message || "Erreur");
+    return data?.results?.[0] || data;
   };
 
   const handleSendDigest = async (bizId: string, bizName: string) => {
@@ -69,19 +59,10 @@ const AdminEmailDigest = () => {
   const handleSendAll = async () => {
     setSendingAll(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const res = await fetch(`${supabaseUrl}/functions/v1/weekly-digest`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-          apikey: key,
-        },
-        body: JSON.stringify({}),
+      const { data, error } = await supabase.functions.invoke("weekly-digest", {
+        body: {},
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur");
+      if (error) throw new Error(error.message || "Erreur");
       toast.success(`Digest généré pour ${data.count} commerces`);
       fetchData();
     } catch (err: any) {

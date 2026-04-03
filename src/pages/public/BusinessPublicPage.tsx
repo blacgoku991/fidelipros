@@ -92,26 +92,16 @@ const BusinessPublicPage = () => {
     }
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data, error: fetchErr } = await supabase
+        .from("businesses")
+        .select("id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,birthday_notif_enabled")
+        .eq("id", businessId);
 
-      const response = await fetch(
-        `${supabaseUrl}/rest/v1/businesses?id=eq.${encodeURIComponent(businessId)}&select=id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,birthday_notif_enabled`,
-        {
-          headers: {
-            apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        setFetchError(`Erreur serveur (${response.status}). Réessayez.`);
+      if (fetchErr) {
+        setFetchError(`Erreur serveur. Réessayez.`);
         setLoading(false);
         return;
       }
-
-      const data = await response.json();
       if (data && data.length > 0) {
         setBusiness(data[0]);
       } else {

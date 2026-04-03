@@ -103,6 +103,17 @@ const AbonnementPage = () => {
       toast.error("Erreur lors de l'annulation");
       return;
     }
+    // Validate redirect URL is from trusted Stripe domain
+    try {
+      const parsed = new URL(data.url);
+      if (!parsed.hostname.endsWith("stripe.com")) {
+        toast.error("URL de redirection non autorisée");
+        return;
+      }
+    } catch {
+      toast.error("URL invalide");
+      return;
+    }
     window.location.href = data.url;
   };
 

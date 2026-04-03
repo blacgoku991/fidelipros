@@ -167,6 +167,11 @@ const CheckoutPage = () => {
       }
 
       if (!data?.url) throw new Error("URL de paiement manquante");
+      // Validate redirect URL is from trusted domain
+      try {
+        const parsed = new URL(data.url);
+        if (!parsed.hostname.endsWith("stripe.com")) throw new Error("URL de redirection non autorisée");
+      } catch { throw new Error("URL de paiement invalide"); }
       window.location.href = data.url;
     } catch (err: any) {
       setError(err.message || "Erreur lors de la création du checkout");
