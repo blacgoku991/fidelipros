@@ -8,7 +8,7 @@ export const STRIPE_PLANS = {
       "Scanner QR code",
       "Cartes de fidélité digitales",
       "Apple Wallet & Google Wallet",
-      "Jusqu'à 200 clients",
+      "Jusqu'à 50 clients",
       "Gestion récompenses",
       "Personnalisation carte",
       "Vitrine publique",
@@ -58,3 +58,58 @@ export const STRIPE_PLANS = {
 } as const;
 
 export type PlanKey = keyof typeof STRIPE_PLANS;
+
+/** Plan limits — enforced in frontend + should be mirrored in RLS/backend */
+export const PLAN_LIMITS: Record<string, {
+  max_clients: number;
+  campaigns: boolean;
+  automations: boolean;
+  analytics_advanced: boolean;
+  scoring: boolean;
+  gamification: boolean;
+  geofencing: boolean;
+  reviews: boolean;
+  webhooks: boolean;
+  multi_locations: boolean;
+}> = {
+  starter: {
+    max_clients: 50,
+    campaigns: false,
+    automations: false,
+    analytics_advanced: false,
+    scoring: false,
+    gamification: false,
+    geofencing: false,
+    reviews: false,
+    webhooks: false,
+    multi_locations: false,
+  },
+  pro: {
+    max_clients: Infinity,
+    campaigns: true,
+    automations: true,
+    analytics_advanced: true,
+    scoring: true,
+    gamification: true,
+    geofencing: true,
+    reviews: true,
+    webhooks: true,
+    multi_locations: false,
+  },
+  franchise: {
+    max_clients: Infinity,
+    campaigns: true,
+    automations: true,
+    analytics_advanced: true,
+    scoring: true,
+    gamification: true,
+    geofencing: true,
+    reviews: true,
+    webhooks: true,
+    multi_locations: true,
+  },
+};
+
+export function getPlanLimits(plan: string | null | undefined) {
+  return PLAN_LIMITS[plan || "starter"] || PLAN_LIMITS.starter;
+}

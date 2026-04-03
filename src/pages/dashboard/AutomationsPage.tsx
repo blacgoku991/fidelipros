@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Zap, Plus, Clock, Users, MapPin, Gift, Calendar, Trash2, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { PlanGate } from "@/components/dashboard/PlanGate";
 
 const TRIGGER_TYPES = [
   { value: "inactive_days", label: "Client inactif", icon: Clock, desc: "Relance après X jours d'inactivité", disabled: false },
@@ -261,4 +262,10 @@ const AutomationsPage = () => {
   );
 };
 
-export default AutomationsPage;
+const AutomationsPageGated = () => (
+  <PlanGate feature="automations" title="Automations" subtitle="Relance automatique, anniversaires, win-back">
+    <AutomationsPage />
+  </PlanGate>
+);
+
+export default AutomationsPageGated;

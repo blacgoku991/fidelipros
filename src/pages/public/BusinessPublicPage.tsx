@@ -175,35 +175,23 @@ const BusinessPublicPage = () => {
     setSubmitting(true);
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const headers = {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-        "Content-Type": "application/json",
-      };
-
       // Check if customer already exists
-      let existingCustomer = null;
+      let existingCustomer: any = null;
       if (email.trim()) {
-        const res = await fetch(
-          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&email=eq.${encodeURIComponent(email.trim())}&select=*,customer_cards(*)`,
-          { headers }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.length > 0) existingCustomer = data[0];
-        }
+        const { data } = await supabase
+          .from("customers")
+          .select("*, customer_cards(*)")
+          .eq("business_id", business.id)
+          .eq("email", email.trim());
+        if (data && data.length > 0) existingCustomer = data[0];
       }
       if (!existingCustomer && phone.trim()) {
-        const res = await fetch(
-          `${supabaseUrl}/rest/v1/customers?business_id=eq.${business.id}&phone=eq.${encodeURIComponent(phone.trim())}&select=*,customer_cards(*)`,
-          { headers }
-        );
-        if (res.ok) {
-          const data = await res.json();
-          if (data?.length > 0) existingCustomer = data[0];
-        }
+        const { data } = await supabase
+          .from("customers")
+          .select("*, customer_cards(*)")
+          .eq("business_id", business.id)
+          .eq("phone", phone.trim());
+        if (data && data.length > 0) existingCustomer = data[0];
       }
 
       if (existingCustomer) {
@@ -216,22 +204,36 @@ const BusinessPublicPage = () => {
         return;
       }
 
+      // Check client limit based on plan
+      const { PLAN_LIMITS } = await import("@/lib/stripePlans");
+      const planKey = (business as any).subscription_plan || "starter";
+      const maxClients = PLAN_LIMITS[planKey]?.max_clients ?? 50;
+      if (maxClients !== Infinity) {
+        const { count } = await supabase
+          .from("customers")
+          .select("id", { count: "exact", head: true })
+          .eq("business_id", business.id);
+        if ((count ?? 0) >= maxClients) {
+          toast.error("Ce commerce a atteint sa limite de clients. Contactez le commerçant.");
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const customerId = crypto.randomUUID();
 
-      const custRes = await fetch(`${supabaseUrl}/rest/v1/customers`, {
-        method: "POST",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify({
+      const { error: custErr } = await supabase
+        .from("customers")
+        .insert({
           id: customerId,
           business_id: business.id,
           full_name: name.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
           birthday: birthday || null,
-        }),
-      });
+        } as any);
 
-      if (!custRes.ok) {
+      if (custErr) {
         toast.error("Erreur lors de l'inscription. Réessayez.");
         setSubmitting(false);
         return;
@@ -245,23 +247,21 @@ const BusinessPublicPage = () => {
         birthday: birthday || null,
       };
 
-      const cardRes = await fetch(`${supabaseUrl}/rest/v1/customer_cards`, {
-        method: "POST",
-        headers: { ...headers, Prefer: "return=representation" },
-        body: JSON.stringify({
+      const { data: newCards, error: cardErr } = await supabase
+        .from("customer_cards")
+        .insert({
           customer_id: customerId,
           business_id: business.id,
           max_points: business.max_points_per_card || 10,
-        }),
-      });
+        } as any)
+        .select();
 
-      if (!cardRes.ok) {
+      if (cardErr) {
         toast.error("Erreur lors de la création de la carte. Réessayez.");
         setSubmitting(false);
         return;
       }
 
-      const newCards = await cardRes.json();
       const newCard = newCards?.[0];
 
       setCustomer(newCustomer);

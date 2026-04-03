@@ -13,6 +13,7 @@ import {
   Wallet, BarChart3, Moon,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PlanGate } from "@/components/dashboard/PlanGate";
 import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -941,4 +942,10 @@ function EmptyIllustration() {
   );
 }
 
-export default CampaignsPage;
+const CampaignsPageGated = () => (
+  <PlanGate feature="campaigns" title="Campagnes" subtitle="Envoyez des notifications ciblées à vos clients">
+    <CampaignsPage />
+  </PlanGate>
+);
+
+export default CampaignsPageGated;

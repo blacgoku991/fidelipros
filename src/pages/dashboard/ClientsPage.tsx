@@ -28,6 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { getPlanLimits } from "@/lib/stripePlans";
 
 const levelIcons = { bronze: Star, silver: Crown, gold: Crown };
 const levelColors: Record<string, string> = {
@@ -97,8 +98,15 @@ const ClientsPage = () => {
 
   useEffect(() => { fetchCustomers(); }, [business]);
 
+  const planLimits = getPlanLimits((business as any)?.subscription_plan);
+  const isAtClientLimit = planLimits.max_clients !== Infinity && customers.length >= planLimits.max_clients;
+
   const handleAddCustomer = async () => {
     if (!newName.trim() || !business) { toast.error("Le nom est requis"); return; }
+    if (isAtClientLimit) {
+      toast.error(`Limite de ${planLimits.max_clients} clients atteinte. Passez au plan Pro pour des clients illimités.`);
+      return;
+    }
     const { data: customer, error } = await supabase
       .from("customers").insert({
         business_id: business.id,
@@ -219,7 +227,7 @@ const ClientsPage = () => {
   return (
     <DashboardLayout
       title="Clients"
-      subtitle={`${customers.length} client(s) enregistré(s)`}
+      subtitle={`${customers.length} client(s) enregistré(s)${planLimits.max_clients !== Infinity ? ` / ${planLimits.max_clients} max` : ""}`}
       headerAction={
         <div className="flex items-center gap-2">
           <Button onClick={exportCSV} variant="outline" className="rounded-xl gap-2 text-xs">
@@ -227,7 +235,8 @@ const ClientsPage = () => {
           </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2">
+              <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2" disabled={isAtClientLimit}
+                title={isAtClientLimit ? `Limite de ${planLimits.max_clients} clients atteinte` : undefined}>
                 <Plus className="w-4 h-4" /> Ajouter
               </Button>
             </DialogTrigger>

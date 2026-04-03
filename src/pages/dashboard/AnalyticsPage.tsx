@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Users, Gift, BarChart3, Repeat, Target, ArrowUpRight, Wallet, Filter } from "lucide-react";
 import { motion } from "framer-motion";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { PlanGate } from "@/components/dashboard/PlanGate";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))"];
 
@@ -283,4 +284,10 @@ const AnalyticsPage = () => {
   );
 };
 
-export default AnalyticsPage;
+const AnalyticsPageGated = () => (
+  <PlanGate feature="analytics_advanced" title="Analytics avancés" subtitle="Tendances, conversion et segments">
+    <AnalyticsPage />
+  </PlanGate>
+);
+
+export default AnalyticsPageGated;
