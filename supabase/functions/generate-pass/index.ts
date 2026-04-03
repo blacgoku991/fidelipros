@@ -274,7 +274,7 @@ export async function buildPkpass(
         ...(rewards.length > 0 ? [{
           key: "rewards_catalog",
           label: "🏆 Récompenses disponibles",
-          value: rewards.map((r: any) => `• ${r.title} — ${r.points_required} pts${r.description ? ` (${r.description})` : ""}`).join("\n"),
+          value: rewards.map((r: any) => `• ${r.title} — ${r.points_required} ${business.loyalty_type === "stamps" ? "tampons" : business.loyalty_type === "cashback" ? "€" : "pts"}${r.description ? ` (${r.description})` : ""}`).join("\n"),
         }] : []),
         {
           key: "stats",

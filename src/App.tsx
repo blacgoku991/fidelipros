@@ -9,6 +9,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { PlanGate } from "@/components/dashboard/PlanGate";
 
 // Eager-loaded pages (public, lightweight)
 import Index from "./pages/Index";
@@ -104,9 +105,9 @@ const App = () => (
                 <Route path="/dashboard/abonnement" element={<AbonnementPage />} />
                 <Route path="/dashboard/automations" element={<AutomationsPage />} />
                 <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
-                <Route path="/dashboard/locations" element={<LocationsPage />} />
-                <Route path="/dashboard/locations/compare" element={<LocationsComparePage />} />
-                <Route path="/dashboard/managers" element={<ManagersPage />} />
+                <Route path="/dashboard/locations" element={<PlanGate feature="multi_locations" title="Établissements" subtitle="Gérez vos points de vente"><LocationsPage /></PlanGate>} />
+                <Route path="/dashboard/locations/compare" element={<PlanGate feature="multi_locations" title="Comparaison" subtitle="Comparez vos établissements"><LocationsComparePage /></PlanGate>} />
+                <Route path="/dashboard/managers" element={<PlanGate feature="multi_locations" title="Managers" subtitle="Gérez les managers de vos établissements"><ManagersPage /></PlanGate>} />
                 <Route path="/payment" element={<CheckoutPage />} />
                 {/* Redirects for removed pages */}
                 <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />

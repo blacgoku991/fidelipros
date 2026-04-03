@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
     let verifiedBusinessId: string | null = null;
 
     const body = await req.json();
-    const { business_id, message, change_message } = body;
+    const { business_id, message, change_message, segment } = body;
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
@@ -72,6 +72,39 @@ Deno.serve(async (req) => {
       verifiedBusinessId = biz.id;
     }
 
+    // ── Resolve targeted card_ids if segment is specified ───────────────
+    let targetCardIds: string[] | undefined;
+    if (segment && segment !== "all") {
+      const VALID_SEGMENTS = ["bronze", "silver", "gold", "vip", "inactive"];
+      const segments = segment.split(",").map((s: string) => s.trim()).filter((s: string) => VALID_SEGMENTS.includes(s));
+      if (segments.length > 0) {
+        const customerIds = new Set<string>();
+        for (const seg of segments) {
+          let query = supabase.from("customers").select("id").eq("business_id", verifiedBusinessId);
+          if (seg === "bronze") query = query.eq("level", "bronze");
+          else if (seg === "silver") query = query.eq("level", "silver");
+          else if (seg === "gold" || seg === "vip") query = query.eq("level", "gold");
+          else if (seg === "inactive") {
+            const ago30 = new Date(Date.now() - 30 * 86400000).toISOString();
+            query = query.or(`last_visit_at.lt.${ago30},last_visit_at.is.null`);
+          }
+          const { data } = await query.limit(5000);
+          if (data) data.forEach((c: any) => customerIds.add(c.id));
+        }
+        if (customerIds.size > 0) {
+          const { data: cards } = await supabase
+            .from("customer_cards")
+            .select("id")
+            .eq("business_id", verifiedBusinessId!)
+            .in("customer_id", [...customerIds]);
+          if (cards) targetCardIds = cards.map((c: any) => c.id);
+        }
+        if (!targetCardIds || targetCardIds.length === 0) {
+          return json({ wallet: 0, google: 0, webpush: 0, message: "No cards found for segment" });
+        }
+      }
+    }
+
     // ── Envoi Apple Wallet push ───────────────────────────────────────────
     let walletSent = 0;
     let walletError: string | null = null;
@@ -86,6 +119,7 @@ Deno.serve(async (req) => {
           business_id: verifiedBusinessId,
           action_type: "campaign",
           change_message: change_message || message,
+          ...(targetCardIds ? { card_ids: targetCardIds } : {}),
         }),
       });
       const wrText = await wr.text();
@@ -117,6 +151,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           business_id: verifiedBusinessId,
           message: change_message || message,
+          ...(targetCardIds ? { card_ids: targetCardIds } : {}),
         }),
       });
       const grText = await gr.text();
