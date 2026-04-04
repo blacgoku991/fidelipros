@@ -19,29 +19,6 @@ const badgeIcons: Record<string, string> = {
   vip: "⭐",
 };
 
-/* ── Stamp grid ── */
-function StampGrid({ filled, total, color }: { filled: number; total: number; color: string }) {
-  const cols = Math.min(total, 5);
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: "6px", padding: "10px 16px" }}>
-      {Array.from({ length: total }, (_, i) => (
-        <div
-          key={i}
-          style={{
-            width: 28, height: 28, borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, color: "#fff",
-            background: i < filled ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.08)",
-            border: `1.5px solid ${i < filled ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.15)"}`,
-          }}
-        >
-          {i < filled ? "✓" : ""}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 const CardViewPage = () => {
   const { cardCode } = useParams();
   const [card, setCard] = useState<any>(null);
@@ -232,6 +209,9 @@ const CardViewPage = () => {
           logoUrl={config.logoUrl || undefined}
           logoText={config.businessName}
           stripImageUrl={config.stripImageUrl || undefined}
+          loyaltyType={config.loyaltyType}
+          currentStamps={customerData.currentPoints}
+          maxStamps={customerData.maxPoints}
           headerFields={headerFields}
           primaryFields={primaryFields}
           secondaryFields={secondaryFields}
@@ -239,11 +219,7 @@ const CardViewPage = () => {
           barcodeValue={config.showQrCode ? customerData.cardCode : undefined}
           footerText={customerData.cardCode.slice(0, 12)}
           width={320}
-        >
-          {config.loyaltyType === "stamps" && (
-            <StampGrid filled={customerData.currentPoints} total={customerData.maxPoints} color={config.backgroundColor} />
-          )}
-        </AppleWalletPass>
+        />
 
         {/* Apple Wallet button */}
         {isAppleDevice && (

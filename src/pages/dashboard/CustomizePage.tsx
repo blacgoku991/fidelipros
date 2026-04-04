@@ -27,29 +27,6 @@ import {
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 
-/* ── Stamp grid for preview ── */
-function StampGrid({ filled, total, s = 1 }: { filled: number; total: number; s?: number }) {
-  const cols = Math.min(total, total <= 6 ? total : total <= 12 ? 6 : 5);
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: `${5 * s}px`, padding: `${8 * s}px ${14 * s}px` }}>
-      {Array.from({ length: total }, (_, i) => (
-        <div
-          key={i}
-          style={{
-            width: `${24 * s}px`, height: `${24 * s}px`, borderRadius: "50%",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: `${12 * s}px`, color: "#fff",
-            background: i < filled ? "rgba(255,255,255,0.9)" : "transparent",
-            border: `${2 * s}px solid rgba(255,255,255,${i < filled ? "0.9" : "0.6"})`,
-          }}
-        >
-          {i < filled ? "✓" : ""}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 const cardStyles = [
   { value: "classic", label: "Classique" },
   { value: "luxury", label: "Luxe" },
@@ -211,6 +188,9 @@ const CustomizePage = () => {
       logoUrl={logoUrl || undefined}
       logoText={form.name || "Mon Commerce"}
       stripImageUrl={stripImageUrl || undefined}
+      loyaltyType={form.loyalty_type || "points"}
+      currentStamps={7}
+      maxStamps={form.max_points_per_card || 10}
       headerFields={headerFields}
       primaryFields={primaryFields}
       secondaryFields={secondaryFields}
@@ -218,11 +198,7 @@ const CustomizePage = () => {
       barcodeValue={form.show_qr_code ? cardPreviewId : undefined}
       footerText={cardPreviewId.slice(0, 12)}
       width={previewWidth}
-    >
-      {form.loyalty_type === "stamps" && (
-        <StampGrid filled={7} total={form.max_points_per_card} s={previewWidth / 320} />
-      )}
-    </AppleWalletPass>
+    />
   );
 
   return (

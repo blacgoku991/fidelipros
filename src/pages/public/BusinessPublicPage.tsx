@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { buildCardConfig, buildCustomerData, buildApplePassFields, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X } from "lucide-react";
+import { MapPin, Phone, Globe, Star, Sparkles, CreditCard, AlertCircle, RefreshCw, Download, Share, X, Gift } from "lucide-react";
 import { toast } from "sonner";
 import addToWalletBadge from "@/assets/add-to-apple-wallet-fr.png";
 
@@ -46,6 +46,7 @@ const BusinessPublicPage = () => {
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [rewards, setRewards] = useState<any[]>([]);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
@@ -117,6 +118,20 @@ const BusinessPublicPage = () => {
   useEffect(() => {
     fetchBusiness();
   }, [businessId]);
+
+  // Fetch rewards catalog when business is loaded
+  useEffect(() => {
+    if (!business?.id) return;
+    supabase
+      .from("rewards")
+      .select("id, title, description, points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true })
+      .then(({ data }) => {
+        if (data) setRewards(data);
+      });
+  }, [business?.id]);
 
   useEffect(() => {
     if (!card?.card_code) return;
@@ -350,10 +365,29 @@ const BusinessPublicPage = () => {
                 <CreditCard className="w-4 h-4 text-primary" />
                 <span>Carte de fidélité digitale</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Sparkles className="w-4 h-4 text-accent" />
-                <span>{business.reward_description || "Récompense offerte !"}</span>
-              </div>
+              {rewards.length > 0 ? (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Gift className="w-4 h-4 text-accent" />
+                    <span>Récompenses à débloquer</span>
+                  </div>
+                  <div className="space-y-1.5 pl-6">
+                    {rewards.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{r.title}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {r.points_required} {business.loyalty_type === "stamps" ? "tampons" : business.loyalty_type === "cashback" ? "€" : "pts"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  <span>{business.reward_description || "Récompense offerte !"}</span>
+                </div>
+              )}
             </div>
 
             <Button
@@ -474,6 +508,10 @@ const BusinessPublicPage = () => {
               backgroundColor={business.primary_color || "#6B46C1"}
               logoUrl={business.logo_url || undefined}
               logoText={business.name}
+              loyaltyType={business.loyalty_type || "points"}
+              currentStamps={card.current_points || 0}
+              maxStamps={card.max_points || business.max_points_per_card || 10}
+              stripImageUrl={business.card_bg_image_url || undefined}
               {...(() => {
                 const config = buildCardConfig(business);
                 const cData = buildCustomerData(card, customer);

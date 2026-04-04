@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -6,6 +6,7 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrCode, CheckCircle, Sparkles, Euro } from "lucide-react";
+import { QrCameraScanner } from "@/components/dashboard/QrCameraScanner";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -29,8 +30,9 @@ const ScannerPage = () => {
   const isCashback = loyaltyType === "cashback";
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
-  const handleScan = async () => {
-    if (!cardCode.trim() || !business || !user) {
+  const handleScan = async (codeOverride?: string) => {
+    const code = codeOverride || cardCode;
+    if (!code.trim() || !business || !user) {
       toast.error("Entrez un code de carte");
       return;
     }
@@ -43,7 +45,7 @@ const ScannerPage = () => {
     const { data: card, error: cardError } = await supabase
       .from("customer_cards")
       .select("*, customers(*)")
-      .eq("card_code", cardCode.trim())
+      .eq("card_code", code.trim())
       .eq("business_id", business.id)
       .eq("is_active", true)
       .maybeSingle();
@@ -178,26 +180,43 @@ const ScannerPage = () => {
     <DashboardLayout title="Scanner" subtitle="Scannez ou entrez le code d'une carte client">
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
-          <div className="w-56 h-56 rounded-2xl bg-secondary flex items-center justify-center mb-5 relative overflow-hidden">
-            <AnimatePresence>
-              {success ? (
-                <motion.div key="success" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="flex flex-col items-center gap-2">
-                  <CheckCircle className="w-14 h-14 text-emerald-500" />
-                  <p className="font-display font-bold text-emerald-600 text-sm">
-                    {lastScan?.rewardEarned
-                      ? `🎉 ${lastScan.rewardTitle || "Récompense"} !`
-                      : `+${lastScan?.increment || 1} ${labels.unit} !`}
-                  </p>
-                </motion.div>
-              ) : (
-                <motion.div key="scanner" className="flex flex-col items-center gap-2">
-                  <QrCode className="w-14 h-14 text-muted-foreground/30" />
-                  <p className="text-xs text-muted-foreground">Zone de scan</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* QR Camera Scanner */}
+          <AnimatePresence>
+            {success ? (
+              <motion.div
+                key="success"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="w-full max-w-[340px] aspect-square rounded-2xl bg-secondary/50 flex flex-col items-center justify-center gap-2 mb-4"
+              >
+                <CheckCircle className="w-14 h-14 text-emerald-500" />
+                <p className="font-display font-bold text-emerald-600 text-sm">
+                  {lastScan?.rewardEarned
+                    ? `🎉 ${lastScan.rewardTitle || "Récompense"} !`
+                    : `+${lastScan?.increment || 1} ${labels.unit} !`}
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div key="scanner" className="w-full mb-4">
+                <QrCameraScanner
+                  onScan={(code) => {
+                    setCardCode(code);
+                    if (!isCashback) {
+                      // Auto-submit for non-cashback (no amount needed)
+                      handleScan(code);
+                    } else {
+                      toast.info("Code scanné ! Entrez le montant puis validez.");
+                    }
+                  }}
+                  disabled={scanning}
+                  paused={success}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
+          {/* Manual code input + amount */}
           <div className="w-full max-w-xs space-y-3">
             <div className="flex gap-2">
               <Input
@@ -205,9 +224,9 @@ const ScannerPage = () => {
                 onChange={(e) => setCardCode(e.target.value)}
                 placeholder="Code de la carte..."
                 className="rounded-xl"
-                onKeyDown={(e) => e.key === "Enter" && handleScan()}
+                onKeyDown={(e) => e.key === "Enter" && handleScan(undefined)}
               />
-              <Button onClick={handleScan} disabled={scanning} className="bg-gradient-primary text-primary-foreground rounded-xl px-5">
+              <Button onClick={() => handleScan()} disabled={scanning} className="bg-gradient-primary text-primary-foreground rounded-xl px-5">
                 {scanning ? "..." : "OK"}
               </Button>
             </div>
@@ -223,15 +242,15 @@ const ScannerPage = () => {
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="Montant de l'achat (€)"
                   className="rounded-xl"
-                  onKeyDown={(e) => e.key === "Enter" && handleScan()}
+                  onKeyDown={(e) => e.key === "Enter" && handleScan(undefined)}
                 />
               </div>
             )}
 
             <p className="text-[11px] text-center text-muted-foreground">
               {isCashback
-                ? "Entrez le code carte et le montant de l'achat"
-                : "Entrez le code affiché sur la carte du client"}
+                ? "Scannez le QR code ou entrez le code + montant"
+                : "Scannez le QR code ou entrez le code manuellement"}
             </p>
           </div>
         </div>
