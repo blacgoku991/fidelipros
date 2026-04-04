@@ -36,7 +36,7 @@ const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = 
 ];
 
 const SettingsPage = () => {
-  const { user, business } = useAuth();
+  const { user, business, role } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("vitrine");
 
@@ -375,6 +375,7 @@ const SettingsPage = () => {
   };
 
   const handleSavePos = async () => {
+    if (role !== "super_admin") { toast.error("Réservé aux administrateurs"); return; }
     if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingPos(true);
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -415,13 +416,17 @@ const SettingsPage = () => {
 
   const radiusLabel = geoRadius >= 1000 ? `${(geoRadius / 1000).toFixed(1)} km` : `${geoRadius} m`;
 
+  // POS and Webhooks are admin-only features
+  const ADMIN_ONLY_SECTIONS: SectionKey[] = ["integrations", "webhooks"];
+  const visibleSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
+
   return (
     <DashboardLayout title="Paramètres" subtitle="Gérez votre compte, géolocalisation et abonnement">
       <div className="max-w-5xl">
 
         {/* Mobile tabs */}
         <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x scrollbar-hide">
-          {SECTIONS.map((s) => (
+          {visibleSections.map((s) => (
             <button
               key={s.key}
               onClick={() => setActiveSection(s.key)}
@@ -440,7 +445,7 @@ const SettingsPage = () => {
         <div className="flex gap-6 items-start">
           {/* Desktop sidebar */}
           <nav className="hidden lg:flex flex-col gap-0.5 w-52 shrink-0 sticky top-4">
-            {SECTIONS.map((s) => (
+            {visibleSections.map((s) => (
               <button
                 key={s.key}
                 onClick={() => setActiveSection(s.key)}
@@ -1108,7 +1113,7 @@ const SettingsPage = () => {
         )}
 
         {/* Intégrations / POS */}
-        {activeSection === "integrations" && (
+        {activeSection === "integrations" && role === "super_admin" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="font-display font-semibold text-sm flex items-center gap-2">
@@ -1216,7 +1221,7 @@ const SettingsPage = () => {
         )}
 
         {/* Webhooks */}
-        {activeSection === "webhooks" && (
+        {activeSection === "webhooks" && role === "super_admin" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <div>
             <h2 className="font-display font-semibold text-sm flex items-center gap-2">
