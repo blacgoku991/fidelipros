@@ -15,6 +15,8 @@ function safeEqual(a: string, b: string): boolean {
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
+  "https://fidelipro.com",
+  "https://www.fidelipro.com",
   ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
 

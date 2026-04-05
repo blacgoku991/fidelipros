@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
+  "https://fidelipro.com",
+  "https://www.fidelipro.com",
   ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
 
@@ -90,7 +92,7 @@ serve(async (req) => {
     }, { onConflict: "id" });
 
     // Generate magic link for the manager
-    const siteUrl = Deno.env.get("SITE_URL") || "https://fidelipros.lovable.app";
+    const siteUrl = Deno.env.get("SITE_URL") || "https://fidelipro.com";
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "magiclink",
       email: email.toLowerCase(),

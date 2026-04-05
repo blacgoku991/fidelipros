@@ -42,6 +42,8 @@ const ICON_2X_PNG_BASE64 =
 
 const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
+  "https://fidelipro.com",
+  "https://www.fidelipro.com",
   ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
 function getCorsHeaders(req: Request) {
