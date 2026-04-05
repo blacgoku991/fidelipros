@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,7 @@ const CATEGORIES = [
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user, business, loading: authLoading } = useAuth();
-  const plan = searchParams.get("plan") || localStorage.getItem("selectedPlan") || user?.user_metadata?.selected_plan || "pro";
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,12 +41,12 @@ const Onboarding = () => {
       const name = business.name;
       const status = business.subscription_status;
       if (!name || name === "Mon Commerce") {
-        navigate(`/onboarding-business?plan=${plan}`, { replace: true });
+        navigate("/onboarding-business", { replace: true });
       } else if (status === "active" || status === "trialing") {
         navigate("/dashboard", { replace: true });
       } else {
         // inactive, past_due, canceled, null, or any unexpected status → must pay
-        navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`, { replace: true });
+        navigate(business.subscription_plan ? `/dashboard/checkout?plan=${business.subscription_plan}` : "/dashboard/checkout", { replace: true });
       }
       return;
     }
@@ -58,7 +56,7 @@ const Onboarding = () => {
       setForm(f => ({ ...f, businessName: meta.full_name || meta.name || "" }));
     }
     setLoading(false);
-  }, [authLoading, user, business, navigate, plan]);
+  }, [authLoading, user, business, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +87,6 @@ const Onboarding = () => {
         category: form.category,
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
-        subscription_plan: plan as any,
       }).eq("id", existingBiz.id));
     } else {
       ({ error } = await supabase.from("businesses").insert({
@@ -99,7 +96,6 @@ const Onboarding = () => {
         address: form.address.trim() || null,
         phone: form.phone.trim() || null,
         subscription_status: "inactive" as any,
-        subscription_plan: plan as any,
       } as any));
     }
 
@@ -116,7 +112,7 @@ const Onboarding = () => {
     });
 
     toast.success("Commerce créé ! Finalisons votre abonnement…");
-    navigate(`/dashboard/checkout?plan=${plan}`);
+    navigate("/dashboard/checkout");
   };
 
   if (loading || authLoading) {

@@ -226,7 +226,7 @@ const Tarifs = () => {
                   className={`w-full rounded-xl gap-1.5 ${plan.popular ? "bg-gradient-primary text-primary-foreground" : ""}`}
                   variant={plan.popular ? "default" : "outline"}
                 >
-                  <Link to={`/register?plan=${plan.key}`}>
+                  <Link to="/register">
                     Commencer <ArrowRight className="w-4 h-4" />
                   </Link>
                 </Button>

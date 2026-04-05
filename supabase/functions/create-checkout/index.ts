@@ -6,10 +6,25 @@ const ALLOWED_ORIGINS = [
   "https://fidelipros.lovable.app",
   ...(Deno.env.get("EXTRA_ALLOWED_ORIGINS") || "").split(",").filter(Boolean),
 ];
+
+function isAllowedOrigin(origin: string) {
+  return !!origin && (
+    ALLOWED_ORIGINS.includes(origin) ||
+    /^https:\/\/.*\.lovable\.app$/.test(origin) ||
+    /^https:\/\/.*\.lovableproject\.com$/.test(origin) ||
+    /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+    /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+  );
+}
+
+function resolveAllowedOrigin(origin: string) {
+  return isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
+}
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get("Origin") || "";
   return {
-    "Access-Control-Allow-Origin": ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": resolveAllowedOrigin(origin),
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   };
 }
@@ -59,7 +74,7 @@ serve(async (req) => {
     if (!VALID_PLANS.includes(plan)) throw new Error("Plan invalide");
 
     const rawOrigin = body?.origin || req.headers.get("origin") || "";
-    const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : ALLOWED_ORIGINS[0];
+    const origin = resolveAllowedOrigin(rawOrigin);
 
     // Read Price ID from site_settings first
     const { data: settingRow } = await supabaseAdmin

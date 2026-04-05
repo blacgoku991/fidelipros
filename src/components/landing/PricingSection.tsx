@@ -96,7 +96,7 @@ export function PricingSection() {
                     : "bg-gradient-primary text-primary-foreground hover:opacity-90"
                 }`}
               >
-                <Link to={`/register?plan=${plan.key}`}>{plan.cta}</Link>
+                <Link to="/register">{plan.cta}</Link>
               </Button>
             </motion.div>
           ))}
