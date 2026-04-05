@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,7 @@ const CATEGORIES = [
 
 const OnboardingBusiness = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { user, business, loading: authLoading } = useAuth();
-  const plan = searchParams.get("plan") || localStorage.getItem("selectedPlan") || user?.user_metadata?.selected_plan;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,7 +33,7 @@ const OnboardingBusiness = () => {
     }
 
     if (!business) {
-      navigate(`/onboarding?plan=${plan || "pro"}`, { replace: true });
+      navigate("/onboarding", { replace: true });
       return;
     }
 
@@ -44,7 +42,7 @@ const OnboardingBusiness = () => {
 
     if (name && name !== "Mon Commerce") {
       if (status === "inactive") {
-        navigate(`/dashboard/checkout?plan=${plan || business.subscription_plan || "pro"}`, { replace: true });
+        navigate(business.subscription_plan ? `/dashboard/checkout?plan=${business.subscription_plan}` : "/dashboard/checkout", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }
@@ -57,7 +55,7 @@ const OnboardingBusiness = () => {
       city: business.city || "",
     });
     setLoading(false);
-  }, [authLoading, user, business, navigate, plan]);
+  }, [authLoading, user, business, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +71,6 @@ const OnboardingBusiness = () => {
       name: form.name.trim(),
       category: form.category,
       city: form.city.trim() || null,
-      subscription_plan: plan || "pro",
     };
 
     const { error } = await supabase
@@ -88,7 +85,7 @@ const OnboardingBusiness = () => {
     }
 
     toast.success("Commerce configuré ! Finalisons votre abonnement…");
-    navigate(`/dashboard/checkout?plan=${plan || "pro"}`);
+    navigate("/dashboard/checkout");
   };
 
   if (loading || authLoading) {

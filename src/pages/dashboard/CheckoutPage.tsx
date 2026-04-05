@@ -33,9 +33,7 @@ const CheckoutPage = () => {
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => {
     if (planParam && pricingPlans[planParam]) return planParam;
-    const stored = localStorage.getItem("selectedPlan") as PlanKey | null;
-    if (stored && pricingPlans[stored]) return stored;
-    return "pro";
+    return "starter";
   });
   // null = sélecteur visible | string = redirection en cours vers Stripe
   const [redirecting, setRedirecting] = useState<PlanKey | null>(null);
@@ -103,7 +101,10 @@ const CheckoutPage = () => {
 
   useEffect(() => {
     if (planParam && pricingPlans[planParam]) setSelectedPlan(planParam);
-  }, [planParam]);
+    else if (business?.subscription_plan && pricingPlans[business.subscription_plan as PlanKey]) {
+      setSelectedPlan(business.subscription_plan as PlanKey);
+    }
+  }, [planParam, business?.subscription_plan]);
 
   // FIX 1 — Retour depuis Stripe via bfcache : réafficher les plans
   useEffect(() => {
@@ -132,7 +133,6 @@ const CheckoutPage = () => {
     setError(null);
     setRedirecting(plan);
     setSelectedPlan(plan);
-    localStorage.setItem("selectedPlan", plan);
     setCheckoutStarted(true);
     try {
       const res = await supabase.functions.invoke("create-checkout", {
@@ -366,7 +366,7 @@ const CheckoutPage = () => {
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
                   {(() => {
-                    const key = redirecting || (localStorage.getItem("selectedPlan") as PlanKey) || selectedPlan;
+                    const key = redirecting || selectedPlan;
                     const p = pricingPlans[key];
                     return p ? `Plan ${p.name} — ${p.price}€/mois` : "";
                   })()}
