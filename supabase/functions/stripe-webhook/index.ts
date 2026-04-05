@@ -162,19 +162,16 @@ Deno.serve(async (req) => {
           bizId = biz.id;
           userId = biz.owner_id;
         } else {
-          // Fallback: query auth.users by email via RPC to avoid listUsers() at scale
+          // Fallback: query profiles by email
           const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
           if (customer.email) {
-            const { data: userRecord } = await supabase
-              .rpc("get_user_id_by_email", { p_email: customer.email })
-              .maybeSingle()
-              .catch(async () => {
-                // Fallback: direct auth schema query
-                const { data } = await supabase.schema("auth").from("users")
-                  .select("id").eq("email", customer.email).maybeSingle();
-                return { data };
-              });
-            if (userRecord?.id) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("id")
+              .eq("email", customer.email)
+              .maybeSingle();
+            if (profile?.id) {
+              userId = profile.id;
               userId = userRecord.id;
               const { data: foundBiz } = await supabase
                 .from("businesses")
