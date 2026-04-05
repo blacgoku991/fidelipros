@@ -31,9 +31,9 @@ const CheckoutPage = () => {
   const checkoutSuccess = searchParams.get("checkout");
   const sessionId = searchParams.get("session_id");
 
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => {
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey | null>(() => {
     if (planParam && pricingPlans[planParam]) return planParam;
-    return "starter";
+    return null;
   });
   // null = sélecteur visible | string = redirection en cours vers Stripe
   const [redirecting, setRedirecting] = useState<PlanKey | null>(null);
@@ -100,11 +100,22 @@ const CheckoutPage = () => {
   };
 
   useEffect(() => {
-    if (planParam && pricingPlans[planParam]) setSelectedPlan(planParam);
-    else if (business?.subscription_plan && pricingPlans[business.subscription_plan as PlanKey]) {
-      setSelectedPlan(business.subscription_plan as PlanKey);
+    if (planParam && pricingPlans[planParam]) {
+      setSelectedPlan(planParam);
+      return;
     }
-  }, [planParam, business?.subscription_plan]);
+
+    if (
+      (business?.subscription_status === "active" || business?.subscription_status === "trialing") &&
+      business?.subscription_plan &&
+      pricingPlans[business.subscription_plan as PlanKey]
+    ) {
+      setSelectedPlan(business.subscription_plan as PlanKey);
+      return;
+    }
+
+    setSelectedPlan(null);
+  }, [planParam, business?.subscription_plan, business?.subscription_status]);
 
   // FIX 1 — Retour depuis Stripe via bfcache : réafficher les plans
   useEffect(() => {
@@ -506,7 +517,7 @@ const CheckoutPage = () => {
                           ) : isSelected ? (
                             <><span>Continuer avec {plan.name}</span><ArrowRight className="w-4 h-4 ml-2" /></>
                           ) : (
-                            `Sélectionner ${plan.name}`
+                            `Choisir ${plan.name}`
                           )}
                         </Button>
                       )}

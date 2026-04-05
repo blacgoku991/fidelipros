@@ -200,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userRole !== "location_manager" &&
         userRole !== "super_admin"
       ) {
-        navigate(`/dashboard/checkout?plan=${biz?.subscription_plan || "starter"}`, { replace: true });
+        navigate(`/dashboard/checkout`, { replace: true });
       }
     };
 

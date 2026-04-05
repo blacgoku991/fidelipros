@@ -42,7 +42,7 @@ const OnboardingBusiness = () => {
 
     if (name && name !== "Mon Commerce") {
       if (status === "inactive") {
-        navigate(business.subscription_plan ? `/dashboard/checkout?plan=${business.subscription_plan}` : "/dashboard/checkout", { replace: true });
+        navigate("/dashboard/checkout", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }

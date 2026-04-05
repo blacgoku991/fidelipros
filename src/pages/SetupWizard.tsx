@@ -100,10 +100,7 @@ const SetupWizard = () => {
 
         // Sécurité : navigation directe sans paiement → redirection checkout
         if (!isCheckoutSuccess && (biz as any).subscription_status !== "active") {
-          navigate(
-            `/dashboard/checkout?plan=${(biz as any).subscription_plan || "starter"}`,
-            { replace: true }
-          );
+          navigate("/dashboard/checkout", { replace: true });
           return;
         }
 

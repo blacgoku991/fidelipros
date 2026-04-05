@@ -91,15 +91,31 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
-    // Find existing Stripe customer
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId: string | undefined;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    const { data: business, error: businessError } = await supabaseAdmin
+      .from("businesses")
+      .select("id, subscription_plan, subscription_status, stripe_customer_id, stripe_subscription_id")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    if (businessError) {
+      throw new Error("Impossible de récupérer le commerce");
     }
 
-    // If user already has an active subscription at the same price, just inform them
-    if (customerId) {
+    const businessIsSubscribed = business?.subscription_status === "active" || business?.subscription_status === "trialing";
+
+    // IMPORTANT: never infer an active subscription for a fresh signup from the email alone.
+    // We only reuse/inspect Stripe customer data when the current business is already linked to billing.
+    let customerId: string | undefined = business?.stripe_customer_id || undefined;
+
+    if (!customerId && businessIsSubscribed && user.email) {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+      }
+    }
+
+    // If this business is already subscribed, allow plan management rules.
+    if (customerId && businessIsSubscribed) {
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
         status: "active",
@@ -110,7 +126,9 @@ serve(async (req) => {
         const sub = subscriptions.data[0];
         const currentPriceId = sub.items.data[0]?.price?.id;
 
-        if (currentPriceId === priceId) {
+        const samePlanInDatabase = business?.subscription_plan === plan;
+
+        if (currentPriceId === priceId && samePlanInDatabase) {
           console.log(`[CHECKOUT] Already on this plan, no action needed`);
           return new Response(JSON.stringify({
             updated: true,
@@ -131,7 +149,7 @@ serve(async (req) => {
       }
     }
 
-    // No active subscription (or old one cancelled) — create a new checkout session
+    // No active subscription for this business (or old one cancelled) — create a new checkout session
     console.log(`[CHECKOUT] Creating session for plan=${plan}, priceId=${priceId}, email=${user.email}`);
 
     const session = await stripe.checkout.sessions.create({
