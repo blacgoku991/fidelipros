@@ -75,13 +75,14 @@ export default function LocationsComparePage() {
         .from("points_history")
         .select("id, customer_id, location_id, action, created_at")
         .eq("business_id", business.id)
-        .not("location_id", "is", null);
+        .not("location_id", "is", null)
+        .gte("created_at", since.toISOString())
+        .limit(50000);
 
       if (!scans) { setLoading(false); return; }
 
       const locStats: LocationStat[] = locations.map(loc => {
         const locScans = scans.filter(s => s.location_id === loc.id);
-        const recentScans = locScans.filter(s => new Date(s.created_at) >= since);
         const uniqueCustomers = new Set(locScans.map(s => s.customer_id));
         const rewardsClaimed = locScans.filter(s => s.action === "reward_claimed").length;
 
@@ -89,7 +90,7 @@ export default function LocationsComparePage() {
           location_id: loc.id,
           name: loc.name,
           scans_total: locScans.length,
-          scans_30d: recentScans.length,
+          scans_30d: locScans.length,
           unique_customers: uniqueCustomers.size,
           rewards_claimed: rewardsClaimed,
         };

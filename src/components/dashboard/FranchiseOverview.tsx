@@ -42,29 +42,36 @@ export function FranchiseOverview() {
         .eq("business_id", business.id);
       setTotalClients(clients || 0);
 
-      const enriched = await Promise.all(
-        locs.map(async (loc) => {
-          const [scansRes, custRes] = await Promise.all([
-            supabase
-              .from("points_history")
-              .select("*", { count: "exact", head: true })
-              .eq("business_id", business.id)
-              .eq("location_id", loc.id)
-              .gte("created_at", today.toISOString()),
-            supabase
-              .from("points_history")
-              .select("customer_id")
-              .eq("business_id", business.id)
-              .eq("location_id", loc.id),
-          ]);
+      // 2 global queries instead of N per location
+      const [scansRes, custRes] = await Promise.all([
+        supabase
+          .from("points_history")
+          .select("location_id")
+          .eq("business_id", business.id)
+          .not("location_id", "is", null)
+          .gte("created_at", today.toISOString()),
+        supabase
+          .from("points_history")
+          .select("location_id, customer_id")
+          .eq("business_id", business.id)
+          .not("location_id", "is", null),
+      ]);
 
-          return {
-            ...loc,
-            scans_today: scansRes.count ?? 0,
-            unique_customers: new Set(custRes.data?.map(r => r.customer_id) || []).size,
-          } as LocationMini;
-        })
-      );
+      const scansByLoc = new Map<string, number>();
+      for (const s of scansRes.data || []) {
+        scansByLoc.set(s.location_id, (scansByLoc.get(s.location_id) || 0) + 1);
+      }
+      const custByLoc = new Map<string, Set<string>>();
+      for (const c of custRes.data || []) {
+        if (!custByLoc.has(c.location_id)) custByLoc.set(c.location_id, new Set());
+        custByLoc.get(c.location_id)!.add(c.customer_id);
+      }
+
+      const enriched: LocationMini[] = locs.map(loc => ({
+        ...loc,
+        scans_today: scansByLoc.get(loc.id) || 0,
+        unique_customers: custByLoc.get(loc.id)?.size || 0,
+      }));
 
       setLocations(enriched);
       setTotalScansToday(enriched.reduce((s, l) => s + l.scans_today, 0));
@@ -108,7 +115,7 @@ export function FranchiseOverview() {
 
       {/* Location cards grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {locations.map((loc, i) => (
+        {locations.slice(0, 8).map((loc, i) => (
           <motion.div
             key={loc.id}
             initial={{ opacity: 0, y: 10 }}
@@ -143,6 +150,13 @@ export function FranchiseOverview() {
           </motion.div>
         ))}
       </div>
+      {locations.length > 8 && (
+        <div className="text-center">
+          <Link to="/dashboard/locations" className="text-sm font-medium text-primary hover:underline">
+            Voir les {locations.length} établissements →
+          </Link>
+        </div>
+      )}
     </motion.div>
   );
 }

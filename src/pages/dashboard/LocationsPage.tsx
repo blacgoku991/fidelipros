@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, MapPin, Users, ScanLine, Gift, Pencil, Trash2 } from "lucide-react";
 
@@ -48,41 +49,49 @@ export default function LocationsPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch stats for all locations
-    const enriched = await Promise.all(
-      locs.map(async (loc) => {
-        const [scansRes, customersRes, rewardsRes] = await Promise.all([
-          supabase
-            .from("points_history")
-            .select("*", { count: "exact", head: true })
-            .eq("business_id", business.id)
-            .eq("location_id", loc.id)
-            .gte("created_at", today.toISOString()),
-          supabase
-            .from("points_history")
-            .select("customer_id")
-            .eq("business_id", business.id)
-            .eq("location_id", loc.id),
-          supabase
-            .from("points_history")
-            .select("*", { count: "exact", head: true })
-            .eq("business_id", business.id)
-            .eq("location_id", loc.id)
-            .eq("action", "reward_claimed"),
-        ]);
+    // 3 global queries instead of N per location
+    const [scansRes, customersRes, rewardsRes] = await Promise.all([
+      supabase
+        .from("points_history")
+        .select("location_id")
+        .eq("business_id", business.id)
+        .not("location_id", "is", null)
+        .gte("created_at", today.toISOString()),
+      supabase
+        .from("points_history")
+        .select("location_id, customer_id")
+        .eq("business_id", business.id)
+        .not("location_id", "is", null),
+      supabase
+        .from("points_history")
+        .select("location_id")
+        .eq("business_id", business.id)
+        .not("location_id", "is", null)
+        .eq("action", "reward_claimed"),
+    ]);
 
-        const uniqueCustomers = new Set(customersRes.data?.map(r => r.customer_id) || []);
+    const scansByLoc = new Map<string, number>();
+    for (const s of scansRes.data || []) {
+      scansByLoc.set(s.location_id, (scansByLoc.get(s.location_id) || 0) + 1);
+    }
+    const custByLoc = new Map<string, Set<string>>();
+    for (const c of customersRes.data || []) {
+      if (!custByLoc.has(c.location_id)) custByLoc.set(c.location_id, new Set());
+      custByLoc.get(c.location_id)!.add(c.customer_id);
+    }
+    const rewardsByLoc = new Map<string, number>();
+    for (const r of rewardsRes.data || []) {
+      rewardsByLoc.set(r.location_id, (rewardsByLoc.get(r.location_id) || 0) + 1);
+    }
 
-        return {
-          ...loc,
-          address: loc.address ?? null,
-          city: loc.city ?? null,
-          scans_today: scansRes.count ?? 0,
-          total_customers: uniqueCustomers.size,
-          rewards_claimed: rewardsRes.count ?? 0,
-        } as LocationWithStats;
-      })
-    );
+    const enriched: LocationWithStats[] = locs.map(loc => ({
+      ...loc,
+      address: loc.address ?? null,
+      city: loc.city ?? null,
+      scans_today: scansByLoc.get(loc.id) || 0,
+      total_customers: custByLoc.get(loc.id)?.size || 0,
+      rewards_claimed: rewardsByLoc.get(loc.id) || 0,
+    }));
 
     setLocations(enriched);
     setLoading(false);
@@ -133,6 +142,16 @@ export default function LocationsPage() {
     const { error } = await supabase.from("merchant_locations").delete().eq("id", id);
     if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Établissement supprimé" });
+    fetchLocations();
+  };
+
+  const handleToggleActive = async (loc: LocationWithStats) => {
+    const { error } = await supabase
+      .from("merchant_locations")
+      .update({ is_active: !loc.is_active })
+      .eq("id", loc.id);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
+    toast({ title: loc.is_active ? "Établissement désactivé" : "Établissement activé" });
     fetchLocations();
   };
 
@@ -210,9 +229,12 @@ export default function LocationsPage() {
                       <p className="text-xs text-muted-foreground mt-1 truncate">{[loc.address, loc.city].filter(Boolean).join(", ")}</p>
                     )}
                   </div>
-                  <Badge variant={loc.is_active ? "default" : "secondary"} className="ml-2 shrink-0">
-                    {loc.is_active ? "Actif" : "Inactif"}
-                  </Badge>
+                  <div className="flex items-center gap-2 ml-2 shrink-0">
+                    <Switch checked={loc.is_active} onCheckedChange={() => handleToggleActive(loc)} />
+                    <Badge variant={loc.is_active ? "default" : "secondary"}>
+                      {loc.is_active ? "Actif" : "Inactif"}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pt-0">

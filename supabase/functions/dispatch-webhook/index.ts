@@ -27,6 +27,25 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    // Authenticate the caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(SUPABASE_URL, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: authErr } = await userClient.auth.getUser();
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "Non authentifié" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { business_id, event_type, payload } = await req.json();
     if (!business_id || !event_type) {
       return new Response(JSON.stringify({ error: "Missing business_id or event_type" }), {
@@ -35,6 +54,14 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify caller owns the business
+    const { data: biz } = await supabase.from("businesses").select("owner_id").eq("id", business_id).single();
+    if (!biz || biz.owner_id !== user.id) {
+      return new Response(JSON.stringify({ error: "Non autorisé" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Get active endpoints that subscribe to this event
     const { data: endpoints } = await supabase

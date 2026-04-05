@@ -38,8 +38,13 @@ serve(async (req) => {
     if (!email || !location_id || !business_id) throw new Error("email, location_id et business_id requis");
 
     // Verify caller owns the business
-    const { data: biz } = await admin.from("businesses").select("id, owner_id, name").eq("id", business_id).single();
+    const { data: biz } = await admin.from("businesses").select("id, owner_id, name, subscription_plan, is_franchise").eq("id", business_id).single();
     if (!biz || biz.owner_id !== user.id) throw new Error("Vous n'êtes pas propriétaire de cette enseigne");
+
+    // Only franchise plans can invite managers
+    if (!(biz as any).is_franchise && (biz as any).subscription_plan !== "franchise") {
+      throw new Error("Cette fonctionnalité est réservée au plan Franchise");
+    }
 
     // Verify location belongs to business
     const { data: loc } = await admin.from("merchant_locations").select("id, name").eq("id", location_id).eq("business_id", business_id).single();

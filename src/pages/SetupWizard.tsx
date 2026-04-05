@@ -98,8 +98,9 @@ const SetupWizard = () => {
           return;
         }
 
-        // Sécurité : navigation directe sans paiement → redirection checkout
-        if (!isCheckoutSuccess && (biz as any).subscription_status !== "active") {
+        // Sécurité : subscription non active → redirection checkout
+        const subStatus = (biz as any).subscription_status;
+        if (subStatus !== "active" && subStatus !== "trialing") {
           navigate("/dashboard/checkout", { replace: true });
           return;
         }

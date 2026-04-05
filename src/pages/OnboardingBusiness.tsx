@@ -41,10 +41,10 @@ const OnboardingBusiness = () => {
     const status = business.subscription_status;
 
     if (name && name !== "Mon Commerce") {
-      if (status === "inactive") {
-        navigate("/dashboard/checkout", { replace: true });
-      } else {
+      if (status === "active" || status === "trialing") {
         navigate("/dashboard", { replace: true });
+      } else {
+        navigate("/dashboard/checkout", { replace: true });
       }
       return;
     }

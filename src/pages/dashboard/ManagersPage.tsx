@@ -25,6 +25,7 @@ interface ManagerRow {
   invited_at: string;
   location_name: string;
   user_email: string;
+  has_profile: boolean;
 }
 
 interface LocationOption {
@@ -65,6 +66,14 @@ export default function ManagersPage() {
 
     if (!lmData) { setLoading(false); return; }
 
+    // Fetch profiles to determine if manager has accepted (profile exists = active)
+    const userIds = lmData.map((lm: any) => lm.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .in("id", userIds);
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p.email]));
+
     const rows: ManagerRow[] = lmData.map((lm: any) => ({
       id: lm.id,
       location_id: lm.location_id,
@@ -72,7 +81,8 @@ export default function ManagersPage() {
       role: lm.role,
       invited_at: lm.invited_at,
       location_name: lm.merchant_locations?.name || "—",
-      user_email: lm.invite_email || `${lm.user_id.slice(0, 8)}…`,
+      user_email: lm.invite_email || profileMap.get(lm.user_id) || `${lm.user_id.slice(0, 8)}…`,
+      has_profile: profileMap.has(lm.user_id),
     }));
 
     setManagers(rows);
@@ -219,7 +229,9 @@ export default function ManagersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="default">Assigné</Badge>
+                      <Badge variant={m.has_profile ? "default" : "secondary"}>
+                        {m.has_profile ? "Actif" : "Invité"}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {m.invited_at ? new Date(m.invited_at).toLocaleDateString("fr-FR") : "—"}
