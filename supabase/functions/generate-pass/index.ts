@@ -560,18 +560,24 @@ function deflateRaw(data: Uint8Array): Uint8Array {
 
 // ── Strip image (banner) — use card_bg_image_url if available, else generate visual ─────
 
+const MAX_STRIP_BYTES = 120_000; // ~120 KB max for strip to keep .pkpass under 200 KB
+
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
     try {
-      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const imgUrl = cleanImageUrl(business.card_bg_image_url);
       console.log("[Pass] Fetching strip image:", imgUrl);
       const response = await fetch(imgUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
         console.log("[Pass] Strip image fetched:", imageBytes.byteLength, "bytes");
-        return { stripPng: imageBytes, strip2xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_STRIP_BYTES) {
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.warn(`[Pass] Strip image too large (${imageBytes.byteLength} bytes > ${MAX_STRIP_BYTES}), using generated`);
+      } else {
+        console.error(`[Pass] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
       }
-      console.error(`[Pass] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch strip image:", err);
     }
