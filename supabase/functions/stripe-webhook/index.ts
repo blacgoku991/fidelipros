@@ -172,7 +172,6 @@ Deno.serve(async (req) => {
               .maybeSingle();
             if (profile?.id) {
               userId = profile.id;
-              userId = userRecord.id;
               const { data: foundBiz } = await supabase
                 .from("businesses")
                 .select("id")
