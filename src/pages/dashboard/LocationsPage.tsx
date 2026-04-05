@@ -103,15 +103,17 @@ export default function LocationsPage() {
     }
 
     if (editingId) {
-      await supabase
+      const { error } = await supabase
         .from("merchant_locations")
         .update({ name: form.name.trim(), address: form.address || null, phone: form.phone || null, email: form.email || null })
         .eq("id", editingId);
+      if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Établissement modifié" });
     } else {
-      await supabase
+      const { error } = await supabase
         .from("merchant_locations")
         .insert({ business_id: business.id, name: form.name.trim(), address: form.address || null, phone: form.phone || null, email: form.email || null });
+      if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Établissement ajouté" });
     }
 
@@ -123,7 +125,8 @@ export default function LocationsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Supprimer cet établissement ? Cette action est irréversible.")) return;
-    await supabase.from("merchant_locations").delete().eq("id", id);
+    const { error } = await supabase.from("merchant_locations").delete().eq("id", id);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Établissement supprimé" });
     fetchLocations();
   };

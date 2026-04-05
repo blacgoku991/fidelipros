@@ -67,21 +67,63 @@ serve(async (req) => {
     // Assign location_manager role
     await admin.from("user_roles").upsert({ user_id: managerId, role: "location_manager" }, { onConflict: "user_id" });
 
-    // Link to location_managers
+    // Link to location_managers (store invite_email for display in frontend)
     const { error: lmErr } = await admin.from("location_managers").upsert({
       location_id,
       user_id: managerId,
       role: "manager",
       invited_at: new Date().toISOString(),
+      invite_email: email.toLowerCase(),
     }, { onConflict: "location_id,user_id" });
     if (lmErr) throw new Error("Erreur lors de l'association: " + lmErr.message);
 
-    // Send invitation email via send-email function (or password reset)
-    const { error: resetErr } = await admin.auth.admin.generateLink({
+    // Generate magic link for the manager
+    const siteUrl = Deno.env.get("SITE_URL") || "https://fidelipros.lovable.app";
+    const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
       type: "magiclink",
       email: email.toLowerCase(),
-      options: { redirectTo: `${Deno.env.get("SITE_URL") || "https://fidelipros.lovable.app"}/dashboard` },
+      options: { redirectTo: `${siteUrl}/dashboard` },
     });
+
+    if (linkErr) {
+      console.error("[INVITE] Magic link error:", linkErr.message);
+    }
+
+    // Send actual invitation email via Resend
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (resendKey && linkData?.properties?.action_link) {
+      try {
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${resendKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "FidéliPro <noreply@fidelispro.fr>",
+            to: [email.toLowerCase()],
+            subject: `Invitation manager — ${biz.name}`,
+            html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+              <h2 style="color:#7C3AED;">FidéliPro</h2>
+              <p>Bonjour,</p>
+              <p>Vous avez été invité comme <strong>manager</strong> de l'établissement <strong>${loc.name}</strong> chez <strong>${biz.name}</strong>.</p>
+              <p>Cliquez sur le bouton ci-dessous pour accéder à votre tableau de bord :</p>
+              <p style="text-align:center;margin:24px 0;">
+                <a href="${linkData.properties.action_link}" style="display:inline-block;background:#7C3AED;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">Accepter l'invitation</a>
+              </p>
+              <p style="font-size:12px;color:#888;">Si vous n'avez pas demandé cette invitation, ignorez cet email.</p>
+            </div>`,
+          }),
+        });
+        if (!emailRes.ok) {
+          console.error("[INVITE] Resend error:", await emailRes.text());
+        }
+      } catch (emailErr) {
+        console.error("[INVITE] Email send failed:", emailErr);
+      }
+    } else {
+      console.warn("[INVITE] Skipped email: RESEND_API_KEY not set or magic link failed");
+    }
 
     return new Response(JSON.stringify({
       success: true,

@@ -60,7 +60,13 @@ export default function ManagersPage() {
 
     if (!lmData) { setLoading(false); return; }
 
-    // Get user emails via auth admin or user_roles (we'll use a simple approach)
+    // Resolve manager emails from profiles table
+    const userIds = lmData.map((lm: any) => lm.user_id).filter(Boolean);
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.from("profiles").select("id, email").in("id", userIds)
+      : { data: [] };
+    const emailMap = new Map((profiles || []).map((p: any) => [p.id, p.email]));
+
     const rows: ManagerRow[] = lmData.map((lm: any) => ({
       id: lm.id,
       location_id: lm.location_id,
@@ -69,7 +75,7 @@ export default function ManagersPage() {
       invited_at: lm.invited_at,
       accepted_at: lm.accepted_at,
       location_name: lm.merchant_locations?.name || "—",
-      user_email: "", // Will be filled if we can look it up
+      user_email: (lm as any).invite_email || emailMap.get(lm.user_id) || "",
     }));
 
     setManagers(rows);
@@ -108,7 +114,8 @@ export default function ManagersPage() {
   const handleRemove = async (managerId: string) => {
     if (!confirm("Retirer ce manager ? Il perdra l'accès au dashboard.")) return;
 
-    await supabase.from("location_managers").delete().eq("id", managerId);
+    const { error } = await supabase.from("location_managers").delete().eq("id", managerId);
+    if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Manager retiré" });
     fetchManagers();
   };

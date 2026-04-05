@@ -44,10 +44,11 @@ const Onboarding = () => {
       const status = business.subscription_status;
       if (!name || name === "Mon Commerce") {
         navigate(`/onboarding-business?plan=${plan}`, { replace: true });
-      } else if (status === "inactive") {
-        navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`, { replace: true });
-      } else {
+      } else if (status === "active" || status === "trialing") {
         navigate("/dashboard", { replace: true });
+      } else {
+        // inactive, past_due, canceled, null, or any unexpected status → must pay
+        navigate(`/dashboard/checkout?plan=${business.subscription_plan || plan}`, { replace: true });
       }
       return;
     }
