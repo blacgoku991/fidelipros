@@ -46,7 +46,7 @@ const Onboarding = () => {
         navigate("/dashboard", { replace: true });
       } else {
         // inactive, past_due, canceled, null, or any unexpected status → must pay
-        navigate(business.subscription_plan ? `/dashboard/checkout?plan=${business.subscription_plan}` : "/dashboard/checkout", { replace: true });
+        navigate("/dashboard/checkout", { replace: true });
       }
       return;
     }
