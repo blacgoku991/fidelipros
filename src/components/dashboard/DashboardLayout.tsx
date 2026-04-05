@@ -25,8 +25,7 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
       : businessSidebarGroups;
   const items = groups.flatMap(g => g.items);
 
-  // Only show full-page spinner on very first load, not on subsequent navigations
-  if (!contextLoaded && !children) {
+  if (!contextLoaded) {
   if (!contextLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
