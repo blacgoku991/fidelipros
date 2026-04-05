@@ -669,7 +669,7 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
 
 // ── Strip image — use card_bg_image_url if available, else generate visual ─────
 
-const MAX_STRIP_BYTES = 120_000;
+const MAX_STRIP_BYTES = 800_000;
 
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
