@@ -20,7 +20,7 @@ const OnboardingBusiness = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, business, loading: authLoading } = useAuth();
-  const plan = searchParams.get("plan");
+  const plan = searchParams.get("plan") || localStorage.getItem("selectedPlan") || user?.user_metadata?.selected_plan;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,7 +73,7 @@ const OnboardingBusiness = () => {
       name: form.name.trim(),
       category: form.category,
       city: form.city.trim() || null,
-      subscription_plan: plan || "starter",
+      subscription_plan: plan || "pro",
     };
 
     const { error } = await supabase
@@ -88,7 +88,7 @@ const OnboardingBusiness = () => {
     }
 
     toast.success("Commerce configuré ! Finalisons votre abonnement…");
-    navigate(`/dashboard/checkout?plan=${plan || "starter"}`);
+    navigate(`/dashboard/checkout?plan=${plan || "pro"}`);
   };
 
   if (loading || authLoading) {
