@@ -88,7 +88,7 @@ const OnboardingBusiness = () => {
     }
 
     toast.success("Commerce configuré ! Finalisons votre abonnement…");
-    navigate(`/dashboard/checkout?plan=${plan || "starter"}`);
+    navigate(`/dashboard/checkout?plan=${plan || "pro"}`);
   };
 
   if (loading || authLoading) {
