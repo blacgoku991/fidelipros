@@ -186,7 +186,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const path = window.location.pathname;
       const isExempt =
         path.startsWith("/dashboard/checkout") ||
-        path.startsWith("/dashboard/abonnement") ||
         path.startsWith("/admin") ||
         path.startsWith("/setup");
       const isBlocked = !biz || (
