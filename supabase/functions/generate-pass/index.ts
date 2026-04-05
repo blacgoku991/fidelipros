@@ -577,7 +577,7 @@ function deflateRaw(data: Uint8Array): Uint8Array {
 
 // ── Strip image (banner) — use card_bg_image_url if available, else generate visual ─────
 
-const MAX_STRIP_BYTES = 120_000; // ~120 KB max for strip to keep .pkpass under 200 KB
+const MAX_STRIP_BYTES = 500_000; // ~500 KB max for strip — Apple accepts .pkpass up to ~1.5 MB
 
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
