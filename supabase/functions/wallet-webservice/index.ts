@@ -606,15 +606,24 @@ async function buildPkpassForUpdate(
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass WS] Fetching logo for icons:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass WS] Icon image fetched:", imageBytes.byteLength, "bytes");
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass WS] Icon fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass WS] Icon image fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+          }
+          console.warn("[Pass WS] Icon image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass WS] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass WS] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass WS] Failed to fetch logo for icons, using fallback:", err);
     }
@@ -631,20 +640,28 @@ async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Arra
 async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass WS] Fetching logo:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass WS] Logo fetched:", imageBytes.byteLength, "bytes");
-        return { logoPng: imageBytes, logo2xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass WS] Logo fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass WS] Logo fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { logoPng: imageBytes, logo2xPng: imageBytes };
+          }
+          console.warn("[Pass WS] Logo image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass WS] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass WS] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass WS] Failed to fetch logo, using fallback:", err);
     }
   }
-
   const logoPng = generateSolidColorPng(160, 50, business.primary_color || "#6B46C1");
   const logo2xPng = generateSolidColorPng(320, 100, business.primary_color || "#6B46C1");
   return { logoPng, logo2xPng };
@@ -652,18 +669,24 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
 
 // ── Strip image — use card_bg_image_url if available, else generate visual ─────
 
+const MAX_STRIP_BYTES = 120_000;
+
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
     try {
-      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const imgUrl = cleanImageUrl(business.card_bg_image_url);
       console.log("[Pass WS] Fetching strip image:", imgUrl);
       const response = await fetch(imgUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
         console.log("[Pass WS] Strip image fetched:", imageBytes.byteLength, "bytes");
-        return { stripPng: imageBytes, strip2xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_STRIP_BYTES) {
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.warn(`[Pass WS] Strip image too large (${imageBytes.byteLength} bytes > ${MAX_STRIP_BYTES}), using generated`);
+      } else {
+        console.error(`[Pass WS] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
       }
-      console.error(`[Pass WS] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
     } catch (err) {
       console.error("[Pass WS] Failed to fetch strip image:", err);
     }
