@@ -55,6 +55,23 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+/**
+ * Clean image URL — only strip Supabase storage cache-busting ?t= params.
+ * Preserve all other query params (needed for Google Images, CDN, etc.)
+ */
+function cleanImageUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.searchParams.has("t") && u.searchParams.size === 1) {
+      u.searchParams.delete("t");
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 function getSupabase() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -381,15 +398,24 @@ export async function buildPkpass(
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass] Fetching logo for icons:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass] Icon image fetched:", imageBytes.byteLength, "bytes");
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass] Icon fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass] Icon image fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+          }
+          console.warn("[Pass] Icon image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
     }
@@ -406,15 +432,24 @@ async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Arra
 async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass] Fetching logo:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass] Logo fetched:", imageBytes.byteLength, "bytes");
-        return { logoPng: imageBytes, logo2xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass] Logo fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass] Logo fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { logoPng: imageBytes, logo2xPng: imageBytes };
+          }
+          console.warn("[Pass] Logo image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch logo, using fallback:", err);
     }
@@ -542,18 +577,24 @@ function deflateRaw(data: Uint8Array): Uint8Array {
 
 // ── Strip image (banner) — use card_bg_image_url if available, else generate visual ─────
 
+const MAX_STRIP_BYTES = 120_000; // ~120 KB max for strip to keep .pkpass under 200 KB
+
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
   if (business.card_bg_image_url) {
     try {
-      const imgUrl = business.card_bg_image_url.split("?")[0];
+      const imgUrl = cleanImageUrl(business.card_bg_image_url);
       console.log("[Pass] Fetching strip image:", imgUrl);
       const response = await fetch(imgUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
         console.log("[Pass] Strip image fetched:", imageBytes.byteLength, "bytes");
-        return { stripPng: imageBytes, strip2xPng: imageBytes };
+        if (imageBytes.byteLength <= MAX_STRIP_BYTES) {
+          return { stripPng: imageBytes, strip2xPng: imageBytes };
+        }
+        console.warn(`[Pass] Strip image too large (${imageBytes.byteLength} bytes > ${MAX_STRIP_BYTES}), using generated`);
+      } else {
+        console.error(`[Pass] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
       }
-      console.error(`[Pass] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch strip image:", err);
     }
