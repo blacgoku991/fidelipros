@@ -42,6 +42,23 @@ const ICON_PNG_BASE64 =
 const ICON_2X_PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAADoAAAA6CAYAAADhu0ooAAAA7ElEQVR4nO2aOxLCMAxECUMPHenp4P5HoaSn5AZJReMJjj7Bclb7eo/1Zh2lkIbz9T4dEnCMLqAVFEWDomikET15Dn/ez9dWhUi4jI+b9exg+Y+2FiyxCKufbrSktQZxoj0ILiFNN00zEiVaS9PTIDR4a1gV/XVBK8ESaz2mpxsl6bm7KtprA1pirVZ1opFpempI03UpigZF0aAoGhRFg6JoUBQNiqJBUTQoigZF0aAoGhRFI80guCraw/hByl+maZGpWu/mIFhzUSTcYShQ7xn1kqz2k0kzCDZtjn2BX5HbI2maEUXRoCgaaURn7+ldg7yB9K8AAAAASUVORK5CYII=";
 
+/**
+ * Clean image URL — only strip Supabase storage cache-busting ?t= params.
+ * Preserve all other query params (needed for Google Images, CDN, etc.)
+ */
+function cleanImageUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.searchParams.has("t") && u.searchParams.size === 1) {
+      u.searchParams.delete("t");
+      return u.toString();
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
 function getSupabase() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
