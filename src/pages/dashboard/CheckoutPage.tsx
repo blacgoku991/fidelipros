@@ -32,9 +32,9 @@ const CheckoutPage = () => {
   const sessionId = searchParams.get("session_id");
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => {
+    if (planParam && pricingPlans[planParam]) return planParam;
     const stored = localStorage.getItem("selectedPlan") as PlanKey | null;
     if (stored && pricingPlans[stored]) return stored;
-    if (planParam && pricingPlans[planParam]) return planParam;
     return "pro";
   });
   // null = sélecteur visible | string = redirection en cours vers Stripe
@@ -138,31 +138,48 @@ const CheckoutPage = () => {
       const res = await supabase.functions.invoke("create-checkout", {
         body: { plan, origin: window.location.origin },
       });
-      // supabase-js puts non-2xx response body in error.context — extract real message
       const data = res.data;
       const fnErr = res.error;
       if (fnErr) {
-        // Try to get the actual error message from the response body
+        // Extract real error message from various possible locations
         let realMessage = fnErr.message;
         try {
           const ctx = (fnErr as any).context;
+          // Try context.body (string or parsed)
           if (ctx?.body) {
             const parsed = typeof ctx.body === "string" ? JSON.parse(ctx.body) : ctx.body;
             if (parsed?.error) realMessage = parsed.error;
           }
+          // Try context.json
+          if (realMessage === fnErr.message && ctx?.json?.error) {
+            realMessage = ctx.json.error;
+          }
         } catch {}
+        // If still generic, try to parse fnErr.message as JSON
+        if (realMessage.includes("non-2xx") || realMessage.includes("Edge Function")) {
+          try {
+            const parsed = JSON.parse((fnErr as any).context?.body || "{}");
+            if (parsed?.error) realMessage = parsed.error;
+          } catch {
+            realMessage = "Erreur de paiement. Veuillez réessayer.";
+          }
+        }
         throw new Error(realMessage);
       }
       if (data?.error) throw new Error(data.error);
 
-      // Plan switch scheduled at end of period (no redirect needed)
+      // Plan switch scheduled or already active
       if (data?.updated) {
-        if (data?.scheduled) {
+        if (data?.already_active) {
+          toast.success(data.message || "Vous êtes déjà abonné à ce plan !");
+          setTimeout(() => window.location.replace("/dashboard"), 1500);
+        } else if (data?.scheduled) {
           toast.success(data.message || `Votre plan changera à la fin de la période en cours`);
+          setTimeout(() => window.location.replace("/dashboard"), 1500);
         } else {
           toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
+          setTimeout(() => window.location.replace("/dashboard"), 1500);
         }
-        setTimeout(() => window.location.replace("/dashboard"), 1500);
         return;
       }
 

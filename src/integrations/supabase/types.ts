@@ -1245,6 +1245,32 @@ export type Database = {
           },
         ]
       }
+      scan_cooldowns: {
+        Row: {
+          card_id: string
+          last_scan: string
+          scanned_by: string | null
+        }
+        Insert: {
+          card_id: string
+          last_scan?: string
+          scanned_by?: string | null
+        }
+        Update: {
+          card_id?: string
+          last_scan?: string
+          scanned_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_cooldowns_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "customer_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       site_settings: {
         Row: {
           created_at: string
@@ -1632,7 +1658,7 @@ export type Database = {
         | "win_back"
         | "reward_earned"
         | "custom"
-      subscription_plan: "starter" | "pro" | "enterprise"
+      subscription_plan: "starter" | "pro" | "franchise"
       subscription_status:
         | "active"
         | "inactive"
@@ -1776,7 +1802,7 @@ export const Constants = {
         "reward_earned",
         "custom",
       ],
-      subscription_plan: ["starter", "pro", "enterprise"],
+      subscription_plan: ["starter", "pro", "franchise"],
       subscription_status: [
         "active",
         "inactive",

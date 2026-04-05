@@ -81,6 +81,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Don't reload everything on token refresh - user hasn't changed
+      if (event === "TOKEN_REFRESHED") {
+        setUser(session.user);
+        return;
+      }
+
       setLoading(true);
       setUser(session.user);
       setAuthReady(true);
