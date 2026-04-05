@@ -23,7 +23,6 @@ interface ManagerRow {
   user_id: string;
   role: string;
   invited_at: string;
-  accepted_at: string | null;
   location_name: string;
   user_email: string;
 }
@@ -53,19 +52,18 @@ export default function ManagersPage() {
       .eq("business_id", business.id);
     setLocations(locs || []);
 
+    if (!locs || locs.length === 0) {
+      setManagers([]);
+      setLoading(false);
+      return;
+    }
+
     const { data: lmData } = await supabase
       .from("location_managers")
-      .select("*, merchant_locations(name)")
+      .select("id, location_id, user_id, role, invited_at, invite_email, merchant_locations(name)")
       .in("location_id", (locs || []).map(l => l.id));
 
     if (!lmData) { setLoading(false); return; }
-
-    // Resolve manager emails from profiles table
-    const userIds = lmData.map((lm: any) => lm.user_id).filter(Boolean);
-    const { data: profiles } = userIds.length > 0
-      ? await supabase.from("profiles").select("id, email").in("id", userIds)
-      : { data: [] };
-    const emailMap = new Map((profiles || []).map((p: any) => [p.id, p.email]));
 
     const rows: ManagerRow[] = lmData.map((lm: any) => ({
       id: lm.id,
@@ -73,9 +71,8 @@ export default function ManagersPage() {
       user_id: lm.user_id,
       role: lm.role,
       invited_at: lm.invited_at,
-      accepted_at: lm.accepted_at,
       location_name: lm.merchant_locations?.name || "—",
-      user_email: (lm as any).invite_email || emailMap.get(lm.user_id) || "",
+      user_email: lm.invite_email || `${lm.user_id.slice(0, 8)}…`,
     }));
 
     setManagers(rows);
@@ -222,14 +219,10 @@ export default function ManagersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {m.accepted_at ? (
-                        <Badge variant="default">Actif</Badge>
-                      ) : (
-                        <Badge variant="secondary">En attente</Badge>
-                      )}
+                      <Badge variant="default">Assigné</Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(m.invited_at).toLocaleDateString("fr-FR")}
+                      {m.invited_at ? new Date(m.invited_at).toLocaleDateString("fr-FR") : "—"}
                     </TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleRemove(m.id)}>

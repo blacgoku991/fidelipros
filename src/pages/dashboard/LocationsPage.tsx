@@ -17,10 +17,8 @@ interface LocationWithStats {
   id: string;
   name: string;
   address: string | null;
-  phone: string | null;
-  email: string | null;
+  city: string | null;
   is_active: boolean;
-  manager_user_id: string | null;
   scans_today: number;
   total_customers: number;
   rewards_claimed: number;
@@ -33,7 +31,7 @@ export default function LocationsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", address: "", phone: "", email: "" });
+  const [form, setForm] = useState({ name: "", address: "", city: "" });
 
   const maxLocations = (business as any)?.max_locations ?? 5;
 
@@ -78,9 +76,7 @@ export default function LocationsPage() {
         return {
           ...loc,
           address: loc.address ?? null,
-          phone: (loc as any).phone ?? null,
-          email: (loc as any).email ?? null,
-          manager_user_id: (loc as any).manager_user_id ?? null,
+          city: loc.city ?? null,
           scans_today: scansRes.count ?? 0,
           total_customers: uniqueCustomers.size,
           rewards_claimed: rewardsRes.count ?? 0,
@@ -105,21 +101,30 @@ export default function LocationsPage() {
     if (editingId) {
       const { error } = await supabase
         .from("merchant_locations")
-        .update({ name: form.name.trim(), address: form.address || null, phone: form.phone || null, email: form.email || null })
+        .update({
+          name: form.name.trim(),
+          address: form.address.trim() || null,
+          city: form.city.trim() || null,
+        })
         .eq("id", editingId);
       if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Établissement modifié" });
     } else {
       const { error } = await supabase
         .from("merchant_locations")
-        .insert({ business_id: business.id, name: form.name.trim(), address: form.address || null, phone: form.phone || null, email: form.email || null });
+        .insert({
+          business_id: business.id,
+          name: form.name.trim(),
+          address: form.address.trim() || null,
+          city: form.city.trim() || null,
+        });
       if (error) { toast({ title: "Erreur", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Établissement ajouté" });
     }
 
     setDialogOpen(false);
     setEditingId(null);
-    setForm({ name: "", address: "", phone: "", email: "" });
+    setForm({ name: "", address: "", city: "" });
     fetchLocations();
   };
 
@@ -133,13 +138,13 @@ export default function LocationsPage() {
 
   const openEdit = (loc: LocationWithStats) => {
     setEditingId(loc.id);
-    setForm({ name: loc.name, address: loc.address || "", phone: loc.phone || "", email: loc.email || "" });
+    setForm({ name: loc.name, address: loc.address || "", city: loc.city || "" });
     setDialogOpen(true);
   };
 
   const openCreate = () => {
     setEditingId(null);
-    setForm({ name: "", address: "", phone: "", email: "" });
+    setForm({ name: "", address: "", city: "" });
     setDialogOpen(true);
   };
 
@@ -167,15 +172,9 @@ export default function LocationsPage() {
                 <Label>Adresse</Label>
                 <Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="12 rue de la Paix, 13001 Marseille" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Téléphone</Label>
-                  <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="04 91 00 00 00" />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="marseille@pointb.fr" />
-                </div>
+              <div>
+                <Label>Ville</Label>
+                <Input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} placeholder="Marseille" />
               </div>
             </div>
             <DialogFooter>
@@ -207,8 +206,8 @@ export default function LocationsPage() {
                 <div className="flex items-start justify-between">
                   <div className="min-w-0 flex-1">
                     <CardTitle className="text-base truncate">{loc.name}</CardTitle>
-                    {loc.address && (
-                      <p className="text-xs text-muted-foreground mt-1 truncate">{loc.address}</p>
+                    {([loc.address, loc.city].filter(Boolean).join(", ")) && (
+                      <p className="text-xs text-muted-foreground mt-1 truncate">{[loc.address, loc.city].filter(Boolean).join(", ")}</p>
                     )}
                   </div>
                   <Badge variant={loc.is_active ? "default" : "secondary"} className="ml-2 shrink-0">
@@ -234,13 +233,6 @@ export default function LocationsPage() {
                     <p className="text-[10px] text-muted-foreground">Récompenses</p>
                   </div>
                 </div>
-
-                {(loc.phone || loc.email) && (
-                  <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
-                    {loc.phone && <p>{loc.phone}</p>}
-                    {loc.email && <p>{loc.email}</p>}
-                  </div>
-                )}
 
                 <div className="flex gap-2 mt-3">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(loc)}>

@@ -32,19 +32,39 @@ export default function LocationsComparePage() {
   const [period, setPeriod] = useState<"7" | "30" | "90">("30");
 
   useEffect(() => {
-    if (!business) return;
+    if (!business) {
+      setLocations([]);
+      setStats([]);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       const { data: locs } = await supabase
         .from("merchant_locations")
         .select("id, name")
         .eq("business_id", business.id)
         .eq("is_active", true);
-      setLocations(locs || []);
+
+      const nextLocations = locs || [];
+      setLocations(nextLocations);
+
+      if (nextLocations.length === 0) {
+        setStats([]);
+        setLoading(false);
+      }
     })();
   }, [business]);
 
   useEffect(() => {
-    if (!business || locations.length === 0) return;
+    if (!business) return;
+
+    if (locations.length === 0) {
+      setStats([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     (async () => {
