@@ -26,46 +26,113 @@ const AnalyticsPage = () => {
   }, [businessId]);
 
   const fetchAll = async () => {
-    let scansQuery = supabase.from("points_history").select("*").eq("business_id", businessId);
-    if (locationId) scansQuery = scansQuery.eq("location_id", locationId);
+    // ── Date boundaries ───────────────────────────────────────────────
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now); thirtyDaysAgo.setDate(now.getDate() - 30);
+    const fourteenDaysAgo = new Date(now); fourteenDaysAgo.setDate(now.getDate() - 14);
+    const sixMonthsAgo = new Date(now); sixMonthsAgo.setMonth(now.getMonth() - 6);
 
-    const [customersRes, cardsRes, scansRes, walletRes] = await Promise.all([
-      supabase.from("customers").select("*").eq("business_id", businessId),
-      supabase.from("customer_cards").select("*").eq("business_id", businessId),
-      scansQuery.order("created_at", { ascending: false }),
-      supabase.from("wallet_registrations").select("*", { count: "exact", head: true }).eq("business_id", businessId),
+    // ── Parallel queries ────────────────────────────────────────────
+    // Only select columns we actually need (no SELECT *)
+    let scans14Query = supabase
+      .from("points_history")
+      .select("created_at")
+      .eq("business_id", businessId)
+      .gte("created_at", fourteenDaysAgo.toISOString());
+    if (locationId) scans14Query = scans14Query.eq("location_id", locationId);
+
+    let scans6mQuery = supabase
+      .from("points_history")
+      .select("created_at")
+      .eq("business_id", businessId)
+      .gte("created_at", sixMonthsAgo.toISOString());
+    if (locationId) scans6mQuery = scans6mQuery.eq("location_id", locationId);
+
+    const [
+      customersRes,
+      cardsAggRes,
+      totalScansRes,
+      scans14Res,
+      scans6mRes,
+      walletRes,
+    ] = await Promise.all([
+      // Customers: only fields needed for stats
+      supabase
+        .from("customers")
+        .select("level, total_visits, last_visit_at, registration_source")
+        .eq("business_id", businessId),
+      // Cards: only rewards_earned aggregate
+      supabase
+        .from("customer_cards")
+        .select("rewards_earned")
+        .eq("business_id", businessId),
+      // Total scans: count only (no row data)
+      (() => {
+        let q = supabase
+          .from("points_history")
+          .select("*", { count: "exact", head: true })
+          .eq("business_id", businessId);
+        if (locationId) q = q.eq("location_id", locationId);
+        return q;
+      })(),
+      // Last 14 days scans (only created_at)
+      scans14Query,
+      // Last 6 months scans (only created_at)
+      scans6mQuery,
+      // Wallet installs: count only
+      supabase
+        .from("wallet_registrations")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", businessId),
     ]);
 
     const customers = customersRes.data || [];
-    const cards = cardsRes.data || [];
-    const scans = scansRes.data || [];
+    const cards = cardsAggRes.data || [];
+    const scans14 = scans14Res.data || [];
+    const scans6m = scans6mRes.data || [];
 
-    // Segment breakdown
+    // ── Segment breakdown (from customer.level) ─────────────────────
     const segments: Record<string, number> = { bronze: 0, silver: 0, gold: 0 };
-    customers.forEach((c: any) => { segments[c.level || "bronze"] = (segments[c.level || "bronze"] || 0) + 1; });
-    setSegmentData(Object.entries(segments).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })));
+    customers.forEach((c: any) => {
+      const lvl = c.level || "bronze";
+      segments[lvl] = (segments[lvl] || 0) + 1;
+    });
+    setSegmentData(
+      Object.entries(segments).map(([name, value]) => ({
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        value,
+      }))
+    );
 
-    // Active clients (visited in last 30 days)
-    const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const activeClients = customers.filter((c: any) => c.last_visit_at && new Date(c.last_visit_at) >= thirtyDaysAgo).length;
-
-    // Return rate
+    // ── KPI calculations ────────────────────────────────────────────
+    const activeClients = customers.filter(
+      (c: any) => c.last_visit_at && new Date(c.last_visit_at) >= thirtyDaysAgo
+    ).length;
     const multiVisit = customers.filter((c: any) => (c.total_visits || 0) > 1).length;
     const returnRate = customers.length > 0 ? Math.round((multiVisit / customers.length) * 100) : 0;
-
-    // Avg visits
     const totalVisits = customers.reduce((sum: number, c: any) => sum + (c.total_visits || 0), 0);
     const avgVisits = customers.length > 0 ? +(totalVisits / customers.length).toFixed(1) : 0;
-
-    // Rewards earned
     const rewardsEarned = cards.reduce((sum: number, c: any) => sum + (c.rewards_earned || 0), 0);
 
-    // Monthly scans (last 6 months)
+    // ── Daily scans trend (last 14 days) ───────────────────────────
+    const daily: any[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now); d.setDate(now.getDate() - i);
+      const dayStr = d.toISOString().split("T")[0];
+      const count = scans14.filter((s: any) => s.created_at.startsWith(dayStr)).length;
+      daily.push({
+        date: d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }),
+        scans: count,
+      });
+    }
+    setScansTrend(daily);
+
+    // ── Monthly scans (last 6 months) ─────────────────────────────
     const monthly: any[] = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(); d.setMonth(d.getMonth() - i);
+      const d = new Date(now); d.setMonth(now.getMonth() - i);
       const label = d.toLocaleDateString("fr-FR", { month: "short" });
-      const count = scans.filter((s: any) => {
+      const count = scans6m.filter((s: any) => {
         const sd = new Date(s.created_at);
         return sd.getMonth() === d.getMonth() && sd.getFullYear() === d.getFullYear();
       }).length;
@@ -73,19 +140,12 @@ const AnalyticsPage = () => {
     }
     setMonthlyScans(monthly);
 
-    // Daily scans (last 14 days)
-    const daily: any[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i);
-      const dayStr = d.toISOString().split("T")[0];
-      const count = scans.filter((s: any) => s.created_at.startsWith(dayStr)).length;
-      daily.push({ date: d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" }), scans: count });
-    }
-    setScansTrend(daily);
-
-    // Conversion funnel
+    // ── Conversion funnel ───────────────────────────────────────────
     try {
-      const { count: visitCount } = await supabase.from("vitrine_visits").select("*", { count: "exact", head: true }).eq("business_id", businessId);
+      const { count: visitCount } = await supabase
+        .from("vitrine_visits")
+        .select("*", { count: "exact", head: true })
+        .eq("business_id", businessId);
       const sourceCounts: Record<string, number> = {};
       customers.forEach((c: any) => {
         const src = (c as any).registration_source || "direct";
@@ -95,21 +155,30 @@ const AnalyticsPage = () => {
         visits: visitCount || 0,
         registrations: customers.length,
         active: activeClients,
-        sourceBreakdown: Object.entries(sourceCounts).map(([source, count]) => ({ source, count })).sort((a, b) => b.count - a.count),
+        sourceBreakdown: Object.entries(sourceCounts)
+          .map(([source, count]) => ({ source, count }))
+          .sort((a, b) => b.count - a.count),
       });
     } catch { /* vitrine_visits table may not exist yet */ }
 
-    // Reviews stats
+    // ── Reviews stats ────────────────────────────────────────────────
     try {
-      const { data: reviewsData } = await supabase.from("customer_reviews").select("rating").eq("business_id", businessId);
+      const { data: reviewsData } = await supabase
+        .from("customer_reviews")
+        .select("rating")
+        .eq("business_id", businessId);
       if (reviewsData && reviewsData.length > 0) {
         setReviewCount(reviewsData.length);
-        setAvgReviewRating(Math.round((reviewsData.reduce((s, r) => s + r.rating, 0) / reviewsData.length) * 10) / 10);
+        setAvgReviewRating(
+          Math.round(
+            (reviewsData.reduce((s, r) => s + r.rating, 0) / reviewsData.length) * 10
+          ) / 10
+        );
       }
     } catch { /* customer_reviews table may not exist yet */ }
 
     setStats({
-      totalScans: scans.length,
+      totalScans: totalScansRes.count || 0,
       activeClients,
       rewardsEarned,
       walletInstalls: walletRes.count || 0,

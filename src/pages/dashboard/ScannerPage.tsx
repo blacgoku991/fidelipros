@@ -9,6 +9,9 @@ import { QrCode, CheckCircle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Cooldown duration in seconds between two scans of the same card
+const SCAN_COOLDOWN_SECONDS = 30;
+
 const ScannerPage = () => {
   const { user, business, locationId } = useAuth();
   const [cardCode, setCardCode] = useState("");
@@ -36,6 +39,25 @@ const ScannerPage = () => {
       toast.error("Carte non trouvée ou inactive");
       setScanning(false);
       return;
+    }
+
+    // ── Anti double-scan: check cooldown ──────────────────────────
+    const { data: cooldown } = await supabase
+      .from("scan_cooldowns")
+      .select("last_scan")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (cooldown?.last_scan) {
+      const elapsed = (Date.now() - new Date(cooldown.last_scan).getTime()) / 1000;
+      if (elapsed < SCAN_COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+        toast.warning(`⏱ Scan trop rapide`, {
+          description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
+        });
+        setScanning(false);
+        return;
+      }
     }
 
     const newPoints = card.current_points + 1;
@@ -98,6 +120,14 @@ const ScannerPage = () => {
       scanned_by: user.id,
       ...(locationId ? { location_id: locationId } : {}),
     });
+
+    // ── Update cooldown ──────────────────────────────────────────
+    await supabase
+      .from("scan_cooldowns")
+      .upsert(
+        { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
+        { onConflict: "card_id" }
+      );
 
     setLastScan({
       customerName: customer.full_name,
