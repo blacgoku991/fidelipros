@@ -1658,7 +1658,7 @@ export type Database = {
         | "win_back"
         | "reward_earned"
         | "custom"
-      subscription_plan: "starter" | "pro" | "enterprise"
+      subscription_plan: "starter" | "pro" | "franchise"
       subscription_status:
         | "active"
         | "inactive"
@@ -1802,7 +1802,7 @@ export const Constants = {
         "reward_earned",
         "custom",
       ],
-      subscription_plan: ["starter", "pro", "enterprise"],
+      subscription_plan: ["starter", "pro", "franchise"],
       subscription_status: [
         "active",
         "inactive",

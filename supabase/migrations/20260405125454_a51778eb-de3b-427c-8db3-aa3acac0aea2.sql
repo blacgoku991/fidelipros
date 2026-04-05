@@ -1,0 +1,1 @@
+ALTER TYPE public.subscription_plan RENAME VALUE 'enterprise' TO 'franchise';
