@@ -381,15 +381,24 @@ export async function buildPkpass(
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass] Fetching logo for icons:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass] Icon image fetched:", imageBytes.byteLength, "bytes");
-        return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass] Icon fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass] Icon image fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
+          }
+          console.warn("[Pass] Icon image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
     }
@@ -406,15 +415,24 @@ async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Arra
 async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array; logo2xPng: Uint8Array }> {
   if (business.logo_url) {
     try {
-      const logoUrl = business.logo_url.split("?")[0];
+      const logoUrl = cleanImageUrl(business.logo_url);
       console.log("[Pass] Fetching logo:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
-        const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass] Logo fetched:", imageBytes.byteLength, "bytes");
-        return { logoPng: imageBytes, logo2xPng: imageBytes };
+        const contentType = response.headers.get("content-type") || "";
+        if (!contentType.startsWith("image/")) {
+          console.error("[Pass] Logo fetch returned non-image content-type:", contentType);
+        } else {
+          const imageBytes = new Uint8Array(await response.arrayBuffer());
+          console.log("[Pass] Logo fetched:", imageBytes.byteLength, "bytes");
+          if (imageBytes.byteLength <= 100_000) {
+            return { logoPng: imageBytes, logo2xPng: imageBytes };
+          }
+          console.warn("[Pass] Logo image too large (" + imageBytes.byteLength + " bytes), using fallback");
+        }
+      } else {
+        console.error(`[Pass] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
       }
-      console.error(`[Pass] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
       console.error("[Pass] Failed to fetch logo, using fallback:", err);
     }
