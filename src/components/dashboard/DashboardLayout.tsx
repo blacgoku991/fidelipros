@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
@@ -16,7 +18,7 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title, subtitle, headerAction }: DashboardLayoutProps) {
-  const { loading, logout, isFranchiseOwner, locationId, locationName } = useAuth();
+  const { contextLoaded, logout, isFranchiseOwner, locationId, locationName } = useAuth();
 
   const groups = locationId
     ? locationManagerSidebarGroups
@@ -25,7 +27,7 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
       : businessSidebarGroups;
   const items = groups.flatMap(g => g.items);
 
-  if (loading) {
+  if (!contextLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -59,9 +61,11 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
 
         {/* Page content */}
         <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-20 lg:pb-6">
-          <SubscriptionGuard>
-            {children}
-          </SubscriptionGuard>
+          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
+            <SubscriptionGuard>
+              {children}
+            </SubscriptionGuard>
+          </Suspense>
         </div>
       </main>
     </div>

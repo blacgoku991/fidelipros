@@ -9,6 +9,7 @@ type Business = Tables<"businesses">;
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  contextLoaded: boolean;
   role: string | null;
   business: Business | null;
   locationId: string | null;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [business, setBusiness] = useState<Business | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
+  const [contextLoaded, setContextLoaded] = useState(false);
 
   const clearAuthState = () => {
     setUser(null);
@@ -112,6 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLocationId(null);
         setLocationName(null);
         setLoading(false);
+        setContextLoaded(true);
         return;
       }
 
@@ -177,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLocationId(resolvedLocationId);
       setLocationName(resolvedLocationName);
       setLoading(false);
+      setContextLoaded(true);
 
       const biz = resolvedBusiness;
       const path = window.location.pathname;
@@ -185,19 +189,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         path.startsWith("/dashboard/abonnement") ||
         path.startsWith("/admin") ||
         path.startsWith("/setup");
-      const isBlocked = biz && (
-        biz.subscription_status === "inactive" ||
-        biz.subscription_status === "past_due" ||
-        biz.subscription_status === "canceled"
+      const isBlocked = !biz || (
+        biz.subscription_status !== "active" &&
+        biz.subscription_status !== "trialing"
       );
 
       if (
         isBlocked &&
         path.startsWith("/dashboard") &&
         !isExempt &&
-        userRole !== "location_manager"
+        userRole !== "location_manager" &&
+        userRole !== "super_admin"
       ) {
-        navigate(`/dashboard/checkout?plan=${biz.subscription_plan || "starter"}`, { replace: true });
+        navigate(`/dashboard/checkout?plan=${biz?.subscription_plan || "starter"}`, { replace: true });
       }
     };
 
@@ -208,7 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [authReady, user, navigate]);
 
-  const isFranchiseOwner = !!(business as any)?.is_franchise && role !== "location_manager" && !locationId;
+  const isFranchiseOwner = (!!(business as any)?.is_franchise || (business as any)?.subscription_plan === "franchise") && role !== "location_manager" && !locationId;
 
   const refreshBusiness = async () => {
     if (!user) return;
@@ -237,7 +241,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, role, business, locationId, locationName, isFranchiseOwner, logout, refreshBusiness }}>
+    <AuthContext.Provider value={{ user, loading, contextLoaded, role, business, locationId, locationName, isFranchiseOwner, logout, refreshBusiness }}>
       {children}
     </AuthContext.Provider>
   );
