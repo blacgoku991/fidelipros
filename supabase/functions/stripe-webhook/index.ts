@@ -15,6 +15,58 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+async function getEmailAndBusinessName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+) {
+  const [{ data: authUserData, error: authUserError }, { data: businessData, error: businessError }] = await Promise.all([
+    supabase.auth.admin.getUserById(userId),
+    supabase.from("businesses").select("name").eq("owner_id", userId).maybeSingle(),
+  ]);
+
+  if (authUserError || !authUserData.user?.email) {
+    throw new Error("User email not found");
+  }
+
+  if (businessError) {
+    throw new Error(businessError.message);
+  }
+
+  return {
+    email: authUserData.user.email,
+    businessName: businessData?.name || "Votre commerce",
+  };
+}
+
+async function queueAppEmail(
+  templateName: string,
+  recipientEmail: string,
+  idempotencyKey: string,
+  templateData: Record<string, unknown>,
+) {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({
+      templateName,
+      recipientEmail,
+      idempotencyKey,
+      templateData,
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Failed to enqueue ${templateName}`);
+  }
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
@@ -68,14 +120,17 @@ Deno.serve(async (req) => {
             ...franchiseFields,
           }).eq("owner_id", userId);
 
-          // Send welcome email on first subscription
-          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceKey}` },
-            body: JSON.stringify({ type: "welcome", user_id: userId }),
-          }).catch(e => console.error("Welcome email error:", e));
+          try {
+            const { email, businessName } = await getEmailAndBusinessName(supabase, userId);
+            await queueAppEmail(
+              "merchant-welcome",
+              email,
+              `merchant-welcome-${userId}-${sub.id}`,
+              { businessName, email },
+            );
+          } catch (e) {
+            console.error("Welcome email error:", e);
+          }
         }
         break;
       }
@@ -216,18 +271,21 @@ Deno.serve(async (req) => {
 
           // Send payment confirmation email
           if (userId) {
-            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-            await fetch(`${supabaseUrl}/functions/v1/send-email`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceKey}` },
-              body: JSON.stringify({
-                type: "payment_succeeded",
-                user_id: userId,
-                plan: plan,
-                amount: (invoice.amount_paid || 0) / 100,
-              }),
-            }).catch(e => console.error("Payment email error:", e));
+            try {
+              const { email, businessName } = await getEmailAndBusinessName(supabase, userId);
+              await queueAppEmail(
+                "payment-succeeded",
+                email,
+                `payment-succeeded-${invoice.id}`,
+                {
+                  businessName,
+                  plan,
+                  amount: (invoice.amount_paid || 0) / 100,
+                },
+              );
+            } catch (e) {
+              console.error("Payment email error:", e);
+            }
           }
         }
         break;
