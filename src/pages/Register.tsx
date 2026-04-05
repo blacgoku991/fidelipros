@@ -44,8 +44,10 @@ const Register = () => {
   const [emailAlreadyUsed, setEmailAlreadyUsed] = useState(false);
 
   const handleGoogleRegister = async () => {
+    // Persist selected plan before OAuth redirect so it survives the flow
+    localStorage.setItem("selectedPlan", selectedPlan);
     await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}/onboarding-business?plan=${selectedPlan}`,
     });
   };
 
