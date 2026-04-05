@@ -73,7 +73,7 @@ const OnboardingBusiness = () => {
       name: form.name.trim(),
       category: form.category,
       city: form.city.trim() || null,
-      subscription_plan: plan || "starter",
+      subscription_plan: plan || "pro",
     };
 
     const { error } = await supabase
