@@ -111,11 +111,13 @@ serve(async (req) => {
       throw new Error("Impossible de générer le lien d'invitation");
     }
 
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
     const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-transactional-email`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${serviceKey}`,
+        "apikey": anonKey,
       },
       body: JSON.stringify({
         templateName: "manager-invitation",
