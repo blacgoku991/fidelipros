@@ -185,7 +185,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "FidéliPro <noreply@fidelispro.fr>",
+        from: "FidéliPro <noreply@notify.fidelipro.com>",
         to: [email],
         subject: emailPayload.subject,
         html: emailPayload.html,
