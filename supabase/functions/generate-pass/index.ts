@@ -551,11 +551,8 @@ async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPn
       const response = await fetch(imgUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        if (imageBytes.byteLength <= 500_000) {
-          console.log("[Pass] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
-          return { stripPng: imageBytes, strip2xPng: imageBytes };
-        }
-        console.log(`[Pass] Strip image too large (${imageBytes.byteLength} bytes), using generated`);
+        console.log("[Pass] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+        return { stripPng: imageBytes, strip2xPng: imageBytes };
       }
     } catch (err) {
       console.error("[Pass] Failed to fetch strip image:", err);
