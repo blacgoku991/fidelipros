@@ -69,7 +69,7 @@ function welcomeTemplate(businessName: string, email: string): { subject: string
         `<tr><td style="padding:4px 0;"><span style="color:${ACCENT_COLOR};font-size:16px;margin-right:8px;">✦</span><span style="font-size:14px;color:#444;">${f}</span></td></tr>`
       ).join("")}
     </table>
-    <a href="https://fidelispro.vercel.app/dashboard" style="display:inline-block;background:linear-gradient(135deg,${BRAND_COLOR},#5b21b6);color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+    <a href="https://fidelipros.lovable.app/dashboard" style="display:inline-block;background:linear-gradient(135deg,${BRAND_COLOR},#5b21b6);color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
       Accéder à mon dashboard →
     </a>
   `;
@@ -107,7 +107,7 @@ function paymentSucceededTemplate(businessName: string, email: string, plan: str
         </tr>
       </table>
     </div>
-    <a href="https://fidelispro.vercel.app/setup" style="display:inline-block;background:linear-gradient(135deg,${BRAND_COLOR},#5b21b6);color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
+    <a href="https://fidelipros.lovable.app/setup" style="display:inline-block;background:linear-gradient(135deg,${BRAND_COLOR},#5b21b6);color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:12px;text-decoration:none;">
       Configurer mon programme →
     </a>
   `;

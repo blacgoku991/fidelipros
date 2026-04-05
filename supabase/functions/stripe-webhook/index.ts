@@ -65,6 +65,15 @@ Deno.serve(async (req) => {
             stripe_customer_id: customerId,
             ...franchiseFields,
           }).eq("owner_id", userId);
+
+          // Send welcome email on first subscription
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceKey}` },
+            body: JSON.stringify({ type: "welcome", user_id: userId }),
+          }).catch(e => console.error("Welcome email error:", e));
         }
         break;
       }
@@ -201,6 +210,22 @@ Deno.serve(async (req) => {
             await supabase.from("businesses").update({
               subscription_status: "active",
             }).eq("id", bizId);
+          }
+
+          // Send payment confirmation email
+          if (userId) {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            await fetch(`${supabaseUrl}/functions/v1/send-email`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceKey}` },
+              body: JSON.stringify({
+                type: "payment_succeeded",
+                user_id: userId,
+                plan: plan,
+                amount: (invoice.amount_paid || 0) / 100,
+              }),
+            }).catch(e => console.error("Payment email error:", e));
           }
         }
         break;
