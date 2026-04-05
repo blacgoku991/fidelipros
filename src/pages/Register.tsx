@@ -76,11 +76,14 @@ const Register = () => {
 
     setLoading(true);
 
+    // Persist selected plan so it survives redirects & page reloads
+    localStorage.setItem("selectedPlan", selectedPlan);
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
-        data: { business_name: businessName.trim() },
+        data: { business_name: businessName.trim(), selected_plan: selectedPlan },
         emailRedirectTo: `${import.meta.env.VITE_APP_URL || window.location.origin}/dashboard/checkout?plan=${selectedPlan}`,
       },
     });

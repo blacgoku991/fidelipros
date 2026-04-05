@@ -20,7 +20,7 @@ const OnboardingBusiness = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, business, loading: authLoading } = useAuth();
-  const plan = searchParams.get("plan");
+  const plan = searchParams.get("plan") || localStorage.getItem("selectedPlan") || user?.user_metadata?.selected_plan;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
