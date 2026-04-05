@@ -125,24 +125,18 @@ Deno.serve(async (req) => {
               subscription_status: "past_due",
             }).eq("id", biz.id);
           } else {
-            // Fallback: retrieve email from Stripe, then query businesses directly
-            // (avoids loading ALL users with listUsers() which doesn't scale)
+            // Fallback: retrieve email from Stripe, then look up user via profiles
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             if (customer.email) {
-              const { data: userRecord } = await supabase
-                .from("auth").schema("auth").from("users")
+              const { data: profile } = await supabase
+                .from("profiles")
                 .select("id")
                 .eq("email", customer.email)
-                .maybeSingle()
-                .catch(async () => {
-                  // Fallback to RPC if direct auth schema query fails
-                  const { data } = await supabase.rpc("get_user_id_by_email", { p_email: customer.email }).maybeSingle();
-                  return { data };
-                });
-              if (userRecord?.id) {
+                .maybeSingle();
+              if (profile?.id) {
                 await supabase.from("businesses").update({
                   subscription_status: "past_due",
-                }).eq("owner_id", userRecord.id);
+                }).eq("owner_id", profile.id);
               }
             }
           }
