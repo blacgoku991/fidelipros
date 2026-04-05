@@ -17,6 +17,9 @@ const LOYALTY_LABELS: Record<string, { unit: string; unitPlural: string }> = {
   subscription: { unit: "point", unitPlural: "points" },
 };
 
+// Cooldown duration in seconds between two scans of the same card
+const SCAN_COOLDOWN_SECONDS = 30;
+
 const ScannerPage = () => {
   const { user, business, locationId } = useAuth();
   const [cardCode, setCardCode] = useState("");
@@ -56,6 +59,25 @@ const ScannerPage = () => {
       return;
     }
 
+    // ── Anti double-scan: check cooldown ──────────────────────────
+    const { data: cooldown } = await supabase
+      .from("scan_cooldowns")
+      .select("last_scan")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (cooldown?.last_scan) {
+      const elapsed = (Date.now() - new Date(cooldown.last_scan).getTime()) / 1000;
+      if (elapsed < SCAN_COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+        toast.warning(`⏱ Scan trop rapide`, {
+          description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
+        });
+        setScanning(false);
+        return;
+      }
+    }
+
     // Calculate points increment based on loyalty type
     let increment = 1;
     if (isCashback) {
@@ -79,11 +101,9 @@ const ScannerPage = () => {
       .eq("is_active", true)
       .order("points_required", { ascending: true });
 
-    // Check if points reached max (standard reward) or a specific reward threshold
     const rewardEarned = newPoints >= card.max_points;
 
     if (rewards && rewards.length > 0) {
-      // Find the highest reward the customer just unlocked
       earnedReward = rewards.filter((r: any) => r.points_required <= newPoints)
         .sort((a: any, b: any) => b.points_required - a.points_required)[0];
     }
@@ -148,6 +168,14 @@ const ScannerPage = () => {
       ...(locationId ? { location_id: locationId } : {}),
     });
 
+    // ── Update cooldown ──────────────────────────────────────────
+    await supabase
+      .from("scan_cooldowns")
+      .upsert(
+        { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
+        { onConflict: "card_id" }
+      );
+
     setLastScan({
       customerName: customer.full_name,
       points: rewardEarned ? 0 : newPoints,
@@ -203,7 +231,6 @@ const ScannerPage = () => {
                   onScan={(code) => {
                     setCardCode(code);
                     if (!isCashback) {
-                      // Auto-submit for non-cashback (no amount needed)
                       handleScan(code);
                     } else {
                       toast.info("Code scanné ! Entrez le montant puis validez.");

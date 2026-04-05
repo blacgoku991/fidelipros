@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.21.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -14,7 +13,7 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -126,14 +125,24 @@ serve(async (req) => {
               subscription_status: "past_due",
             }).eq("id", biz.id);
           } else {
+            // Fallback: retrieve email from Stripe, then query businesses directly
+            // (avoids loading ALL users with listUsers() which doesn't scale)
             const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
             if (customer.email) {
-              const { data: users } = await supabase.auth.admin.listUsers();
-              const user = users?.users?.find((u: any) => u.email === customer.email);
-              if (user) {
+              const { data: userRecord } = await supabase
+                .from("auth").schema("auth").from("users")
+                .select("id")
+                .eq("email", customer.email)
+                .maybeSingle()
+                .catch(async () => {
+                  // Fallback to RPC if direct auth schema query fails
+                  const { data } = await supabase.rpc("get_user_id_by_email", { p_email: customer.email }).maybeSingle();
+                  return { data };
+                });
+              if (userRecord?.id) {
                 await supabase.from("businesses").update({
                   subscription_status: "past_due",
-                }).eq("owner_id", user.id);
+                }).eq("owner_id", userRecord.id);
               }
             }
           }
@@ -159,12 +168,20 @@ serve(async (req) => {
           bizId = biz.id;
           userId = biz.owner_id;
         } else {
+          // Fallback: query auth.users by email via RPC to avoid listUsers() at scale
           const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
           if (customer.email) {
-            const { data: users } = await supabase.auth.admin.listUsers();
-            const authUser = users?.users?.find((u: any) => u.email === customer.email);
-            if (authUser) {
-              userId = authUser.id;
+            const { data: userRecord } = await supabase
+              .rpc("get_user_id_by_email", { p_email: customer.email })
+              .maybeSingle()
+              .catch(async () => {
+                // Fallback: direct auth schema query
+                const { data } = await supabase.schema("auth").from("users")
+                  .select("id").eq("email", customer.email).maybeSingle();
+                return { data };
+              });
+            if (userRecord?.id) {
+              userId = userRecord.id;
               const { data: foundBiz } = await supabase
                 .from("businesses")
                 .select("id")
