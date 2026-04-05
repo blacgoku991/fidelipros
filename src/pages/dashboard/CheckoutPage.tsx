@@ -138,19 +138,32 @@ const CheckoutPage = () => {
       const res = await supabase.functions.invoke("create-checkout", {
         body: { plan, origin: window.location.origin },
       });
-      // supabase-js puts non-2xx response body in error.context — extract real message
       const data = res.data;
       const fnErr = res.error;
       if (fnErr) {
-        // Try to get the actual error message from the response body
+        // Extract real error message from various possible locations
         let realMessage = fnErr.message;
         try {
           const ctx = (fnErr as any).context;
+          // Try context.body (string or parsed)
           if (ctx?.body) {
             const parsed = typeof ctx.body === "string" ? JSON.parse(ctx.body) : ctx.body;
             if (parsed?.error) realMessage = parsed.error;
           }
+          // Try context.json
+          if (realMessage === fnErr.message && ctx?.json?.error) {
+            realMessage = ctx.json.error;
+          }
         } catch {}
+        // If still generic, try to parse fnErr.message as JSON
+        if (realMessage.includes("non-2xx") || realMessage.includes("Edge Function")) {
+          try {
+            const parsed = JSON.parse((fnErr as any).context?.body || "{}");
+            if (parsed?.error) realMessage = parsed.error;
+          } catch {
+            realMessage = "Erreur de paiement. Veuillez réessayer.";
+          }
+        }
         throw new Error(realMessage);
       }
       if (data?.error) throw new Error(data.error);
