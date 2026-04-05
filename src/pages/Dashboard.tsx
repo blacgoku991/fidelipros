@@ -385,10 +385,7 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout title={`Bonjour, ${businessName} 👋`} subtitle="Voici un aperçu de votre activité">
-      {/* Onboarding tour */}
-      {business && !(business as any).onboarding_tour_completed && (
-        <OnboardingTour businessId={business.id} />
-      )}
+      {/* Onboarding tour — disabled: field not in schema, causes persistent spinner */}
 
       {/* ── Franchise overview ── */}
       {isFranchiseOwner && <FranchiseOverview />}
