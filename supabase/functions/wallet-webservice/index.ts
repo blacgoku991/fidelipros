@@ -587,17 +587,19 @@ async function buildPkpassForUpdate(
 // ── Icon helpers (square, for notification icon) ─────────────────
 
 async function fetchOrGenerateIcons(business: any): Promise<{ iconPng: Uint8Array; icon2xPng: Uint8Array; icon3xPng: Uint8Array }> {
-  // Try to use business logo for notification icons so the logo appears on lock screen
   if (business.logo_url) {
     try {
       const logoUrl = business.logo_url.split("?")[0];
+      console.log("[Pass WS] Fetching logo for icons:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
+        console.log("[Pass WS] Icon image fetched:", imageBytes.byteLength, "bytes");
         return { iconPng: imageBytes, icon2xPng: imageBytes, icon3xPng: imageBytes };
       }
+      console.error(`[Pass WS] Icon fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
-      console.error("[Pass] Failed to fetch logo for icons, using fallback:", err);
+      console.error("[Pass WS] Failed to fetch logo for icons, using fallback:", err);
     }
   }
   const color = business.primary_color || "#6B46C1";
@@ -613,13 +615,16 @@ async function fetchOrGenerateLogo(business: any): Promise<{ logoPng: Uint8Array
   if (business.logo_url) {
     try {
       const logoUrl = business.logo_url.split("?")[0];
+      console.log("[Pass WS] Fetching logo:", logoUrl);
       const response = await fetch(logoUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
+        console.log("[Pass WS] Logo fetched:", imageBytes.byteLength, "bytes");
         return { logoPng: imageBytes, logo2xPng: imageBytes };
       }
+      console.error(`[Pass WS] Logo fetch failed: HTTP ${response.status} for ${logoUrl}`);
     } catch (err) {
-      console.error("[Pass] Failed to fetch logo, using fallback:", err);
+      console.error("[Pass WS] Failed to fetch logo, using fallback:", err);
     }
   }
 
@@ -634,12 +639,14 @@ async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPn
   if (business.card_bg_image_url) {
     try {
       const imgUrl = business.card_bg_image_url.split("?")[0];
+      console.log("[Pass WS] Fetching strip image:", imgUrl);
       const response = await fetch(imgUrl);
       if (response.ok) {
         const imageBytes = new Uint8Array(await response.arrayBuffer());
-        console.log("[Pass WS] Using card_bg_image_url for strip:", imageBytes.byteLength, "bytes");
+        console.log("[Pass WS] Strip image fetched:", imageBytes.byteLength, "bytes");
         return { stripPng: imageBytes, strip2xPng: imageBytes };
       }
+      console.error(`[Pass WS] Strip fetch failed: HTTP ${response.status} for ${imgUrl}`);
     } catch (err) {
       console.error("[Pass WS] Failed to fetch strip image:", err);
     }
