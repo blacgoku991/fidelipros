@@ -32,9 +32,9 @@ const CheckoutPage = () => {
   const sessionId = searchParams.get("session_id");
 
   const [selectedPlan, setSelectedPlan] = useState<PlanKey>(() => {
+    if (planParam && pricingPlans[planParam]) return planParam;
     const stored = localStorage.getItem("selectedPlan") as PlanKey | null;
     if (stored && pricingPlans[stored]) return stored;
-    if (planParam && pricingPlans[planParam]) return planParam;
     return "pro";
   });
   // null = sélecteur visible | string = redirection en cours vers Stripe
