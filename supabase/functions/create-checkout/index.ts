@@ -83,7 +83,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    // Check if user has an active subscription — if so, handle plan switch
+    // If user already has an active subscription at the same price, just inform them
     if (customerId) {
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
@@ -96,9 +96,7 @@ serve(async (req) => {
         const currentPriceId = sub.items.data[0]?.price?.id;
 
         if (currentPriceId === priceId) {
-          // Same plan — don't modify DB directly, webhook handles sync
           console.log(`[CHECKOUT] Already on this plan, no action needed`);
-
           return new Response(JSON.stringify({
             updated: true,
             already_active: true,
@@ -109,33 +107,16 @@ serve(async (req) => {
           });
         }
 
-        console.log(`[CHECKOUT] Scheduling plan switch: ${currentPriceId} → ${priceId} for sub ${sub.id} at period end`);
-
-        // Schedule the plan change at the end of the current billing period
-        const updated = await stripe.subscriptions.update(sub.id, {
-          items: [{ id: sub.items.data[0].id, price: priceId }],
-          proration_behavior: "none",
-          billing_cycle_anchor: "unchanged",
-          metadata: { user_id: user.id, plan },
-        });
-
-        const periodEnd = new Date(sub.current_period_end * 1000).toLocaleDateString("fr-FR");
-        console.log(`[CHECKOUT] Plan switch scheduled for ${periodEnd}, sub: ${updated.id}`);
-
-        return new Response(JSON.stringify({ 
-          updated: true, 
-          scheduled: true,
-          plan,
-          period_end: periodEnd,
-          message: `Votre plan passera à ${plan} le ${periodEnd}` 
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
+        // Different plan — cancel old subscription and create new checkout
+        // This forces the user through Stripe payment for any plan change
+        console.log(`[CHECKOUT] Plan change requested: ${currentPriceId} → ${priceId}, cancelling old sub and creating new checkout`);
+        await stripe.subscriptions.update(sub.id, {
+          cancel_at_period_end: true,
         });
       }
     }
 
-    // No active subscription — create a new checkout session
+    // No active subscription (or old one cancelled) — create a new checkout session
     console.log(`[CHECKOUT] Creating session for plan=${plan}, priceId=${priceId}, email=${user.email}`);
 
     const session = await stripe.checkout.sessions.create({

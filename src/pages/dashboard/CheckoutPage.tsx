@@ -168,18 +168,11 @@ const CheckoutPage = () => {
       }
       if (data?.error) throw new Error(data.error);
 
-      // Plan switch scheduled or already active
-      if (data?.updated) {
-        if (data?.already_active) {
-          toast.success(data.message || "Vous êtes déjà abonné à ce plan !");
-          setTimeout(() => window.location.replace("/dashboard"), 1500);
-        } else if (data?.scheduled) {
-          toast.success(data.message || `Votre plan changera à la fin de la période en cours`);
-          setTimeout(() => window.location.replace("/dashboard"), 1500);
-        } else {
-          toast.success(`Plan mis à jour vers ${pricingPlans[plan]?.name || plan} !`);
-          setTimeout(() => window.location.replace("/dashboard"), 1500);
-        }
+      // Already on the same plan — just inform, no redirect
+      if (data?.updated && data?.already_active) {
+        toast.success(data.message || "Vous êtes déjà abonné à ce plan !");
+        setRedirecting(null);
+        setCheckoutStarted(false);
         return;
       }
 
