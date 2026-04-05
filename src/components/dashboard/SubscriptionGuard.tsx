@@ -18,7 +18,7 @@ export function SubscriptionGuard({ children }: { children: React.ReactNode }) {
       path.startsWith("/admin") ||
       path.startsWith("/setup");
     if (isBlocked && !isExempt) {
-      navigate(`/dashboard/checkout?plan=${business.subscription_plan || "starter"}`, { replace: true });
+      navigate("/dashboard/checkout", { replace: true });
     }
   }, [business, navigate]);
 

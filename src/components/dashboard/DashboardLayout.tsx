@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
@@ -61,11 +59,9 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
 
         {/* Page content */}
         <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-20 lg:pb-6">
-          <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>}>
-            <SubscriptionGuard>
-              {children}
-            </SubscriptionGuard>
-          </Suspense>
+          <SubscriptionGuard>
+            {children}
+          </SubscriptionGuard>
         </div>
       </main>
     </div>
