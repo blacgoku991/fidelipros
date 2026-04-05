@@ -203,7 +203,7 @@ Deno.serve(async (req) => {
         const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
         if (nextReward) {
           infoModuleRows.push({
-            columns: [{ label: "Prochaine récompense", value: `${nextReward.title} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)` }],
+            columns: [{ label: "Prochaine récompense", value: nextReward.title }],
           });
         }
       }
