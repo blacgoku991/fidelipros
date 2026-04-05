@@ -80,7 +80,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    // Check if user has an active subscription — if so, update it directly (plan switch)
+    // Check if user has an active subscription — if so, handle plan switch
     if (customerId) {
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
@@ -93,7 +93,25 @@ serve(async (req) => {
         const currentPriceId = sub.items.data[0]?.price?.id;
 
         if (currentPriceId === priceId) {
-          throw new Error("Vous êtes déjà abonné à ce plan");
+          // Same plan — just sync the DB status and return success (not an error)
+          console.log(`[CHECKOUT] Already on this plan, syncing DB status`);
+          
+          // Sync DB to ensure subscription_status is active
+          await supabaseAdmin.from("businesses").update({
+            subscription_status: "active",
+            subscription_plan: plan,
+            stripe_customer_id: customerId,
+            stripe_subscription_id: sub.id,
+          }).eq("owner_id", user.id);
+
+          return new Response(JSON.stringify({ 
+            updated: true, 
+            already_active: true,
+            message: "Vous êtes déjà abonné à ce plan. Votre abonnement est actif." 
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
         }
 
         console.log(`[CHECKOUT] Scheduling plan switch: ${currentPriceId} → ${priceId} for sub ${sub.id} at period end`);
@@ -106,9 +124,7 @@ serve(async (req) => {
           metadata: { user_id: user.id, plan },
         });
 
-        // Calculate when the current period ends
         const periodEnd = new Date(sub.current_period_end * 1000).toLocaleDateString("fr-FR");
-
         console.log(`[CHECKOUT] Plan switch scheduled for ${periodEnd}, sub: ${updated.id}`);
 
         return new Response(JSON.stringify({ 

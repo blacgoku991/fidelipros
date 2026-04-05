@@ -72,18 +72,38 @@ const Onboarding = () => {
     }
 
     setSaving(true);
-    const { error } = await supabase.from("businesses").insert({
-      owner_id: user.id,
-      name: form.businessName.trim(),
-      category: form.category,
-      address: form.address.trim() || null,
-      phone: form.phone.trim() || null,
-      subscription_status: "inactive" as any,
-      subscription_plan: plan as any,
-    } as any);
+
+    // The handle_new_user trigger already creates a business row.
+    // Try UPDATE first, fallback to INSERT only if no business exists.
+    const { data: existingBiz } = await supabase
+      .from("businesses")
+      .select("id")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    let error;
+    if (existingBiz) {
+      ({ error } = await supabase.from("businesses").update({
+        name: form.businessName.trim(),
+        category: form.category,
+        address: form.address.trim() || null,
+        phone: form.phone.trim() || null,
+        subscription_plan: plan as any,
+      }).eq("id", existingBiz.id));
+    } else {
+      ({ error } = await supabase.from("businesses").insert({
+        owner_id: user.id,
+        name: form.businessName.trim(),
+        category: form.category,
+        address: form.address.trim() || null,
+        phone: form.phone.trim() || null,
+        subscription_status: "inactive" as any,
+        subscription_plan: plan as any,
+      } as any));
+    }
 
     if (error) {
-      toast.error("Erreur lors de la création du commerce");
+      toast.error("Erreur lors de la configuration du commerce");
       setSaving(false);
       return;
     }
