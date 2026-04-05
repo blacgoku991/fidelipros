@@ -114,7 +114,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "FidéliPro <noreply@fidelispro.fr>",
+            from: "FidéliPro <noreply@notify.fidelipro.com>",
             to: [email.toLowerCase()],
             subject: `Invitation manager — ${biz.name}`,
             html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:24px;">
