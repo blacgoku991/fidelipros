@@ -768,6 +768,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          invite_email: string | null
           invited_at: string | null
           location_id: string
           role: string
@@ -777,6 +778,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          invite_email?: string | null
           invited_at?: string | null
           location_id: string
           role?: string
@@ -786,6 +788,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          invite_email?: string | null
           invited_at?: string | null
           location_id?: string
           role?: string
