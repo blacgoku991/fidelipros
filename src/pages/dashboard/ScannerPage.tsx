@@ -43,7 +43,7 @@ const ScannerPage = () => {
 
     // ── Anti double-scan: check cooldown ──────────────────────────
     const { data: cooldown } = await supabase
-      .from("scan_cooldowns")
+      .from("scan_cooldowns" as any)
       .select("last_scan")
       .eq("card_id", card.id)
       .maybeSingle();
