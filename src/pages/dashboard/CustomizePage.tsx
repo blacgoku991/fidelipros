@@ -22,7 +22,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QRCodeSVG } from "qrcode.react";
 import {
-  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield,
+  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield, Upload, X, Loader2, ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -239,12 +239,77 @@ const CustomizePage = () => {
 
             {/* ── BRANDING ── */}
             <TabsContent value="branding" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
-              <div>
-                <Label className="mb-2 block text-xs">
-                  Logo
-                  {!logoUrl && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
-                </Label>
-                {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label className="mb-2 block text-xs">
+                    Logo
+                    {!logoUrl && <Badge variant="outline" className="ml-2 text-[10px] text-amber-600 border-amber-300">⚠️ À configurer</Badge>}
+                  </Label>
+                  {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={(url) => setLogoUrl(url)} />}
+                </div>
+                <div>
+                  <Label className="mb-2 block text-xs">
+                    Bannière (fond du pass)
+                  </Label>
+                  <div className="flex items-center gap-4">
+                    {stripImageUrl ? (
+                      <div className="relative group">
+                        <img src={stripImageUrl} alt="Bannière" className="w-32 h-20 rounded-2xl object-cover border border-border/50" />
+                        <button
+                          onClick={async () => {
+                            setStripImageUrl(null);
+                            if (business) {
+                              await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
+                              toast.success("Bannière supprimée");
+                            }
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => stripFileRef.current?.click()}
+                        className="w-32 h-20 rounded-2xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                      >
+                        <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-xl"
+                        onClick={() => stripFileRef.current?.click()}
+                      >
+                        {stripImageUrl ? "Changer" : "Uploader une bannière"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">640×200px · PNG/JPG · max 2 Mo</p>
+                      <p className="text-[10px] text-muted-foreground">Remplace la barre de progression</p>
+                    </div>
+                    <input
+                      ref={stripFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file || !business) return;
+                        if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
+                        const ext = file.name.split(".").pop();
+                        const path = `${business.id}/strip.${ext}`;
+                        const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
+                        if (error) { toast.error("Erreur upload"); return; }
+                        const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
+                        const url = `${publicUrl}?t=${Date.now()}`;
+                        setStripImageUrl(url);
+                        await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
+                        toast.success("Bannière mise à jour !");
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Nom du commerce</Label>
@@ -406,56 +471,6 @@ const CustomizePage = () => {
                   </Select>
                 </div>
               </div>
-              {/* Strip/Banner image upload */}
-              {form.card_bg_type === "image" && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Image bannière (strip)</Label>
-                  {stripImageUrl ? (
-                    <div className="relative group">
-                      <img src={stripImageUrl} alt="Strip" className="w-full h-20 object-cover rounded-xl border border-border/50" />
-                      <button
-                        onClick={async () => {
-                          setStripImageUrl(null);
-                          if (business) {
-                            await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
-                          }
-                        }}
-                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => stripFileRef.current?.click()}
-                      className="w-full h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
-                    >
-                      <span className="text-xs text-muted-foreground">+ Ajouter une image</span>
-                    </button>
-                  )}
-                  <input
-                    ref={stripFileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !business) return;
-                      if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
-                      const ext = file.name.split(".").pop();
-                      const path = `${business.id}/strip.${ext}`;
-                      const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
-                      if (error) { toast.error("Erreur upload"); return; }
-                      const { data: { publicUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
-                      const url = `${publicUrl}?t=${Date.now()}`;
-                      setStripImageUrl(url);
-                      await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
-                      toast.success("Image bannière mise à jour !");
-                    }}
-                  />
-                  <p className="text-[10px] text-muted-foreground">Idéal : 640×200px · PNG/JPG · max 2 Mo</p>
-                </div>
-              )}
             </TabsContent>
 
             {/* ── VISIBLE FIELDS ── */}

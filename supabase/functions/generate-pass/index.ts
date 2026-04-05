@@ -259,12 +259,12 @@ export async function buildPkpass(
             // Find the next reward the customer can earn
             const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
             if (!nextReward) return business.reward_description || "Récompense offerte !";
-            return `${nextReward.title} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`;
+            return nextReward.title;
           })(),
         }] : business.reward_description ? [{
           key: "next_reward",
           label: "RÉCOMPENSE",
-          value: `${business.reward_description} (${pointsToReward} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+          value: business.reward_description,
         }] : []),
       ],
       backFields: [
@@ -597,6 +597,13 @@ function generateStripWithVisuals(
       let pb = Math.max(0, b - gradientDarken);
       let pa = 255;
 
+      // Subtle dot pattern on background
+      if (isDotPixel(x, y, scale)) {
+        pr = Math.min(255, pr + 12);
+        pg = Math.min(255, pg + 12);
+        pb = Math.min(255, pb + 12);
+      }
+
       if (stamps) {
         // Draw stamp circles
         const stampResult = getStampPixel(x, y, stamps, pr, pg, pb);
@@ -604,7 +611,7 @@ function generateStripWithVisuals(
           pr = stampResult.r; pg = stampResult.g; pb = stampResult.b;
         }
       } else if (progressBar) {
-        // Draw progress bar
+        // Draw progress bar + glow
         const barResult = getProgressPixel(x, y, progressBar, pr, pg, pb);
         if (barResult) {
           pr = barResult.r; pg = barResult.g; pb = barResult.b;
@@ -687,7 +694,7 @@ function getStampPixel(x: number, y: number, stamps: StampCircle[], bgR: number,
 interface ProgressBarDef { x: number; y: number; w: number; h: number; fillRatio: number; }
 
 function buildProgressBar(canvasW: number, canvasH: number, current: number, max: number, scale: number): ProgressBarDef {
-  const barH = Math.floor(20 * scale);
+  const barH = Math.floor(30 * scale);
   const margin = Math.floor(25 * scale);
   return {
     x: margin,
@@ -698,9 +705,41 @@ function buildProgressBar(canvasW: number, canvasH: number, current: number, max
   };
 }
 
+// Subtle dot pattern on background for visual richness
+function isDotPixel(x: number, y: number, scale: number): boolean {
+  const spacing = Math.floor(16 * scale);
+  const dotRadius = Math.floor(1.5 * scale);
+  const offsetRow = Math.floor(y / spacing) % 2 === 1 ? Math.floor(spacing / 2) : 0;
+  const cx = ((x + offsetRow) % spacing);
+  const cy = (y % spacing);
+  const dx = cx - Math.floor(spacing / 2);
+  const dy = cy - Math.floor(spacing / 2);
+  return (dx * dx + dy * dy) <= (dotRadius * dotRadius);
+}
+
 function getProgressPixel(x: number, y: number, bar: ProgressBarDef, bgR: number, bgG: number, bgB: number) {
+  const fillWidth = bar.w * bar.fillRatio;
+  const barRadius = Math.floor(bar.h / 2);
+
+  // Glow effect around the filled portion of the bar
+  if (bar.fillRatio > 0) {
+    const glowRadius = Math.floor(bar.h * 0.8);
+    const barCenterY = bar.y + bar.h / 2;
+    const fillEndX = bar.x + fillWidth;
+    // Only glow near the bar area
+    if (y >= bar.y - glowRadius && y <= bar.y + bar.h + glowRadius &&
+        x >= bar.x - glowRadius && x <= fillEndX + glowRadius) {
+      const dy = Math.abs(y - barCenterY);
+      const maxDist = barRadius + glowRadius;
+      if (dy > barRadius && dy <= maxDist && x >= bar.x && x <= fillEndX) {
+        const glowStrength = 1 - (dy - barRadius) / glowRadius;
+        const boost = Math.floor(30 * glowStrength * glowStrength);
+        return { r: Math.min(255, bgR + boost), g: Math.min(255, bgG + boost), b: Math.min(255, bgB + boost) };
+      }
+    }
+  }
+
   if (x >= bar.x && x <= bar.x + bar.w && y >= bar.y && y <= bar.y + bar.h) {
-    const barRadius = Math.floor(bar.h / 2);
     // Rounded ends check
     const relX = x - bar.x;
     const relY = y - bar.y;
@@ -719,13 +758,14 @@ function getProgressPixel(x: number, y: number, bar: ProgressBarDef, bgR: number
       if (dx * dx + dy * dy > barRadius * barRadius) return null;
     }
 
-    const fillWidth = bar.w * bar.fillRatio;
     if (relX <= fillWidth) {
-      // Filled portion: white
-      return { r: 255, g: 255, b: 255 };
+      // Filled portion: white with subtle inner gradient (brighter at top)
+      const gradientBoost = Math.floor((1 - relY / bar.h) * 30);
+      const v = Math.min(255, 225 + gradientBoost);
+      return { r: v, g: v, b: v };
     }
-    // Unfilled portion: white with low opacity (visible outline)
-    return { r: Math.min(255, bgR + 50), g: Math.min(255, bgG + 50), b: Math.min(255, bgB + 50) };
+    // Unfilled portion: subtle outline
+    return { r: Math.min(255, bgR + 35), g: Math.min(255, bgG + 35), b: Math.min(255, bgB + 35) };
   }
   return null;
 }

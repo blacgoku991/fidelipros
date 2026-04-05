@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
       if (nextReward) {
         infoModuleRows.push({
           header: "Prochaine récompense",
-          body: `${nextReward.title} (${remaining} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+          body: nextReward.title,
         });
       }
       for (const r of rewards) {
@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
     } else if (business.reward_description) {
       infoModuleRows.push({
         header: "Récompense",
-        body: `${business.reward_description} (${remaining} ${business.loyalty_type === "stamps" ? "tampons" : "pts"} restants)`,
+        body: business.reward_description,
       });
     }
 
