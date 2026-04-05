@@ -26,7 +26,6 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
   const items = groups.flatMap(g => g.items);
 
   if (!contextLoaded) {
-  if (!contextLoaded) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
