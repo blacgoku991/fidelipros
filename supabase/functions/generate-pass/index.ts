@@ -62,7 +62,6 @@ function getCorsHeaders(req: Request) {
 function cleanImageUrl(url: string): string {
   try {
     const u = new URL(url);
-    // Only remove the 't' param (Supabase storage cache-buster)
     if (u.searchParams.has("t") && u.searchParams.size === 1) {
       u.searchParams.delete("t");
       return u.toString();
@@ -73,6 +72,7 @@ function cleanImageUrl(url: string): string {
   }
 }
 
+function getSupabase() {
   return createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
