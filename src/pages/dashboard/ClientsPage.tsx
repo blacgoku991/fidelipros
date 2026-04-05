@@ -58,7 +58,7 @@ type SortDir = "asc" | "desc";
 const levelOrder: Record<string, number> = { bronze: 0, silver: 1, gold: 2 };
 
 const ClientsPage = () => {
-  const { user, business } = useAuth();
+  const { user, business, locationId, locationName } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
@@ -77,9 +77,27 @@ const ClientsPage = () => {
 
   const fetchCustomers = async () => {
     if (!business) return;
-    const { data } = await supabase
-      .from("customers").select("*, customer_cards(*)").eq("business_id", business.id).order("created_at", { ascending: false });
-    if (data) setCustomers(data);
+
+    if (locationId) {
+      // Manager: only customers who visited this location
+      const { data: locHistory } = await supabase
+        .from("points_history")
+        .select("customer_id")
+        .eq("business_id", business.id)
+        .eq("location_id", locationId);
+      const uniqueIds = [...new Set((locHistory || []).map(r => r.customer_id))];
+      if (uniqueIds.length === 0) { setCustomers([]); return; }
+      const { data } = await supabase
+        .from("customers").select("*, customer_cards(*)")
+        .eq("business_id", business.id)
+        .in("id", uniqueIds)
+        .order("created_at", { ascending: false });
+      if (data) setCustomers(data);
+    } else {
+      const { data } = await supabase
+        .from("customers").select("*, customer_cards(*)").eq("business_id", business.id).order("created_at", { ascending: false });
+      if (data) setCustomers(data);
+    }
   };
 
   const fetchHistory = async (customerId: string) => {
@@ -254,6 +272,13 @@ const ClientsPage = () => {
         </div>
       }
     >
+      {locationId && (
+        <div className="text-sm text-muted-foreground bg-primary/5 border border-primary/15 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2">
+          <span className="text-primary">📍</span>
+          Clients ayant visité <strong className="text-foreground">{locationName}</strong>
+        </div>
+      )}
+
       {/* Search + Filters */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
         <div className="relative flex-1">

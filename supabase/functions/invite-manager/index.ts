@@ -82,6 +82,13 @@ serve(async (req) => {
     }, { onConflict: "location_id,user_id" });
     if (lmErr) throw new Error("Erreur lors de l'association: " + lmErr.message);
 
+    // Create profile so ManagersPage can detect "Actif" status
+    await admin.from("profiles").upsert({
+      id: managerId,
+      email: email.toLowerCase(),
+      role: "location_manager",
+    }, { onConflict: "id" });
+
     // Generate magic link for the manager
     const siteUrl = Deno.env.get("SITE_URL") || "https://fidelipros.lovable.app";
     const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({

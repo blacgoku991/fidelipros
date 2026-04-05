@@ -107,7 +107,7 @@ const SEGMENTS: {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 const CampaignsPage = () => {
-  const { business } = useAuth();
+  const { business, locationId, locationName } = useAuth();
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const [campaignSummaries, setCampaignSummaries] = useState<CampaignSummary[]>([]);
@@ -143,6 +143,25 @@ const CampaignsPage = () => {
 
   const fetchAllCustomers = async () => {
     if (!business) return;
+
+    if (locationId) {
+      // Manager: only customers who visited this location
+      const { data: locHistory } = await supabase
+        .from("points_history")
+        .select("customer_id")
+        .eq("business_id", business.id)
+        .eq("location_id", locationId);
+      const uniqueIds = [...new Set((locHistory || []).map(r => r.customer_id))];
+      if (uniqueIds.length === 0) { setAllCustomers([]); return []; }
+      const { data } = await supabase
+        .from("customers")
+        .select("id, last_visit_at, level, created_at, customer_cards(current_points)")
+        .eq("business_id", business.id)
+        .in("id", uniqueIds);
+      if (data) setAllCustomers(data);
+      return data || [];
+    }
+
     const { data } = await supabase
       .from("customers")
       .select("id, last_visit_at, level, created_at, customer_cards(current_points)")
@@ -287,15 +306,28 @@ const CampaignsPage = () => {
 
   // ── Get target customers for send ─────────────────────────────────────────
 
+  // Helper: get customer IDs scoped to this location (for managers)
+  const getLocationCustomerIds = async (): Promise<Set<string> | null> => {
+    if (!locationId || !business) return null; // null = no filtering (owner)
+    const { data } = await supabase
+      .from("points_history")
+      .select("customer_id")
+      .eq("business_id", business.id)
+      .eq("location_id", locationId);
+    return new Set((data || []).map(r => r.customer_id));
+  };
+
   const resolveCustomers = async (): Promise<{ id: string }[]> => {
     if (!business) return [];
     const bizId = business.id;
     const now = new Date();
     const ago30 = new Date(now.getTime() - 30 * 86400000).toISOString();
+    const locScope = await getLocationCustomerIds();
 
     if (selectedSegments.has("all")) {
       const { data } = await supabase.from("customers").select("id").eq("business_id", bizId);
-      return data || [];
+      const result = data || [];
+      return locScope ? result.filter(c => locScope.has(c.id)) : result;
     }
     const idSet = new Set<string>();
     const fetches = [...selectedSegments].map(async seg => {
@@ -314,7 +346,9 @@ const CampaignsPage = () => {
       }
     });
     await Promise.all(fetches);
-    return [...idSet].map(id => ({ id }));
+    // Scope to location if manager
+    const finalIds = locScope ? [...idSet].filter(id => locScope.has(id)) : [...idSet];
+    return finalIds.map(id => ({ id }));
   };
 
   // ── Send ──────────────────────────────────────────────────────────────────
@@ -450,6 +484,12 @@ const CampaignsPage = () => {
 
   return (
     <DashboardLayout title="Campagnes" subtitle="Envoyez des notifications ciblées à vos clients">
+      {locationId && (
+        <div className="text-sm text-muted-foreground bg-primary/5 border border-primary/15 rounded-xl px-4 py-2.5 mb-4 flex items-center gap-2">
+          <span className="text-primary">📍</span>
+          Campagnes pour les clients de <strong className="text-foreground">{locationName}</strong>
+        </div>
+      )}
       <div className="flex flex-col lg:flex-row gap-5 lg:h-[calc(100vh-9rem)]">
 
         {/* ── SIDEBAR ──────────────────────────────────────────────────────── */}
