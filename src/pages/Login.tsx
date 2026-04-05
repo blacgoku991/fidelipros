@@ -29,10 +29,25 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
+  const { business } = useAuth("");
+
   useEffect(() => {
     if (authLoading || !user) return;
+
+    // If user just got auto-created via Google OAuth (default business name),
+    // they haven't actually registered — sign them out and redirect to register
+    if (business && business.name === "Mon Commerce" && !business.onboarding_completed) {
+      const handleNewUnregistered = async () => {
+        await supabase.auth.signOut();
+        toast.error("Aucun compte trouvé. Veuillez d'abord créer un compte.");
+        navigate("/register", { replace: true });
+      };
+      handleNewUnregistered();
+      return;
+    }
+
     navigate(role === "super_admin" ? "/admin" : "/dashboard", { replace: true });
-  }, [authLoading, user, role, navigate]);
+  }, [authLoading, user, role, business, navigate]);
 
   const handleForgotPassword = async () => {
     const target = email.trim();
