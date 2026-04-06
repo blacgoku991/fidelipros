@@ -79,6 +79,7 @@ const Dashboard = () => {
 
   // Scanner
   const [cardCode, setCardCode] = useState("");
+  const [scanAmount, setScanAmount] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
   const scanLockRef = useRef(false);
@@ -86,6 +87,11 @@ const Dashboard = () => {
   const [todayScans, setTodayScans] = useState(0);
   const isOnline = useOnlineStatus();
   const [pendingScanCount, setPendingScanCount] = useState(0);
+
+  const loyaltyType = business?.loyalty_type || "stamps";
+  const isCashback = loyaltyType === "cashback";
+  const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
+  const needsAmount = isCashback || isEuroToPoints;
 
   // Popup
   const [popup, setPopup] = useState<{
