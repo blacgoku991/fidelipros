@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QRCodeSVG } from "qrcode.react";
+import { Slider } from "@/components/ui/slider";
 import {
-  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield, Upload, X, Loader2, ImageIcon,
+  Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink, Link as LinkIcon, Shield, Upload, X, Loader2, ImageIcon, ArrowRight, Info, Calculator,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
@@ -337,72 +338,221 @@ const CustomizePage = () => {
             </TabsContent>
 
             {/* ── CARD TYPE ── */}
-            <TabsContent value="type" className="rounded-2xl bg-card border border-border/50 p-5 space-y-4">
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { val: "points", emoji: "⭐", label: "Points" },
-                  { val: "stamps", emoji: "🎯", label: "Tampons" },
-                  { val: "cashback", emoji: "💰", label: "Cashback" },
-                  { val: "subscription", emoji: "📋", label: "Abonnement" },
-                ].map((type) => (
-                  <button
-                    key={type.val}
-                    onClick={() => update("loyalty_type", type.val as any)}
-                    className={`p-3 rounded-xl border-2 text-center transition-all ${
-                      form.loyalty_type === type.val ? "border-primary bg-primary/5" : "border-border/50 hover:border-primary/30"
-                    }`}
-                  >
-                    <span className="text-xl block">{type.emoji}</span>
-                    <p className="font-semibold text-[11px] mt-1">{type.label}</p>
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">{form.loyalty_type === "stamps" ? "Tampons pour récompense" : "Points max par carte"}</Label>
-                  <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl text-sm" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">
-                    {form.loyalty_type === "cashback" ? "Points par euro" : form.loyalty_type === "points" && form.points_per_euro > 0 ? "Points par euro" : "Points par visite"}
-                  </Label>
-                  <Input
-                    type="number"
-                    value={form.loyalty_type === "cashback" ? form.points_per_euro : form.loyalty_type === "points" && form.points_per_euro > 0 ? form.points_per_euro : form.points_per_visit}
-                    onChange={(e) => {
-                      if (form.loyalty_type === "cashback" || (form.loyalty_type === "points" && form.points_per_euro > 0)) {
-                        update("points_per_euro", parseInt(e.target.value) || 1);
-                      } else {
-                        update("points_per_visit", parseInt(e.target.value) || 1);
-                      }
-                    }}
-                    className="rounded-xl text-sm"
-                  />
+            <TabsContent value="type" className="rounded-2xl bg-card border border-border/50 p-5 space-y-5">
+              {/* Program type selector */}
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Type de programme</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { val: "points", emoji: "⭐", label: "Points" },
+                    { val: "stamps", emoji: "🎯", label: "Tampons" },
+                    { val: "cashback", emoji: "💰", label: "Cashback" },
+                    { val: "subscription", emoji: "📋", label: "Abonnement" },
+                  ].map((type) => (
+                    <button
+                      key={type.val}
+                      onClick={() => update("loyalty_type", type.val as any)}
+                      className={`p-3 rounded-xl border-2 text-center transition-all ${
+                        form.loyalty_type === type.val ? "border-primary bg-primary/5 shadow-sm" : "border-border/50 hover:border-primary/30"
+                      }`}
+                    >
+                      <span className="text-xl block">{type.emoji}</span>
+                      <p className="font-semibold text-[11px] mt-1">{type.label}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
 
+              {/* ── Points configuration (only for points type) ── */}
               {form.loyalty_type === "points" && (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border/30">
-                  <div>
-                    <p className="text-xs font-medium">Convertir les euros en points</p>
-                    <p className="text-[10px] text-muted-foreground">Demande le montant de l'achat au scan et convertit en points (ex: 10€ = 10 pts)</p>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 pb-1 border-b border-border/40">
+                    <Calculator className="w-3.5 h-3.5 text-primary" />
+                    <p className="text-xs font-semibold text-foreground">Configuration des points</p>
                   </div>
-                  <Switch
-                    checked={form.points_per_euro > 0}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        update("points_per_euro", 1);
-                      } else {
-                        update("points_per_euro", 0);
-                      }
-                    }}
-                  />
+
+                  {/* Earning mode toggle */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => update("points_per_euro", 0)}
+                      className={`relative p-3.5 rounded-xl border-2 text-left transition-all ${
+                        form.points_per_euro === 0 ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/20"
+                      }`}
+                    >
+                      {form.points_per_euro === 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />}
+                      <span className="text-lg">🚶</span>
+                      <p className="font-semibold text-xs mt-1">Par visite</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Points fixes à chaque passage</p>
+                    </button>
+                    <button
+                      onClick={() => { if (form.points_per_euro === 0) update("points_per_euro", 1); }}
+                      className={`relative p-3.5 rounded-xl border-2 text-left transition-all ${
+                        form.points_per_euro > 0 ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/20"
+                      }`}
+                    >
+                      {form.points_per_euro > 0 && <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />}
+                      <span className="text-lg">💶</span>
+                      <p className="font-semibold text-xs mt-1">Par euro dépensé</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">Points proportionnels au montant</p>
+                    </button>
+                  </div>
+
+                  {/* Per-visit config */}
+                  {form.points_per_euro === 0 && (
+                    <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium">Points gagnés par visite</Label>
+                        <Badge variant="outline" className="text-xs tabular-nums font-bold">{form.points_per_visit} pt{form.points_per_visit > 1 ? "s" : ""}</Badge>
+                      </div>
+                      <Slider
+                        value={[form.points_per_visit]}
+                        onValueChange={([v]) => update("points_per_visit", v)}
+                        min={1}
+                        max={20}
+                        step={1}
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>1 pt</span>
+                        <span>20 pts</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Per-euro config */}
+                  {form.points_per_euro > 0 && (
+                    <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-medium">Taux de conversion</Label>
+                          <Badge variant="outline" className="text-xs tabular-nums font-bold">1€ = {form.points_per_euro} pt{form.points_per_euro > 1 ? "s" : ""}</Badge>
+                        </div>
+                        <Slider
+                          value={[form.points_per_euro]}
+                          onValueChange={([v]) => update("points_per_euro", v)}
+                          min={1}
+                          max={20}
+                          step={1}
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>1 pt/€</span>
+                          <span>20 pts/€</span>
+                        </div>
+                      </div>
+
+                      {/* Live simulation */}
+                      <div className="rounded-lg bg-background/80 border border-border/40 p-3">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Simulation en direct</p>
+                        <div className="space-y-1.5">
+                          {[5, 15, 50].map(amount => (
+                            <div key={amount} className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">Achat de {amount}€</span>
+                              <span className="flex items-center gap-1.5 font-semibold">
+                                <ArrowRight className="w-3 h-3 text-primary" />
+                                {amount * form.points_per_euro} points
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex items-start gap-2 text-[10px] text-muted-foreground bg-primary/5 rounded-lg p-2.5">
+                        <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>Au moment du scan, le commerçant saisit le montant de l'achat. Les points sont calculés automatiquement.</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points goal */}
+                  <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">Objectif pour la récompense</Label>
+                      <Badge variant="outline" className="text-xs tabular-nums font-bold">{form.max_points_per_card} pts</Badge>
+                    </div>
+                    <Slider
+                      value={[form.max_points_per_card]}
+                      onValueChange={([v]) => update("max_points_per_card", v)}
+                      min={5}
+                      max={200}
+                      step={5}
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>5 pts</span>
+                      <span>200 pts</span>
+                    </div>
+                    {form.points_per_euro > 0 && (
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        ≈ {Math.ceil(form.max_points_per_card / form.points_per_euro)}€ d'achats pour obtenir la récompense
+                      </p>
+                    )}
+                    {form.points_per_euro === 0 && (
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        = {Math.ceil(form.max_points_per_card / form.points_per_visit)} visite{Math.ceil(form.max_points_per_card / form.points_per_visit) > 1 ? "s" : ""} pour la récompense
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* Stamps config */}
+              {form.loyalty_type === "stamps" && (
+                <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Tampons pour la récompense</Label>
+                    <Badge variant="outline" className="text-xs tabular-nums font-bold">{form.max_points_per_card} 🎯</Badge>
+                  </div>
+                  <Slider
+                    value={[form.max_points_per_card]}
+                    onValueChange={([v]) => update("max_points_per_card", v)}
+                    min={3}
+                    max={20}
+                    step={1}
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>3 tampons</span>
+                    <span>20 tampons</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Cashback config */}
+              {form.loyalty_type === "cashback" && (
+                <div className="space-y-3">
+                  <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">Taux de cashback</Label>
+                      <Badge variant="outline" className="text-xs tabular-nums font-bold">1€ = {form.points_per_euro || 1} pt{(form.points_per_euro || 1) > 1 ? "s" : ""}</Badge>
+                    </div>
+                    <Slider
+                      value={[form.points_per_euro || 1]}
+                      onValueChange={([v]) => update("points_per_euro", v)}
+                      min={1}
+                      max={20}
+                      step={1}
+                    />
+                  </div>
+                  <div className="rounded-xl bg-secondary/30 border border-border/30 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">Seuil de récompense</Label>
+                      <Badge variant="outline" className="text-xs tabular-nums font-bold">{form.max_points_per_card} pts</Badge>
+                    </div>
+                    <Slider
+                      value={[form.max_points_per_card]}
+                      onValueChange={([v]) => update("max_points_per_card", v)}
+                      min={10}
+                      max={500}
+                      step={10}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reward description */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Récompense</Label>
+                <Label className="text-xs">🎁 Récompense offerte</Label>
                 <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />
               </div>
+
+              {/* Onboarding mode */}
               <div className="pt-3 border-t border-border/50 space-y-3">
                 <Label className="text-xs">Mode d'inscription client</Label>
                 <div className="grid grid-cols-3 gap-2">
