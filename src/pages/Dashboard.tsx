@@ -69,7 +69,7 @@ const Dashboard = () => {
   }, [loading, business]);
   const { data: siteSettings } = useSiteSettings();
   const [permissionsDismissed, setPermissionsDismissed] = useState(false);
-  const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
+  const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0, avgVisits: 0, avgRating: 0 });
   const [stats30dAgo, setStats30dAgo] = useState({ clients: 0, scansToday: 0, rewardsGiven: 0 });
   const [totalScans, setTotalScans] = useState(0);
 
