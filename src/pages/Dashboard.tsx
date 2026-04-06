@@ -369,10 +369,19 @@ const Dashboard = () => {
       }).catch(() => {});
     } catch { /* non-blocking */ }
 
+    // Update scan cooldown
+    await supabase
+      .from("scan_cooldowns")
+      .upsert(
+        { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
+        { onConflict: "card_id" }
+      );
+
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
     setScanning(false);
+    scanLockRef.current = false;
     fetchStats();
     fetchOnboarding();
 
