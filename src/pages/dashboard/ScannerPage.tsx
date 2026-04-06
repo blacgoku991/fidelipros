@@ -77,11 +77,12 @@ const ScannerPage = () => {
     if ((cooldown as any)?.last_scan) {
       const elapsed = (Date.now() - new Date((cooldown as any).last_scan).getTime()) / 1000;
       if (elapsed < SCAN_COOLDOWN_SECONDS) {
-        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+      const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
         toast.warning(`⏱ Scan trop rapide`, {
           description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
         });
         setScanning(false);
+        scanLockRef.current = false;
         return;
       }
     }
