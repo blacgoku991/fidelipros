@@ -60,7 +60,7 @@ const AnalyticsPage = () => {
       // Customers: only fields needed for stats
       supabase
         .from("customers")
-        .select("level, total_visits, last_visit_at, registration_source")
+        .select("level, total_visits, last_visit_at")
         .eq("business_id", businessId),
       // Cards: only rewards_earned aggregate
       supabase
