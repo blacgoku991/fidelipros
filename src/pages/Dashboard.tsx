@@ -84,6 +84,7 @@ const Dashboard = () => {
   const [todayScans, setTodayScans] = useState(0);
   const isOnline = useOnlineStatus();
   const [pendingScanCount, setPendingScanCount] = useState(0);
+  const scanLockRef = useRef(false);
 
   // Popup
   const [popup, setPopup] = useState<{
