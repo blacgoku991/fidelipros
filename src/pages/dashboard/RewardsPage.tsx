@@ -16,8 +16,17 @@ import { Plus, Gift, Trophy, Trash2, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+const UNIT_LABELS: Record<string, { singular: string; plural: string; short: string }> = {
+  stamps: { singular: "tampon", plural: "tampons", short: "tampons" },
+  points: { singular: "point", plural: "points", short: "pts" },
+  cashback: { singular: "€", plural: "€", short: "€" },
+  subscription: { singular: "point", plural: "points", short: "pts" },
+};
+
 const RewardsPage = () => {
   const { business } = useAuth();
+  const loyaltyType = business?.loyalty_type || "points";
+  const units = UNIT_LABELS[loyaltyType] || UNIT_LABELS.points;
   const [rewards, setRewards] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", points_required: 10 });
