@@ -199,6 +199,7 @@ const ScannerPage = () => {
     setCardCode("");
     setAmount("");
     setScanning(false);
+    scanLockRef.current = false;
 
     if (rewardEarned) {
       toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
