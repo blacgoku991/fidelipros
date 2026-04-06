@@ -418,6 +418,8 @@ const SettingsPage = () => {
 
   // POS and Webhooks are admin-only features
   const ADMIN_ONLY_SECTIONS: SectionKey[] = ["integrations", "webhooks"];
+  const FRANCHISE_ONLY_SECTIONS: SectionKey[] = ["etablissements"];
+  const isFranchise = business?.is_franchise === true;
   const visibleSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
 
   return (
