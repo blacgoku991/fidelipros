@@ -237,6 +237,12 @@ const Dashboard = () => {
       return;
     }
 
+    if (needsAmount && !isSyncMode && (!scanAmount || parseFloat(scanAmount) <= 0)) {
+      toast.error("Entrez le montant de l'achat");
+      scanLockRef.current = false;
+      return;
+    }
+
     // Offline fallback: queue scan and show toast
     if (!isOnline && !isSyncMode) {
       await queueScan({ cardCode: code.trim(), businessId: business.id, userId: user.id, timestamp: new Date().toISOString() });
