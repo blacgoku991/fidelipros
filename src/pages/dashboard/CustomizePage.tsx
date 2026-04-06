@@ -479,7 +479,7 @@ const CustomizePage = () => {
     const isPoints = form.loyalty_type === "points";
     const isStamps = form.loyalty_type === "stamps";
     const isCashback = form.loyalty_type === "cashback";
-    const isSub = form.loyalty_type === "subscription";
+    const isSub = form.loyalty_type as string === "subscription";
     const euroMode = isPoints && form.points_per_euro > 0;
 
     return (
