@@ -131,8 +131,21 @@ const SettingsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (user) setEmail(user.email || "");
+    if (user) {
+      setEmail(user.email || "");
+      setAcctEmail(user.email || "");
+    }
   }, [user]);
+
+  useEffect(() => {
+    if (business) {
+      setAcctName(business.name || "");
+      setAcctPhone(business.phone || "");
+      setAcctAddress(business.address || "");
+      setAcctCity(business.city || "");
+      setAcctWebsite(business.website || "");
+    }
+  }, [business]);
 
   useEffect(() => {
     if (business) {
