@@ -35,13 +35,19 @@ const ScannerPage = () => {
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
   const handleScan = async (codeOverride?: string) => {
+    // Prevent concurrent scan executions (double-scan guard)
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
+
     const code = codeOverride || cardCode;
     if (!code.trim() || !business || !user) {
       toast.error("Entrez un code de carte");
+      scanLockRef.current = false;
       return;
     }
     if (isCashback && (!amount || parseFloat(amount) <= 0)) {
       toast.error("Entrez le montant de l'achat");
+      scanLockRef.current = false;
       return;
     }
     setScanning(true);
