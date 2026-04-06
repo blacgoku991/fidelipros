@@ -21,7 +21,8 @@ import {
   Users, TrendingUp, QrCode, Crown, Sparkles, Search,
   Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
   Mail, Phone, History, MapPin, Star as StarIcon, MessageSquare,
-  CheckCircle2, Circle, Palette, Send, Camera, ArrowUp, ArrowDown,
+  CheckCircle2, Circle, Palette, Send, Camera, ArrowUp, ArrowDown, Info,
+  BarChart3,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -69,7 +70,7 @@ const Dashboard = () => {
   }, [loading, business]);
   const { data: siteSettings } = useSiteSettings();
   const [permissionsDismissed, setPermissionsDismissed] = useState(false);
-  const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0 });
+  const [stats, setStats] = useState({ clients: 0, returnRate: 0, scansToday: 0, rewardsGiven: 0, avgVisits: 0, avgRating: 0 });
   const [stats30dAgo, setStats30dAgo] = useState({ clients: 0, scansToday: 0, rewardsGiven: 0 });
   const [totalScans, setTotalScans] = useState(0);
 
@@ -127,12 +128,33 @@ const Dashboard = () => {
     if (!business) return;
     const { count: clientCount } = await supabase
       .from("customers").select("*", { count: "exact", head: true }).eq("business_id", business.id);
-    const { count: rewardCount } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0);
+    const { data: rewardCards } = await supabase
+      .from("customer_cards").select("rewards_earned").eq("business_id", business.id).gt("rewards_earned", 0);
+    const rewardCount = rewardCards?.reduce((sum, c) => sum + (c.rewards_earned || 0), 0) || 0;
     const today = new Date().toISOString().split("T")[0];
     let scansTodayQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", today);
     if (locationId) scansTodayQ = scansTodayQ.eq("location_id", locationId);
     const { count: scansCount } = await scansTodayQ;
+
+    // Return rate: customers with >1 visit / total customers
+    const { data: returningData } = await supabase
+      .from("customers").select("id", { count: "exact", head: false }).eq("business_id", business.id).gt("total_visits", 1);
+    const returningCount = returningData?.length || 0;
+    const returnRate = clientCount ? Math.round((returningCount / clientCount) * 100) : 0;
+
+    // Average visits
+    const { data: visitData } = await supabase
+      .from("customers").select("total_visits").eq("business_id", business.id);
+    const avgVisits = visitData && visitData.length > 0
+      ? (visitData.reduce((sum, c) => sum + (c.total_visits || 0), 0) / visitData.length)
+      : 0;
+
+    // Average rating
+    const { data: reviewData } = await supabase
+      .from("customer_reviews").select("rating").eq("business_id", business.id);
+    const avgRating = reviewData && reviewData.length > 0
+      ? (reviewData.reduce((sum, r) => sum + r.rating, 0) / reviewData.length)
+      : 0;
 
     // 30 days ago stats for trends
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
@@ -142,19 +164,19 @@ const Dashboard = () => {
     let scansPrevQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", sixtyDaysAgo).lte("created_at", thirtyDaysAgo);
     if (locationId) scansPrevQ = scansPrevQ.eq("location_id", locationId);
     const { count: scansPrev } = await scansPrevQ;
-    const { count: rewardsPrev } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0).lte("updated_at", thirtyDaysAgo);
 
     setStats({
       clients: clientCount || 0,
-      returnRate: clientCount ? Math.min(Math.round(((rewardCount || 0) / clientCount) * 100), 100) : 0,
+      returnRate,
       scansToday: scansCount || 0,
-      rewardsGiven: rewardCount || 0,
+      rewardsGiven: rewardCount,
+      avgVisits: Math.round(avgVisits * 10) / 10,
+      avgRating: Math.round(avgRating * 10) / 10,
     });
     setStats30dAgo({
       clients: clientsPrev || 0,
       scansToday: scansPrev || 0,
-      rewardsGiven: rewardsPrev || 0,
+      rewardsGiven: 0,
     });
   };
 
@@ -416,11 +438,15 @@ const Dashboard = () => {
     { done: onboarding.hasCampaign, label: siteSettings?.onboarding_step_4 || "Créer votre première campagne", path: "/dashboard/campaigns", icon: Send },
   ];
 
+  const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
+
   const statCards = [
-    { label: "Clients", value: stats.clients, icon: Users, gradient: "from-primary to-primary/70", trend: getTrend(stats.clients, stats30dAgo.clients) },
-    { label: "Retour", value: totalScans >= 10 ? `${stats.returnRate}%` : "—", icon: TrendingUp, gradient: "from-emerald-500 to-emerald-400", trend: null as number | null, insufficientData: totalScans < 10 },
-    { label: "Scans", value: stats.scansToday + todayScans, icon: QrCode, gradient: "from-accent to-amber-400", trend: getTrend(stats.scansToday, stats30dAgo.scansToday) },
-    { label: "Récompenses", value: stats.rewardsGiven, icon: Gift, gradient: "from-rose-500 to-pink-400", trend: getTrend(stats.rewardsGiven, stats30dAgo.rewardsGiven) },
+    { label: "Clients", value: stats.clients, icon: Users, gradient: "from-primary to-primary/70", trend: getTrend(stats.clients, stats30dAgo.clients), tooltip: "Nombre total de clients enregistrés dans votre programme de fidélité." },
+    { label: "Taux de retour", value: totalScans >= 10 ? `${stats.returnRate}%` : "—", icon: TrendingUp, gradient: "from-emerald-500 to-emerald-400", trend: null as number | null, insufficientData: totalScans < 10, tooltip: "Pourcentage de clients qui sont revenus plus d'une fois. Un bon taux est > 30%. Nécessite au moins 10 scans." },
+    { label: "Scans aujourd'hui", value: stats.scansToday + todayScans, icon: QrCode, gradient: "from-accent to-amber-400", trend: getTrend(stats.scansToday, stats30dAgo.scansToday), tooltip: "Nombre de passages scannés aujourd'hui. Compare avec la période précédente pour voir la tendance." },
+    { label: "Récompenses", value: stats.rewardsGiven, icon: Gift, gradient: "from-rose-500 to-pink-400", trend: getTrend(stats.rewardsGiven, stats30dAgo.rewardsGiven), tooltip: "Nombre total de récompenses distribuées à vos clients fidèles." },
+    { label: "Visites moy.", value: stats.avgVisits || "—", icon: BarChart3, gradient: "from-blue-500 to-blue-400", trend: null as number | null, tooltip: "Nombre moyen de visites par client. Plus c'est élevé, plus vos clients sont fidèles." },
+    { label: "Note moyenne", value: stats.avgRating ? `${stats.avgRating}/5` : "—", icon: StarIcon, gradient: "from-yellow-500 to-amber-400", trend: null as number | null, tooltip: "Note moyenne laissée par vos clients. Basée sur les avis collectés via votre programme." },
   ];
 
   return (
@@ -488,9 +514,10 @@ const Dashboard = () => {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {statCards.map((stat, i) => {
           const Icon = stat.icon;
+          const isTooltipOpen = tooltipOpen === stat.label;
           return (
             <motion.div
               key={stat.label}
@@ -504,17 +531,37 @@ const Dashboard = () => {
                 <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-sm`}>
                   <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
-                {stat.insufficientData ? (
-                  <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">min. 10 scans</span>
-                ) : stat.trend !== null && stat.trend !== 0 ? (
-                  <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${stat.trend > 0 ? "text-emerald-600" : "text-red-500"}`}>
-                    {stat.trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
-                    {Math.abs(stat.trend)}%
-                  </span>
-                ) : null}
+                <div className="flex items-center gap-1.5">
+                  {stat.insufficientData ? (
+                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">min. 10 scans</span>
+                  ) : stat.trend !== null && stat.trend !== 0 ? (
+                    <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${stat.trend > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      {stat.trend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                      {Math.abs(stat.trend)}%
+                    </span>
+                  ) : null}
+                  <button
+                    onClick={() => setTooltipOpen(isTooltipOpen ? null : stat.label)}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <Info className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <p className="text-xl sm:text-3xl font-display font-bold tracking-tight">{stat.value}</p>
               <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
+              <AnimatePresence>
+                {isTooltipOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    className="absolute inset-x-3 bottom-3 z-10 bg-foreground/90 text-background text-[11px] leading-relaxed rounded-xl p-3 shadow-lg backdrop-blur-sm"
+                  >
+                    {stat.tooltip}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
           );
         })}
