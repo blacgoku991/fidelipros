@@ -510,7 +510,7 @@ const CustomizePage = () => {
             />
             <OptionCard
               selected={isSub}
-              onClick={() => update("loyalty_type", "subscription")}
+              onClick={() => update("loyalty_type", "subscription" as any)}
               emoji="👑"
               title="Abonnement"
               desc="Statut membre avec avantages"
