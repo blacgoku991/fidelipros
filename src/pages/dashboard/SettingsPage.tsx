@@ -214,6 +214,33 @@ const SettingsPage = () => {
     else { toast.success("Mot de passe mis à jour"); setNewPassword(""); }
   };
 
+  const handleUpdateEmail = async () => {
+    if (!acctEmail || acctEmail === user?.email) return;
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: acctEmail });
+    setSavingEmail(false);
+    if (error) toast.error(error.message);
+    else toast.success("Un email de confirmation a été envoyé à votre nouvelle adresse.");
+  };
+
+  const handleSaveAccountInfo = async () => {
+    if (!business) return;
+    setSavingAccount(true);
+    const { error } = await supabase.from("businesses").update({
+      name: acctName.trim(),
+      phone: acctPhone.trim() || null,
+      address: acctAddress.trim() || null,
+      city: acctCity.trim() || null,
+      website: acctWebsite.trim() || null,
+    }).eq("id", business.id);
+    setSavingAccount(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Informations mises à jour");
+      await refreshBusiness();
+    }
+  };
+
   const handleAddressInput = (value: string) => {
     setAddress(value);
     clearTimeout(debounceRef.current);
