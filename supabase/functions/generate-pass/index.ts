@@ -580,7 +580,13 @@ function deflateRaw(data: Uint8Array): Uint8Array {
 const MAX_STRIP_BYTES = 800_000; // ~800 KB max for strip — Apple accepts .pkpass up to several MB
 
 async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPng: Uint8Array; strip2xPng: Uint8Array }> {
-  if (business.card_bg_image_url) {
+  const loyaltyType = business.loyalty_type || "stamps";
+  const current = card.current_points || 0;
+  const max = card.max_points || 10;
+
+  // For stamp-type cards, ALWAYS generate the visual strip with stamp circles
+  // (we can't composite circles on top of a custom image in Deno)
+  if (loyaltyType !== "stamps" && business.card_bg_image_url) {
     try {
       const imgUrl = cleanImageUrl(business.card_bg_image_url);
       console.log("[Pass] Fetching strip image:", imgUrl);
@@ -599,10 +605,12 @@ async function fetchOrGenerateStrip(business: any, card: any): Promise<{ stripPn
       console.error("[Pass] Failed to fetch strip image:", err);
     }
   }
+
+  if (loyaltyType === "stamps") {
+    console.log("[Pass] Generating stamp-visual strip (stamps mode — custom image skipped for stamp overlay)");
+  }
+
   const hexColor = business.primary_color || "#6B46C1";
-  const loyaltyType = business.loyalty_type || "stamps";
-  const current = card.current_points || 0;
-  const max = card.max_points || 10;
   const stripPng = generateStripWithVisuals(320, 123, hexColor, loyaltyType, current, max);
   const strip2xPng = generateStripWithVisuals(640, 246, hexColor, loyaltyType, current, max);
   return { stripPng, strip2xPng };
