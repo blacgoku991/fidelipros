@@ -22,7 +22,7 @@ import {
   Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
   Mail, Phone, History, MapPin, Star as StarIcon, MessageSquare,
   CheckCircle2, Circle, Palette, Send, Camera, ArrowUp, ArrowDown, Info,
-  BarChart3,
+  BarChart3, Euro,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
