@@ -280,14 +280,24 @@ const Dashboard = () => {
       }
     }
 
-    const loyaltyType = business.loyalty_type || "points";
-    const pointsToAdd = business.points_per_visit || 1;
+    const lt = business.loyalty_type || "points";
+    let pointsToAdd = business.points_per_visit || 1;
+    if (needsAmount && !isSyncMode) {
+      const purchaseAmount = parseFloat(scanAmount) || 0;
+      const ppe = business.points_per_euro || 1;
+      if (isCashback) {
+        pointsToAdd = Math.floor(purchaseAmount * ppe / 100);
+      } else {
+        pointsToAdd = Math.floor(purchaseAmount * ppe);
+      }
+      if (pointsToAdd < 1) pointsToAdd = 1;
+    }
     const maxPts = card.max_points || business.max_points_per_card || 10;
     const newPoints = (card.current_points || 0) + pointsToAdd;
     const rewardEarned = newPoints >= maxPts;
     const customer = card.customers;
-    const unitLabel = loyaltyType === "stamps" ? "tampon" : "point";
-    const unitLabelPlural = loyaltyType === "stamps" ? "tampons" : "points";
+    const unitLabel = lt === "stamps" ? "tampon" : lt === "cashback" ? "€" : "point";
+    const unitLabelPlural = lt === "stamps" ? "tampons" : lt === "cashback" ? "€" : "points";
     const addedLabel = pointsToAdd > 1 ? `+${pointsToAdd} ${unitLabelPlural}` : `+1 ${unitLabel}`;
 
     const changeMsg = rewardEarned
