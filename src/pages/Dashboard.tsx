@@ -127,12 +127,33 @@ const Dashboard = () => {
     if (!business) return;
     const { count: clientCount } = await supabase
       .from("customers").select("*", { count: "exact", head: true }).eq("business_id", business.id);
-    const { count: rewardCount } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0);
+    const { data: rewardCards } = await supabase
+      .from("customer_cards").select("rewards_earned").eq("business_id", business.id).gt("rewards_earned", 0);
+    const rewardCount = rewardCards?.reduce((sum, c) => sum + (c.rewards_earned || 0), 0) || 0;
     const today = new Date().toISOString().split("T")[0];
     let scansTodayQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", today);
     if (locationId) scansTodayQ = scansTodayQ.eq("location_id", locationId);
     const { count: scansCount } = await scansTodayQ;
+
+    // Return rate: customers with >1 visit / total customers
+    const { data: returningData } = await supabase
+      .from("customers").select("id", { count: "exact", head: false }).eq("business_id", business.id).gt("total_visits", 1);
+    const returningCount = returningData?.length || 0;
+    const returnRate = clientCount ? Math.round((returningCount / clientCount) * 100) : 0;
+
+    // Average visits
+    const { data: visitData } = await supabase
+      .from("customers").select("total_visits").eq("business_id", business.id);
+    const avgVisits = visitData && visitData.length > 0
+      ? (visitData.reduce((sum, c) => sum + (c.total_visits || 0), 0) / visitData.length)
+      : 0;
+
+    // Average rating
+    const { data: reviewData } = await supabase
+      .from("customer_reviews").select("rating").eq("business_id", business.id);
+    const avgRating = reviewData && reviewData.length > 0
+      ? (reviewData.reduce((sum, r) => sum + r.rating, 0) / reviewData.length)
+      : 0;
 
     // 30 days ago stats for trends
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
@@ -142,19 +163,19 @@ const Dashboard = () => {
     let scansPrevQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", sixtyDaysAgo).lte("created_at", thirtyDaysAgo);
     if (locationId) scansPrevQ = scansPrevQ.eq("location_id", locationId);
     const { count: scansPrev } = await scansPrevQ;
-    const { count: rewardsPrev } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0).lte("updated_at", thirtyDaysAgo);
 
     setStats({
       clients: clientCount || 0,
-      returnRate: clientCount ? Math.min(Math.round(((rewardCount || 0) / clientCount) * 100), 100) : 0,
+      returnRate,
       scansToday: scansCount || 0,
-      rewardsGiven: rewardCount || 0,
+      rewardsGiven: rewardCount,
+      avgVisits: Math.round(avgVisits * 10) / 10,
+      avgRating: Math.round(avgRating * 10) / 10,
     });
     setStats30dAgo({
       clients: clientsPrev || 0,
       scansToday: scansPrev || 0,
-      rewardsGiven: rewardsPrev || 0,
+      rewardsGiven: 0,
     });
   };
 
