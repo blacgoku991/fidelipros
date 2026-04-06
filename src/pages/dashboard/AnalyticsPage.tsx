@@ -60,7 +60,7 @@ const AnalyticsPage = () => {
       // Customers: only fields needed for stats
       supabase
         .from("customers")
-        .select("level, total_visits, last_visit_at")
+        .select("level, total_visits, last_visit_at, registration_source")
         .eq("business_id", businessId),
       // Cards: only rewards_earned aggregate
       supabase
@@ -147,18 +147,11 @@ const AnalyticsPage = () => {
         .from("vitrine_visits")
         .select("*", { count: "exact", head: true })
         .eq("business_id", businessId);
-
-      // Source breakdown from vitrine_visits
-      const { data: visitRows } = await supabase
-        .from("vitrine_visits")
-        .select("source")
-        .eq("business_id", businessId);
       const sourceCounts: Record<string, number> = {};
-      (visitRows || []).forEach((v: any) => {
-        const src = v.source || "direct";
+      customers.forEach((c: any) => {
+        const src = (c as any).registration_source || "direct";
         sourceCounts[src] = (sourceCounts[src] || 0) + 1;
       });
-
       setConversionFilter({
         visits: visitCount || 0,
         registrations: customers.length,
