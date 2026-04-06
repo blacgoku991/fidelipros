@@ -274,7 +274,7 @@ const ScannerPage = () => {
               </Button>
             </div>
 
-            {isCashback && (
+            {needsAmount && (
               <div className="flex gap-2 items-center">
                 <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
@@ -291,8 +291,8 @@ const ScannerPage = () => {
             )}
 
             <p className="text-[11px] text-center text-muted-foreground">
-              {isCashback
-                ? "Scannez le QR code ou entrez le code + montant"
+              {needsAmount
+                ? `Scannez le QR code ou entrez le code + montant (${(business as any).points_per_euro || 1}€ = ${(business as any).points_per_euro || 1} ${labels.unit}${((business as any).points_per_euro || 1) > 1 ? 's' : ''})`
                 : "Scannez le QR code ou entrez le code manuellement"}
             </p>
           </div>
