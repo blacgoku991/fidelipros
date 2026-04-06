@@ -426,6 +426,7 @@ const Dashboard = () => {
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
+    setScanAmount("");
     setScanning(false);
     scanLockRef.current = false;
     fetchStats();
