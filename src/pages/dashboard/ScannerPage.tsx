@@ -32,6 +32,8 @@ const ScannerPage = () => {
 
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
+  const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
+  const needsAmount = isCashback || isEuroToPoints;
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
   const handleScan = async (codeOverride?: string) => {
