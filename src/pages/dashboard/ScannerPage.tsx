@@ -63,6 +63,7 @@ const ScannerPage = () => {
     if (!card || cardError) {
       toast.error("Carte non trouvée ou inactive");
       setScanning(false);
+      scanLockRef.current = false;
       return;
     }
 
