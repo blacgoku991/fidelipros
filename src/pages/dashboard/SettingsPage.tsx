@@ -453,20 +453,26 @@ const SettingsPage = () => {
         <div className="flex gap-6 items-start">
           {/* Desktop sidebar */}
           <nav className="hidden lg:flex flex-col gap-0.5 w-52 shrink-0 sticky top-4">
-            {visibleSections.map((s) => (
+            {visibleSections.map((s) => {
+              const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
+              return (
               <button
                 key={s.key}
-                onClick={() => setActiveSection(s.key)}
+                onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-left w-full transition-all ${
-                  activeSection === s.key
+                  isLocked
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : activeSection === s.key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 <s.Icon className="w-4 h-4 shrink-0" />
                 {s.label}
+                {isLocked && <Lock className="w-3.5 h-3.5 ml-auto" />}
               </button>
-            ))}
+              );
+            })}
           </nav>
 
           {/* Content panel */}
