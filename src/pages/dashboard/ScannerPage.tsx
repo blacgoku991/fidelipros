@@ -91,10 +91,14 @@ const ScannerPage = () => {
 
     // Calculate points increment based on loyalty type
     let increment = 1;
-    if (isCashback) {
+    if (needsAmount) {
       const purchaseAmount = parseFloat(amount) || 0;
       const pointsPerEuro = (business as any).points_per_euro || 1;
-      increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
+      if (isCashback) {
+        increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
+      } else {
+        increment = Math.floor(purchaseAmount * pointsPerEuro);
+      }
       if (increment < 1) increment = 1;
     } else {
       increment = (business as any).points_per_visit || 1;
