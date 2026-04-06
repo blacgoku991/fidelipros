@@ -28,19 +28,26 @@ const ScannerPage = () => {
   const [success, setSuccess] = useState(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
+  const scanLockRef = useRef(false);
 
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
   const handleScan = async (codeOverride?: string) => {
+    // Prevent concurrent scan executions (double-scan guard)
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
+
     const code = codeOverride || cardCode;
     if (!code.trim() || !business || !user) {
       toast.error("Entrez un code de carte");
+      scanLockRef.current = false;
       return;
     }
     if (isCashback && (!amount || parseFloat(amount) <= 0)) {
       toast.error("Entrez le montant de l'achat");
+      scanLockRef.current = false;
       return;
     }
     setScanning(true);
@@ -56,6 +63,7 @@ const ScannerPage = () => {
     if (!card || cardError) {
       toast.error("Carte non trouvée ou inactive");
       setScanning(false);
+      scanLockRef.current = false;
       return;
     }
 
@@ -69,11 +77,12 @@ const ScannerPage = () => {
     if ((cooldown as any)?.last_scan) {
       const elapsed = (Date.now() - new Date((cooldown as any).last_scan).getTime()) / 1000;
       if (elapsed < SCAN_COOLDOWN_SECONDS) {
-        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+      const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
         toast.warning(`⏱ Scan trop rapide`, {
           description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
         });
         setScanning(false);
+        scanLockRef.current = false;
         return;
       }
     }
@@ -190,6 +199,7 @@ const ScannerPage = () => {
     setCardCode("");
     setAmount("");
     setScanning(false);
+    scanLockRef.current = false;
 
     if (rewardEarned) {
       toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
