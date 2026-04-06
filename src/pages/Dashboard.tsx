@@ -84,6 +84,7 @@ const Dashboard = () => {
   const [todayScans, setTodayScans] = useState(0);
   const isOnline = useOnlineStatus();
   const [pendingScanCount, setPendingScanCount] = useState(0);
+  const scanLockRef = useRef(false);
 
   // Popup
   const [popup, setPopup] = useState<{
@@ -126,12 +127,22 @@ const Dashboard = () => {
     if (!business) return;
     const { count: clientCount } = await supabase
       .from("customers").select("*", { count: "exact", head: true }).eq("business_id", business.id);
-    const { count: rewardCount } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0);
+
+    // Total rewards earned (sum, not count of cards)
+    const { data: cardsData } = await supabase
+      .from("customer_cards").select("rewards_earned").eq("business_id", business.id);
+    const rewardsTotal = (cardsData || []).reduce((sum, c) => sum + (c.rewards_earned || 0), 0);
+
     const today = new Date().toISOString().split("T")[0];
     let scansTodayQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", today);
     if (locationId) scansTodayQ = scansTodayQ.eq("location_id", locationId);
     const { count: scansCount } = await scansTodayQ;
+
+    // Multi-visit return rate
+    const { data: customersForRate } = await supabase
+      .from("customers").select("total_visits").eq("business_id", business.id);
+    const multiVisit = (customersForRate || []).filter(c => (c.total_visits || 0) > 1).length;
+    const returnRate = (customersForRate || []).length > 0 ? Math.round((multiVisit / (customersForRate || []).length) * 100) : 0;
 
     // 30 days ago stats for trends
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString();
@@ -141,19 +152,23 @@ const Dashboard = () => {
     let scansPrevQ = supabase.from("points_history").select("*", { count: "exact", head: true }).eq("business_id", business.id).gte("created_at", sixtyDaysAgo).lte("created_at", thirtyDaysAgo);
     if (locationId) scansPrevQ = scansPrevQ.eq("location_id", locationId);
     const { count: scansPrev } = await scansPrevQ;
-    const { count: rewardsPrev } = await supabase
-      .from("customer_cards").select("*", { count: "exact", head: true }).eq("business_id", business.id).gt("rewards_earned", 0).lte("updated_at", thirtyDaysAgo);
+    const { data: cardsPrev } = await supabase
+      .from("customer_cards").select("rewards_earned").eq("business_id", business.id).lte("updated_at", thirtyDaysAgo);
+    const rewardsPrevTotal = (cardsPrev || []).reduce((sum, c) => sum + (c.rewards_earned || 0), 0);
+
+    // Sync todayScans from DB
+    setTodayScans(scansCount || 0);
 
     setStats({
       clients: clientCount || 0,
-      returnRate: clientCount ? Math.min(Math.round(((rewardCount || 0) / clientCount) * 100), 100) : 0,
+      returnRate,
       scansToday: scansCount || 0,
-      rewardsGiven: rewardCount || 0,
+      rewardsGiven: rewardsTotal,
     });
     setStats30dAgo({
       clients: clientsPrev || 0,
       scansToday: scansPrev || 0,
-      rewardsGiven: rewardsPrev || 0,
+      rewardsGiven: rewardsPrevTotal,
     });
   };
 
@@ -201,12 +216,17 @@ const Dashboard = () => {
   const processCardCode = async (code: string, isSyncMode = false) => {
     if (!code.trim() || !business || !user) return;
 
+    // Prevent concurrent scan executions
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
+
     // Offline fallback: queue scan and show toast
     if (!isOnline && !isSyncMode) {
       await queueScan({ cardCode: code.trim(), businessId: business.id, userId: user.id, timestamp: new Date().toISOString() });
       setPendingScanCount(await getPendingCount());
       toast.info("Scan enregistré hors-ligne. Il sera synchronisé au retour de la connexion.");
       setCardCode("");
+      scanLockRef.current = false;
       return;
     }
 
@@ -219,7 +239,29 @@ const Dashboard = () => {
     if (!card || cardError) {
       setPopup({ open: true, type: "error", title: "Carte introuvable", message: "Ce code ne correspond à aucune carte active." });
       setScanning(false);
+      scanLockRef.current = false;
       return;
+    }
+
+    // Anti double-scan cooldown check
+    const SCAN_COOLDOWN_SECONDS = 30;
+    const { data: cooldown } = await supabase
+      .from("scan_cooldowns")
+      .select("last_scan")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (cooldown?.last_scan) {
+      const elapsed = (Date.now() - new Date(cooldown.last_scan).getTime()) / 1000;
+      if (elapsed < SCAN_COOLDOWN_SECONDS) {
+        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+        toast.warning(`⏱ Scan trop rapide`, {
+          description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
+        });
+        setScanning(false);
+        scanLockRef.current = false;
+        return;
+      }
     }
 
     const loyaltyType = business.loyalty_type || "points";
@@ -246,6 +288,7 @@ const Dashboard = () => {
     if (updateError) {
       setPopup({ open: true, type: "error", title: "Erreur", message: "La mise à jour des points a échoué. Réessayez." });
       setScanning(false);
+      scanLockRef.current = false;
       return;
     }
 
@@ -340,10 +383,19 @@ const Dashboard = () => {
       }).catch(() => {});
     } catch { /* non-blocking */ }
 
+    // Update scan cooldown
+    await supabase
+      .from("scan_cooldowns")
+      .upsert(
+        { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
+        { onConflict: "card_id" }
+      );
+
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
     setScanning(false);
+    scanLockRef.current = false;
     fetchStats();
     fetchOnboarding();
 
