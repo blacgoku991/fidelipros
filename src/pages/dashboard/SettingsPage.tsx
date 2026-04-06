@@ -36,7 +36,7 @@ const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = 
 ];
 
 const SettingsPage = () => {
-  const { user, business, role } = useAuth();
+  const { user, business, role, refreshBusiness } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("vitrine");
 
@@ -47,6 +47,16 @@ const SettingsPage = () => {
   }, []);
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Compte fields
+  const [acctEmail, setAcctEmail] = useState("");
+  const [acctName, setAcctName] = useState("");
+  const [acctPhone, setAcctPhone] = useState("");
+  const [acctAddress, setAcctAddress] = useState("");
+  const [acctCity, setAcctCity] = useState("");
+  const [acctWebsite, setAcctWebsite] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
 
   // Vitrine / slug
   const [slug, setSlug] = useState("");
