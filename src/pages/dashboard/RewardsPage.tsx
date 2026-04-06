@@ -150,10 +150,10 @@ const RewardsPage = () => {
                   </div>
                   {r.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{r.description}</p>}
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-amber-500" />
-                      <span className="text-xs font-semibold text-amber-600">{r.points_required} pts requis</span>
-                    </div>
+                     <div className="flex items-center gap-1">
+                       <Trophy className="w-3 h-3 text-amber-500" />
+                       <span className="text-xs font-semibold text-amber-600">{r.points_required} {units.short} requis</span>
+                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <BarChart3 className="w-3 h-3" />
                       <span>Réclamée <strong className="text-foreground">{approxClaimed}</strong> fois</span>
