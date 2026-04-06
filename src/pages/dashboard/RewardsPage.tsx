@@ -207,10 +207,10 @@ const RewardsPage = () => {
                       <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{t.name}</p>
                       {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>}
                     </div>
-                    <div className="flex items-center gap-0.5 text-amber-600 shrink-0">
-                      <Trophy className="w-3 h-3" />
-                      <span className="text-xs font-semibold">{t.points_required}</span>
-                    </div>
+                     <div className="flex items-center gap-0.5 text-amber-600 shrink-0">
+                       <Trophy className="w-3 h-3" />
+                       <span className="text-xs font-semibold">{t.points_required} {units.short}</span>
+                     </div>
                   </div>
                 </motion.button>
               ))}
