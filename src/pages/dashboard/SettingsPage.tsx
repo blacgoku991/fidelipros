@@ -36,7 +36,7 @@ const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = 
 ];
 
 const SettingsPage = () => {
-  const { user, business, role } = useAuth();
+  const { user, business, role, refreshBusiness } = useAuth();
   const [searchParams] = useSearchParams();
   const [activeSection, setActiveSection] = useState<SectionKey>("vitrine");
 
@@ -47,6 +47,16 @@ const SettingsPage = () => {
   }, []);
   const [email, setEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  // Compte fields
+  const [acctEmail, setAcctEmail] = useState("");
+  const [acctName, setAcctName] = useState("");
+  const [acctPhone, setAcctPhone] = useState("");
+  const [acctAddress, setAcctAddress] = useState("");
+  const [acctCity, setAcctCity] = useState("");
+  const [acctWebsite, setAcctWebsite] = useState("");
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
 
   // Vitrine / slug
   const [slug, setSlug] = useState("");
@@ -121,8 +131,21 @@ const SettingsPage = () => {
   }, []);
 
   useEffect(() => {
-    if (user) setEmail(user.email || "");
+    if (user) {
+      setEmail(user.email || "");
+      setAcctEmail(user.email || "");
+    }
   }, [user]);
+
+  useEffect(() => {
+    if (business) {
+      setAcctName(business.name || "");
+      setAcctPhone(business.phone || "");
+      setAcctAddress(business.address || "");
+      setAcctCity(business.city || "");
+      setAcctWebsite(business.website || "");
+    }
+  }, [business]);
 
   useEffect(() => {
     if (business) {
@@ -189,6 +212,33 @@ const SettingsPage = () => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) toast.error(error.message);
     else { toast.success("Mot de passe mis à jour"); setNewPassword(""); }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!acctEmail || acctEmail === user?.email) return;
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: acctEmail });
+    setSavingEmail(false);
+    if (error) toast.error(error.message);
+    else toast.success("Un email de confirmation a été envoyé à votre nouvelle adresse.");
+  };
+
+  const handleSaveAccountInfo = async () => {
+    if (!business) return;
+    setSavingAccount(true);
+    const { error } = await supabase.from("businesses").update({
+      name: acctName.trim(),
+      phone: acctPhone.trim() || null,
+      address: acctAddress.trim() || null,
+      city: acctCity.trim() || null,
+      website: acctWebsite.trim() || null,
+    }).eq("id", business.id);
+    setSavingAccount(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Informations mises à jour");
+      await refreshBusiness();
+    }
   };
 
   const handleAddressInput = (value: string) => {
@@ -480,19 +530,63 @@ const SettingsPage = () => {
 
         {/* Compte */}
         {activeSection === "compte" && (
-        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
-          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
-            <Shield className="w-4 h-4 text-primary" /> Compte
-          </h2>
-          <div className="space-y-2">
-            <Label className="text-xs">Email</Label>
-            <Input value={email} disabled className="rounded-xl bg-secondary text-sm" />
+        <div className="space-y-6">
+          {/* Sécurité */}
+          <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+            <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+              <Shield className="w-4 h-4 text-primary" /> Sécurité du compte
+            </h2>
+            <div className="space-y-2">
+              <Label className="text-xs">Adresse email</Label>
+              <div className="flex gap-2">
+                <Input value={acctEmail} onChange={(e) => setAcctEmail(e.target.value)} className="rounded-xl text-sm flex-1" placeholder="votre@email.com" />
+                <Button onClick={handleUpdateEmail} size="sm" className="rounded-xl shrink-0" disabled={savingEmail || acctEmail === user?.email}>
+                  {savingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Changer"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">Un email de confirmation sera envoyé à la nouvelle adresse.</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Nouveau mot de passe</Label>
+              <div className="flex gap-2">
+                <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" className="rounded-xl text-sm flex-1" />
+                <Button onClick={handleUpdatePassword} size="sm" className="rounded-xl shrink-0" disabled={!newPassword}>Changer</Button>
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label className="text-xs">Nouveau mot de passe</Label>
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min. 8 caractères" className="rounded-xl text-sm" />
+
+          {/* Infos entreprise */}
+          <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+            <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+              <Store className="w-4 h-4 text-primary" /> Informations de l'entreprise
+            </h2>
+            <div className="space-y-2">
+              <Label className="text-xs">Nom de l'entreprise</Label>
+              <Input value={acctName} onChange={(e) => setAcctName(e.target.value)} className="rounded-xl text-sm" placeholder="Mon Commerce" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-xs">Téléphone</Label>
+                <Input value={acctPhone} onChange={(e) => setAcctPhone(e.target.value)} className="rounded-xl text-sm" placeholder="06 12 34 56 78" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs">Ville</Label>
+                <Input value={acctCity} onChange={(e) => setAcctCity(e.target.value)} className="rounded-xl text-sm" placeholder="Paris" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Adresse</Label>
+              <Input value={acctAddress} onChange={(e) => setAcctAddress(e.target.value)} className="rounded-xl text-sm" placeholder="123 Rue de la Fidélité" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs">Site web</Label>
+              <Input value={acctWebsite} onChange={(e) => setAcctWebsite(e.target.value)} className="rounded-xl text-sm" placeholder="https://mon-commerce.fr" />
+            </div>
+            <Button onClick={handleSaveAccountInfo} size="sm" className="rounded-xl" disabled={savingAccount}>
+              {savingAccount ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Check className="w-3.5 h-3.5 mr-1" />}
+              Sauvegarder
+            </Button>
           </div>
-          <Button onClick={handleUpdatePassword} size="sm" className="rounded-xl">Mettre à jour</Button>
         </div>
         )}
 
