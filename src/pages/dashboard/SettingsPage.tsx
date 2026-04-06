@@ -428,20 +428,26 @@ const SettingsPage = () => {
 
         {/* Mobile tabs */}
         <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x scrollbar-hide">
-          {visibleSections.map((s) => (
+          {visibleSections.map((s) => {
+            const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
+            return (
             <button
               key={s.key}
-              onClick={() => setActiveSection(s.key)}
+              onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap snap-start transition-all ${
-                activeSection === s.key
+                isLocked
+                  ? "bg-muted/50 text-muted-foreground/50 cursor-not-allowed"
+                  : activeSection === s.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
               }`}
             >
               <s.Icon className="w-3.5 h-3.5" />
               {s.label}
+              {isLocked && <Lock className="w-3 h-3 ml-0.5" />}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex gap-6 items-start">
