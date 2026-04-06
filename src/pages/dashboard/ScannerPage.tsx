@@ -47,7 +47,7 @@ const ScannerPage = () => {
       scanLockRef.current = false;
       return;
     }
-    if (isCashback && (!amount || parseFloat(amount) <= 0)) {
+    if (needsAmount && (!amount || parseFloat(amount) <= 0)) {
       toast.error("Entrez le montant de l'achat");
       scanLockRef.current = false;
       return;
