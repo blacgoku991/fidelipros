@@ -179,7 +179,7 @@ const ScannerPage = () => {
 
     // ── Update cooldown ──────────────────────────────────────────
     await supabase
-      .from("scan_cooldowns" as any)
+      .from("scan_cooldowns")
       .upsert(
         { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
         { onConflict: "card_id" }
