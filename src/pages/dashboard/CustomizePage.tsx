@@ -25,11 +25,12 @@ import {
   Save, Palette, CreditCard, Zap, Eye, Gift, Layout, Download, Copy, Printer, ExternalLink,
   Link as LinkIcon, Shield, X, ImageIcon, ArrowRight, Info, Calculator,
   Store, Sparkles, SlidersHorizontal, QrCode, Layers, ChevronRight, Check,
+  Star, TrendingUp, Clock, Bell, Target, Crown, Coins, Stamp, Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence, motion } from "framer-motion";
 
-/* ────────────────────────── constants ────────────────────────── */
+/* ═══════════════════════════ CONSTANTS ═══════════════════════════ */
 
 const cardStyles = [
   { value: "classic", label: "Classique", emoji: "🎨" },
@@ -41,12 +42,12 @@ const cardStyles = [
 ];
 
 const presetThemes = [
-  { label: "Charbon", primary: "#1a1a2e", secondary: "#e94560", style: "neon" },
-  { label: "Or", primary: "#92400e", secondary: "#F59E0B", style: "luxury" },
-  { label: "Lavande", primary: "#7c3aed", secondary: "#f9a8d4", style: "classic" },
-  { label: "Émeraude", primary: "#059669", secondary: "#3b82f6", style: "restaurant" },
-  { label: "Océan", primary: "#0e4a6e", secondary: "#38bdf8", style: "classic" },
-  { label: "Cerise", primary: "#9f1239", secondary: "#fda4af", style: "luxury" },
+  { label: "Charbon", primary: "#1a1a2e", secondary: "#e94560", fg: "#ffffff", lbl: "#aaaaaa" },
+  { label: "Or Noir", primary: "#92400e", secondary: "#F59E0B", fg: "#ffffff", lbl: "#fde68a" },
+  { label: "Lavande", primary: "#7c3aed", secondary: "#f9a8d4", fg: "#ffffff", lbl: "#ddd6fe" },
+  { label: "Émeraude", primary: "#059669", secondary: "#3b82f6", fg: "#ffffff", lbl: "#a7f3d0" },
+  { label: "Océan", primary: "#0e4a6e", secondary: "#38bdf8", fg: "#ffffff", lbl: "#bae6fd" },
+  { label: "Cerise", primary: "#9f1239", secondary: "#fda4af", fg: "#ffffff", lbl: "#fecdd3" },
 ];
 
 const categories = [
@@ -62,16 +63,16 @@ const categories = [
 
 type SectionId = "identity" | "program" | "design" | "fields" | "engagement" | "tools";
 
-const sections: { id: SectionId; icon: typeof Store; label: string; desc: string }[] = [
-  { id: "identity", icon: Store, label: "Identité", desc: "Logo, nom et infos" },
-  { id: "program", icon: Zap, label: "Programme", desc: "Type et règles de points" },
-  { id: "design", icon: Palette, label: "Design", desc: "Couleurs et style" },
-  { id: "fields", icon: SlidersHorizontal, label: "Affichage", desc: "Champs visibles" },
-  { id: "engagement", icon: Sparkles, label: "Engagement", desc: "Relances et alertes" },
-  { id: "tools", icon: Layers, label: "Outils", desc: "QR, templates, modules" },
+const sections: { id: SectionId; icon: typeof Store; label: string }[] = [
+  { id: "identity", icon: Store, label: "Identité" },
+  { id: "program", icon: Zap, label: "Programme" },
+  { id: "design", icon: Palette, label: "Design" },
+  { id: "fields", icon: Eye, label: "Affichage" },
+  { id: "engagement", icon: Bell, label: "Engagement" },
+  { id: "tools", icon: Layers, label: "Outils" },
 ];
 
-/* ────────────────────────── helpers ────────────────────────── */
+/* ═══════════════════════════ HELPERS ═══════════════════════════ */
 
 function buildPassFields(form: any) {
   const pseudoBusiness = {
@@ -90,41 +91,154 @@ function buildPassFields(form: any) {
   return buildApplePassFields(config, demoCustomer);
 }
 
-/* ── Reusable section card ── */
-function SectionCard({ title, icon: Icon, children, badge }: {
-  title: string; icon: typeof Store; children: React.ReactNode; badge?: React.ReactNode;
+/* ═══════════════════════════ SUB-COMPONENTS ═══════════════════════════ */
+
+function Panel({ title, subtitle, icon: Icon, children, action }: {
+  title: string; subtitle?: string; icon: typeof Store; children: React.ReactNode; action?: React.ReactNode;
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-      className="rounded-2xl bg-card border border-border/50 overflow-hidden"
+      transition={{ duration: 0.25 }}
+      className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm"
     >
-      <div className="flex items-center gap-2.5 px-5 pt-5 pb-3">
-        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-primary" />
+      <div className="px-5 pt-5 pb-2 flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center border border-primary/10">
+            <Icon className="w-4.5 h-4.5 text-primary" />
+          </div>
+          <div>
+            <h3 className="font-bold text-[15px] leading-tight">{title}</h3>
+            {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+          </div>
         </div>
-        <h3 className="font-semibold text-sm flex-1">{title}</h3>
-        {badge}
+        {action}
       </div>
-      <div className="px-5 pb-5 space-y-4">{children}</div>
+      <div className="px-5 pb-5 pt-3 space-y-5">{children}</div>
     </motion.div>
   );
 }
 
-/* ── Small field group ── */
-function FieldGroup({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+function Divider({ label }: { label?: string }) {
+  if (!label) return <div className="border-t border-border/40" />;
   return (
-    <div className="space-y-1.5">
-      <Label className="text-xs font-medium">{label}</Label>
-      {children}
-      {hint && <p className="text-[10px] text-muted-foreground">{hint}</p>}
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-border/40" />
+      <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{label}</span>
+      <div className="h-px flex-1 bg-border/40" />
     </div>
   );
 }
 
-/* ────────────────────────── main component ────────────────────────── */
+function OptionCard({ selected, onClick, icon, emoji, title, desc, badge }: {
+  selected: boolean; onClick: () => void; icon?: typeof Store; emoji?: string;
+  title: string; desc?: string; badge?: string;
+}) {
+  const Icon = icon;
+  return (
+    <button onClick={onClick} className={`relative p-3.5 rounded-xl border-2 text-left transition-all group w-full ${
+      selected ? "border-primary bg-primary/5 shadow-sm shadow-primary/10" : "border-border/40 hover:border-primary/25 hover:bg-accent/20"
+    }`}>
+      {selected && (
+        <div className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary flex items-center justify-center shadow-sm">
+          <Check className="w-3 h-3 text-primary-foreground" />
+        </div>
+      )}
+      <div className="flex items-center gap-2.5">
+        {emoji && <span className="text-xl">{emoji}</span>}
+        {Icon && <Icon className="w-5 h-5 text-primary" />}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-xs">{title}</span>
+            {badge && <Badge variant="secondary" className="text-[8px] h-4 px-1.5">{badge}</Badge>}
+          </div>
+          {desc && <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{desc}</p>}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function SmartSlider({ label, value, onChange, min, max, step = 1, suffix, pluralSuffix, prefix, hint, icon: Icon, accentColor }: {
+  label: string; value: number; onChange: (v: number) => void;
+  min: number; max: number; step?: number;
+  suffix: string; pluralSuffix?: string; prefix?: string; hint?: string;
+  icon?: typeof Star; accentColor?: string;
+}) {
+  const displayVal = `${prefix ? prefix + " " : ""}${value} ${value > 1 && pluralSuffix ? pluralSuffix : suffix}`;
+  const pct = Math.round(((value - min) / (max - min)) * 100);
+  return (
+    <div className="rounded-xl bg-accent/20 border border-border/30 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="w-3.5 h-3.5 text-primary" />}
+          <Label className="text-xs font-semibold">{label}</Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-muted-foreground">{pct}%</span>
+          <Badge className="text-[10px] tabular-nums font-bold h-5.5 px-2.5 bg-primary/10 text-primary border-primary/20 hover:bg-primary/15">{displayVal}</Badge>
+        </div>
+      </div>
+      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} />
+      <div className="flex justify-between text-[9px] text-muted-foreground font-medium">
+        <span>{min}</span>
+        <span>{max} {pluralSuffix || suffix}</span>
+      </div>
+      {hint && (
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-background/60 rounded-lg px-2.5 py-1.5 border border-border/20">
+          <Info className="w-3 h-3 shrink-0 text-primary/60" />
+          <span>{hint}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ToggleRow({ emoji, label, desc, checked, onChange }: {
+  emoji: string; label: string; desc: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3.5 group">
+      <div className="flex items-center gap-3">
+        <span className="text-lg w-7 text-center">{emoji}</span>
+        <div>
+          <p className="text-[13px] font-medium leading-tight">{label}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{desc}</p>
+        </div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+function SimulationBox({ pointsPerEuro, label }: { pointsPerEuro: number; label?: string }) {
+  const amounts = [5, 10, 25, 50, 100];
+  return (
+    <div className="rounded-xl overflow-hidden border border-border/30">
+      <div className="bg-primary/5 px-4 py-2.5 flex items-center gap-2 border-b border-border/20">
+        <Calculator className="w-3.5 h-3.5 text-primary" />
+        <span className="text-[11px] font-bold uppercase tracking-wider text-primary">{label || "Simulateur"}</span>
+      </div>
+      <div className="p-3 space-y-0">
+        {amounts.map((a, i) => (
+          <div key={a} className={`flex items-center justify-between py-2 ${i < amounts.length - 1 ? "border-b border-border/15" : ""}`}>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium w-12 text-right tabular-nums">{a} €</span>
+              <ArrowRight className="w-3 h-3 text-muted-foreground" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[12px] font-bold tabular-nums">{a * pointsPerEuro}</span>
+              <span className="text-[10px] text-muted-foreground">pts</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════ MAIN COMPONENT ═══════════════════════════ */
 
 const CustomizePage = () => {
   const { user, business, refreshBusiness } = useAuth();
@@ -199,7 +313,7 @@ const CustomizePage = () => {
       ...config,
     } as any).eq("id", business.id);
     if (error) { toast.error("Erreur : " + error.message); }
-    else { toast.success("Sauvegardé ✓"); await refreshBusiness(); }
+    else { toast.success("Modifications sauvegardées ✓"); await refreshBusiness(); }
     setSaving(false);
   };
 
@@ -226,7 +340,6 @@ const CustomizePage = () => {
     img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
   };
 
-  // Pass fields
   const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = buildPassFields(form);
   const cardPreviewId = `preview-${user?.id?.slice(0, 8) || "demo"}`;
   const previewWidth = 240;
@@ -252,34 +365,34 @@ const CustomizePage = () => {
     />
   );
 
-  /* ────────────── section renderers ────────────── */
+  /* ═══════════════ SECTION: IDENTITÉ ═══════════════ */
 
   const renderIdentity = () => (
-    <SectionCard title="Identité du commerce" icon={Store}>
-      {/* Logo + Banner side by side */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-xs mb-2 block">
-            Logo
-            {!logoUrl && <Badge variant="secondary" className="ml-2 text-[9px]">Requis</Badge>}
-          </Label>
-          {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={setLogoUrl} />}
-        </div>
-        <div>
-          <Label className="text-xs mb-2 block">Bannière</Label>
+    <div className="space-y-4">
+      <Panel title="Votre commerce" subtitle="Logo, bannière et informations" icon={Store}>
+        {/* Logo & Banner */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-semibold">Logo</Label>
+              {!logoUrl && <Badge variant="destructive" className="text-[8px] h-4 px-1.5 animate-pulse">Requis</Badge>}
+            </div>
+            {business && <LogoUpload currentUrl={logoUrl} businessId={business.id} onUploaded={setLogoUrl} />}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Bannière</Label>
             {stripImageUrl ? (
               <div className="relative group">
-                <img src={stripImageUrl} alt="Bannière" className="w-full h-16 rounded-xl object-cover border border-border/50" />
+                <img src={stripImageUrl} alt="Bannière" className="w-full h-20 rounded-xl object-cover border border-border/50" />
                 <button
                   onClick={async () => {
                     setStripImageUrl(null);
                     if (business) {
                       await supabase.from("businesses").update({ card_bg_image_url: null }).eq("id", business.id);
-                      toast.success("Supprimée");
+                      toast.success("Bannière supprimée");
                     }
                   }}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px]"
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -287,440 +400,464 @@ const CustomizePage = () => {
             ) : (
               <div
                 onClick={() => stripFileRef.current?.click()}
-                className="w-full h-16 rounded-xl border-2 border-dashed border-border/60 flex items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                className="w-full h-20 rounded-xl border-2 border-dashed border-border/50 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all gap-1"
               >
-                <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                <ImageIcon className="w-5 h-5 text-muted-foreground/60" />
+                <span className="text-[9px] text-muted-foreground">640×200px</span>
               </div>
             )}
-            <button
-              onClick={() => stripFileRef.current?.click()}
-              className="text-[10px] text-primary font-medium hover:underline"
-            >
-              {stripImageUrl ? "Changer" : "Uploader"} · 640×200px
-            </button>
+            <input ref={stripFileRef} type="file" accept="image/*" className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !business) return;
+                if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
+                const ext = file.name.split(".").pop();
+                const path = `${business.id}/strip.${ext}`;
+                const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
+                if (error) { toast.error("Erreur upload"); return; }
+                const { data: { publicUrl: pUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
+                const url = `${pUrl}?t=${Date.now()}`;
+                setStripImageUrl(url);
+                await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
+                toast.success("Bannière mise à jour !");
+              }}
+            />
           </div>
-          <input ref={stripFileRef} type="file" accept="image/*" className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file || !business) return;
-              if (file.size > 2 * 1024 * 1024) { toast.error("Max 2 Mo"); return; }
-              const ext = file.name.split(".").pop();
-              const path = `${business.id}/strip.${ext}`;
-              const { error } = await supabase.storage.from("business-logos").upload(path, file, { upsert: true });
-              if (error) { toast.error("Erreur upload"); return; }
-              const { data: { publicUrl: pUrl } } = supabase.storage.from("business-logos").getPublicUrl(path);
-              const url = `${pUrl}?t=${Date.now()}`;
-              setStripImageUrl(url);
-              await supabase.from("businesses").update({ card_bg_image_url: url }).eq("id", business.id);
-              toast.success("Bannière mise à jour !");
-            }}
-          />
         </div>
-      </div>
 
-      <FieldGroup label="Nom du commerce">
-        <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl" />
-      </FieldGroup>
+        <Divider />
 
-      <FieldGroup label="Description courte">
-        <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl" rows={2} />
-      </FieldGroup>
+        {/* Name & Description */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Nom du commerce</Label>
+          <Input value={form.name} onChange={(e) => update("name", e.target.value)} className="rounded-xl h-11 font-medium" placeholder="Mon Super Commerce" />
+        </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <FieldGroup label="Catégorie">
-          <Select value={form.category} onValueChange={(v) => update("category", v)}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {categories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </FieldGroup>
-        <FieldGroup label="Téléphone">
-          <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl" />
-        </FieldGroup>
-      </div>
-    </SectionCard>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Description</Label>
+          <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl resize-none" rows={2} placeholder="Une phrase qui décrit votre commerce..." />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Catégorie</Label>
+            <Select value={form.category} onValueChange={(v) => update("category", v)}>
+              <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {categories.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Téléphone</Label>
+            <Input value={form.phone} onChange={(e) => update("phone", e.target.value)} className="rounded-xl h-10" placeholder="01 23 45 67 89" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Adresse</Label>
+            <Input value={form.address} onChange={(e) => update("address", e.target.value)} className="rounded-xl h-10" placeholder="12 rue..." />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Ville</Label>
+            <Input value={form.city} onChange={(e) => update("city", e.target.value)} className="rounded-xl h-10" placeholder="Paris" />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Site web</Label>
+          <Input value={form.website} onChange={(e) => update("website", e.target.value)} className="rounded-xl h-10" placeholder="https://mon-commerce.fr" />
+        </div>
+      </Panel>
+    </div>
   );
+
+  /* ═══════════════ SECTION: PROGRAMME ═══════════════ */
 
   const renderProgram = () => {
     const isPoints = form.loyalty_type === "points";
     const isStamps = form.loyalty_type === "stamps";
     const isCashback = form.loyalty_type === "cashback";
+    const isSub = form.loyalty_type as string === "subscription";
     const euroMode = isPoints && form.points_per_euro > 0;
 
     return (
-      <SectionCard title="Programme de fidélité" icon={Zap}>
-        {/* Type selector */}
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { val: "points", emoji: "⭐", label: "Points", desc: "Cumul progressif" },
-            { val: "stamps", emoji: "🎯", label: "Tampons", desc: "Carte à tamponner" },
-            { val: "cashback", emoji: "💰", label: "Cashback", desc: "Cagnotte en euros" },
-            { val: "subscription", emoji: "📋", label: "Abonnement", desc: "Statut membre" },
-          ].map((type) => (
-            <button
-              key={type.val}
-              onClick={() => update("loyalty_type", type.val as any)}
-              className={`relative p-3 rounded-xl border-2 text-left transition-all group ${
-                form.loyalty_type === type.val
-                  ? "border-primary bg-primary/5 shadow-sm"
-                  : "border-border/40 hover:border-primary/20 hover:bg-accent/30"
-              }`}
-            >
-              {form.loyalty_type === type.val && (
-                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                  <Check className="w-3 h-3 text-primary-foreground" />
-                </div>
-              )}
-              <span className="text-xl">{type.emoji}</span>
-              <p className="font-semibold text-xs mt-1.5">{type.label}</p>
-              <p className="text-[10px] text-muted-foreground">{type.desc}</p>
-            </button>
-          ))}
-        </div>
+      <div className="space-y-4">
+        {/* Type Selector */}
+        <Panel title="Type de programme" subtitle="Choisissez comment récompenser vos clients" icon={Zap}>
+          <div className="grid grid-cols-2 gap-2.5">
+            <OptionCard
+              selected={isPoints}
+              onClick={() => update("loyalty_type", "points")}
+              emoji="⭐"
+              title="Points"
+              desc="Cumul progressif de points à chaque achat"
+            />
+            <OptionCard
+              selected={isStamps}
+              onClick={() => update("loyalty_type", "stamps")}
+              emoji="🎯"
+              title="Tampons"
+              desc="Carte à tamponner à chaque visite"
+            />
+            <OptionCard
+              selected={isCashback}
+              onClick={() => update("loyalty_type", "cashback")}
+              emoji="💰"
+              title="Cashback"
+              desc="Cagnotte en euros sur les achats"
+            />
+            <OptionCard
+              selected={isSub}
+              onClick={() => update("loyalty_type", "subscription" as any)}
+              emoji="👑"
+              title="Abonnement"
+              desc="Statut membre avec avantages"
+            />
+          </div>
+        </Panel>
 
-        {/* ── Points specifics ── */}
+        {/* Configuration based on type */}
         {isPoints && (
-          <>
-            {/* Earning mode */}
-            <div className="space-y-2.5">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                <Calculator className="w-3 h-3" /> Mode d'attribution
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
+          <Panel title="Configuration des points" subtitle="Réglez les paramètres de votre programme" icon={Star}>
+            {/* Attribution mode */}
+            <div className="space-y-3">
+              <Label className="text-xs font-semibold flex items-center gap-2">
+                <Calculator className="w-3.5 h-3.5 text-primary" />
+                Mode d'attribution des points
+              </Label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <OptionCard
+                  selected={!euroMode}
                   onClick={() => update("points_per_euro", 0)}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
-                    !euroMode ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🚶</span>
-                    <span className="font-semibold text-xs">Par visite</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">Points fixes à chaque passage</p>
-                </button>
-                <button
+                  emoji="🚶"
+                  title="Par visite"
+                  desc="Points fixes à chaque passage"
+                />
+                <OptionCard
+                  selected={euroMode}
                   onClick={() => { if (!euroMode) update("points_per_euro", 1); }}
-                  className={`p-3 rounded-xl border-2 text-left transition-all ${
-                    euroMode ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">💶</span>
-                    <span className="font-semibold text-xs">Par euro</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground mt-1">Selon le montant d'achat</p>
-                </button>
+                  emoji="💶"
+                  title="Par euro dépensé"
+                  desc="Selon le montant d'achat"
+                  badge="PRO"
+                />
               </div>
             </div>
 
-            {/* Per-visit slider */}
+            <Divider />
+
+            {/* Per-visit config */}
             {!euroMode && (
-              <SliderField
+              <SmartSlider
                 label="Points par visite"
+                icon={TrendingUp}
                 value={form.points_per_visit}
                 onChange={(v) => update("points_per_visit", v)}
-                min={1} max={20} step={1}
+                min={1} max={20}
                 suffix="pt" pluralSuffix="pts"
+                hint={`Chaque scan = ${form.points_per_visit} point${form.points_per_visit > 1 ? "s" : ""}`}
               />
             )}
 
-            {/* Per-euro slider + simulation */}
+            {/* Per-euro config */}
             {euroMode && (
-              <div className="space-y-3">
-                <SliderField
+              <>
+                <SmartSlider
                   label="Taux de conversion"
+                  icon={Coins}
                   value={form.points_per_euro}
                   onChange={(v) => update("points_per_euro", v)}
-                  min={1} max={20} step={1}
-                  prefix="1€ =" suffix="pt" pluralSuffix="pts"
+                  min={1} max={20}
+                  prefix="1€ ="
+                  suffix="pt" pluralSuffix="pts"
                 />
-
-                {/* Simulation */}
-                <div className="rounded-xl bg-accent/40 border border-border/30 p-3.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Simulation
-                  </p>
-                  <div className="space-y-2">
-                    {[5, 15, 50].map(a => (
-                      <div key={a} className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Achat {a}€</span>
-                        <div className="flex items-center gap-1.5">
-                          <ArrowRight className="w-3 h-3 text-primary" />
-                          <span className="text-xs font-bold">{a * form.points_per_euro} pts</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <SimulationBox pointsPerEuro={form.points_per_euro} label="Combien gagne votre client ?" />
+                <div className="flex items-start gap-2.5 text-[11px] text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+                  <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <span>Au moment du scan, le commerçant saisit le montant de l'achat. Les points sont calculés automatiquement selon le taux configuré.</span>
                 </div>
-
-                <div className="flex items-start gap-2 text-[10px] text-muted-foreground rounded-lg bg-primary/5 p-2.5 border border-primary/10">
-                  <Info className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                  <span>Le commerçant saisit le montant au moment du scan. Les points sont calculés automatiquement.</span>
-                </div>
-              </div>
+              </>
             )}
 
-            {/* Goal */}
-            <SliderField
-              label="🎁 Objectif récompense"
+            <Divider label="Objectif" />
+
+            <SmartSlider
+              label="Points pour la récompense"
+              icon={Gift}
               value={form.max_points_per_card}
               onChange={(v) => update("max_points_per_card", v)}
               min={5} max={200} step={5}
               suffix="pt" pluralSuffix="pts"
               hint={
                 euroMode
-                  ? `≈ ${Math.ceil(form.max_points_per_card / form.points_per_euro)}€ d'achats nécessaires`
-                  : `= ${Math.ceil(form.max_points_per_card / form.points_per_visit)} visite${Math.ceil(form.max_points_per_card / form.points_per_visit) > 1 ? "s" : ""} nécessaires`
+                  ? `≈ ${Math.ceil(form.max_points_per_card / (form.points_per_euro || 1))}€ d'achats pour atteindre la récompense`
+                  : `= ${Math.ceil(form.max_points_per_card / (form.points_per_visit || 1))} visite${Math.ceil(form.max_points_per_card / (form.points_per_visit || 1)) > 1 ? "s" : ""} pour atteindre la récompense`
               }
             />
-          </>
+          </Panel>
         )}
 
-        {/* ── Stamps specifics ── */}
         {isStamps && (
-          <SliderField
-            label="🎯 Tampons pour la récompense"
-            value={form.max_points_per_card}
-            onChange={(v) => update("max_points_per_card", v)}
-            min={3} max={20} step={1}
-            suffix="tampon" pluralSuffix="tampons"
-          />
+          <Panel title="Configuration des tampons" subtitle="Nombre de tampons avant la récompense" icon={Stamp}>
+            <SmartSlider
+              label="Tampons requis"
+              icon={Target}
+              value={form.max_points_per_card}
+              onChange={(v) => update("max_points_per_card", v)}
+              min={3} max={20}
+              suffix="tampon" pluralSuffix="tampons"
+              hint={`Le client devra passer ${form.max_points_per_card} fois pour obtenir sa récompense`}
+            />
+          </Panel>
         )}
 
-        {/* ── Cashback specifics ── */}
         {isCashback && (
-          <>
-            <SliderField
-              label="Taux de cashback"
+          <Panel title="Configuration du cashback" subtitle="Taux de retour et seuil de récompense" icon={Coins}>
+            <SmartSlider
+              label="Taux de conversion"
+              icon={TrendingUp}
               value={form.points_per_euro || 1}
               onChange={(v) => update("points_per_euro", v)}
-              min={1} max={20} step={1}
-              prefix="1€ =" suffix="pt" pluralSuffix="pts"
+              min={1} max={20}
+              prefix="1€ ="
+              suffix="pt" pluralSuffix="pts"
             />
-            <SliderField
+            <SimulationBox pointsPerEuro={form.points_per_euro || 1} label="Gains par achat" />
+            <Divider label="Seuil" />
+            <SmartSlider
               label="Seuil de récompense"
+              icon={Gift}
               value={form.max_points_per_card}
               onChange={(v) => update("max_points_per_card", v)}
               min={10} max={500} step={10}
               suffix="pt" pluralSuffix="pts"
+              hint={`≈ ${Math.ceil(form.max_points_per_card / (form.points_per_euro || 1))}€ d'achats pour la récompense`}
             />
-          </>
+          </Panel>
         )}
 
-        {/* Reward desc */}
-        <FieldGroup label="🎁 Récompense offerte">
-          <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl" placeholder="Café offert !" />
-        </FieldGroup>
+        {/* Reward */}
+        <Panel title="Récompense" subtitle="Ce que le client reçoit en atteignant l'objectif" icon={Gift}>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">🎁 Récompense offerte</Label>
+            <Input
+              value={form.reward_description}
+              onChange={(e) => update("reward_description", e.target.value)}
+              className="rounded-xl h-11 font-medium"
+              placeholder="Café offert, -10% sur la prochaine commande..."
+            />
+            <p className="text-[10px] text-muted-foreground">Décrivez la récompense que recevra le client. Soyez précis et attractif !</p>
+          </div>
+        </Panel>
 
-        {/* Onboarding mode */}
-        <div className="pt-3 border-t border-border/30 space-y-2.5">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Inscription client</p>
+        {/* Onboarding */}
+        <Panel title="Inscription client" subtitle="Comment les nouveaux clients rejoignent votre programme" icon={Users}>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { val: "instant", emoji: "⚡", label: "Instantané" },
-              { val: "email", emoji: "📧", label: "Email" },
-              { val: "phone", emoji: "📱", label: "Téléphone" },
-            ].map((mode) => (
-              <button
-                key={mode.val}
-                onClick={() => update("onboarding_mode", mode.val as any)}
-                className={`p-2.5 rounded-xl border-2 text-center transition-all text-xs ${
-                  form.onboarding_mode === mode.val ? "border-primary bg-primary/5" : "border-border/40 hover:border-primary/20"
-                }`}
-              >
-                <span className="text-lg block">{mode.emoji}</span>
-                <span className="text-[10px] font-medium">{mode.label}</span>
-              </button>
+              { val: "instant", emoji: "⚡", title: "Instantané", desc: "Scan & go" },
+              { val: "email", emoji: "📧", title: "Email", desc: "Avec email" },
+              { val: "phone", emoji: "📱", title: "Téléphone", desc: "Avec numéro" },
+            ].map(m => (
+              <OptionCard
+                key={m.val}
+                selected={form.onboarding_mode === m.val}
+                onClick={() => update("onboarding_mode", m.val as any)}
+                emoji={m.emoji}
+                title={m.title}
+                desc={m.desc}
+              />
             ))}
           </div>
-        </div>
-      </SectionCard>
+        </Panel>
+      </div>
     );
   };
 
+  /* ═══════════════ SECTION: DESIGN ═══════════════ */
+
   const renderDesign = () => (
-    <SectionCard title="Design de la carte" icon={Palette}>
-      {/* Themes grid */}
-      <div>
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2.5">Thèmes rapides</p>
-        <div className="grid grid-cols-3 gap-2">
+    <div className="space-y-4">
+      {/* Quick Themes */}
+      <Panel title="Thèmes rapides" subtitle="Appliquez un style en un clic" icon={Sparkles}>
+        <div className="grid grid-cols-3 gap-2.5">
           {presetThemes.map((theme) => (
             <button
               key={theme.label}
               onClick={() => {
                 update("primary_color", theme.primary);
                 update("secondary_color", theme.secondary);
-                update("card_style", theme.style as any);
-                toast.success(`Thème "${theme.label}" ✓`);
+                update("foreground_color", theme.fg);
+                update("label_color", theme.lbl);
+                toast.success(`Thème "${theme.label}" appliqué ✓`);
               }}
-              className="group p-2 rounded-xl border border-border/40 hover:border-primary/30 hover:shadow-md transition-all"
+              className="group p-3 rounded-xl border border-border/40 hover:border-primary/30 hover:shadow-lg transition-all text-center"
             >
-              <div className="w-full h-6 rounded-lg shadow-sm group-hover:scale-105 transition-transform" style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }} />
-              <span className="text-[10px] font-medium mt-1.5 block text-center">{theme.label}</span>
+              <div
+                className="w-full h-8 rounded-lg shadow-sm group-hover:scale-105 transition-transform mb-2"
+                style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }}
+              />
+              <span className="text-[11px] font-semibold">{theme.label}</span>
             </button>
           ))}
         </div>
-      </div>
+      </Panel>
 
-      {/* Color pickers */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Couleurs personnalisées</p>
-        <div className="grid grid-cols-3 gap-3">
+      {/* Custom Colors */}
+      <Panel title="Couleurs personnalisées" subtitle="Affinez les couleurs de votre carte" icon={Palette}>
+        <div className="space-y-4">
           {[
-            { key: "primary_color" as const, label: "Fond", value: form.primary_color, fallback: "#6B46C1" },
-            { key: "foreground_color" as const, label: "Texte", value: form.foreground_color, fallback: "#ffffff" },
-            { key: "label_color" as const, label: "Labels", value: form.label_color, fallback: "#cccccc" },
+            { key: "primary_color" as const, label: "Couleur de fond", value: form.primary_color, fallback: "#6B46C1", desc: "La couleur principale de votre carte" },
+            { key: "secondary_color" as const, label: "Couleur secondaire", value: form.secondary_color, fallback: "#F6AD55", desc: "Utilisée pour les dégradés" },
+            { key: "foreground_color" as const, label: "Couleur du texte", value: form.foreground_color, fallback: "#ffffff", desc: "Couleur des valeurs affichées" },
+            { key: "label_color" as const, label: "Couleur des labels", value: form.label_color, fallback: "#cccccc", desc: "Couleur des petits titres" },
           ].map(c => (
-            <div key={c.key} className="space-y-1.5">
-              <Label className="text-[10px]">{c.label}</Label>
-              <div className="flex items-center gap-1.5">
-                <div className="relative">
-                  <input type="color" value={c.value || c.fallback} onChange={e => update(c.key, e.target.value)} className="w-8 h-8 rounded-lg border border-border/50 cursor-pointer" />
-                </div>
-                <Input
-                  value={c.value}
+            <div key={c.key} className="flex items-center gap-3 p-3 rounded-xl bg-accent/20 border border-border/20">
+              <div className="relative shrink-0">
+                <input
+                  type="color"
+                  value={c.value || c.fallback}
                   onChange={e => update(c.key, e.target.value)}
-                  className="rounded-lg text-[10px] h-8 font-mono"
-                  placeholder="Auto"
+                  className="w-10 h-10 rounded-xl border-2 border-border/50 cursor-pointer appearance-none bg-transparent"
+                  style={{ WebkitAppearance: "none" }}
                 />
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold">{c.label}</p>
+                <p className="text-[10px] text-muted-foreground">{c.desc}</p>
+              </div>
+              <Input
+                value={c.value || ""}
+                onChange={e => update(c.key, e.target.value)}
+                className="w-24 rounded-lg text-[10px] h-8 font-mono text-center"
+                placeholder="Auto"
+              />
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
 
-      {/* Style + bg type */}
-      <div className="grid grid-cols-2 gap-3">
-        <FieldGroup label="Style de carte">
-          <div className="grid grid-cols-3 gap-1.5">
-            {cardStyles.map(s => (
-              <button
-                key={s.value}
-                onClick={() => update("card_style", s.value)}
-                className={`p-1.5 rounded-lg border text-center transition-all text-[10px] ${
-                  form.card_style === s.value ? "border-primary bg-primary/5 font-semibold" : "border-border/40 hover:border-primary/20"
-                }`}
-              >
-                <span className="block text-sm">{s.emoji}</span>
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </FieldGroup>
-        <FieldGroup label="Type de fond">
+      {/* Card Style */}
+      <Panel title="Style de carte" subtitle="Apparence visuelle" icon={CreditCard}>
+        <div className="grid grid-cols-3 gap-2">
+          {cardStyles.map(s => (
+            <button
+              key={s.value}
+              onClick={() => update("card_style", s.value)}
+              className={`p-3 rounded-xl border-2 text-center transition-all ${
+                form.card_style === s.value
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border/40 hover:border-primary/20"
+              }`}
+            >
+              <span className="text-xl block mb-1">{s.emoji}</span>
+              <span className="text-[11px] font-medium">{s.label}</span>
+            </button>
+          ))}
+        </div>
+
+        <Divider />
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">Type de fond</Label>
           <Select value={form.card_bg_type} onValueChange={(v) => update("card_bg_type", v as any)}>
-            <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="rounded-xl h-10"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="solid">Couleur unie</SelectItem>
               <SelectItem value="gradient">Dégradé</SelectItem>
-              <SelectItem value="image">Image</SelectItem>
+              <SelectItem value="image">Image personnalisée</SelectItem>
             </SelectContent>
           </Select>
-        </FieldGroup>
-      </div>
-    </SectionCard>
+        </div>
+      </Panel>
+    </div>
   );
+
+  /* ═══════════════ SECTION: AFFICHAGE ═══════════════ */
 
   const renderFields = () => (
-    <SectionCard title="Champs visibles" icon={SlidersHorizontal}>
-      <p className="text-[10px] text-muted-foreground">Activez/désactivez les informations affichées sur la carte wallet.</p>
+    <Panel title="Champs de la carte" subtitle="Choisissez ce qui est visible sur la carte wallet" icon={Eye}>
       <div className="divide-y divide-border/30">
-        {[
-          { key: "show_customer_name" as const, label: "Nom du client", desc: "Affiché en gros sur la carte", emoji: "👤" },
-          { key: "show_qr_code" as const, label: "QR Code", desc: "Pour scanner la carte", emoji: "📱" },
-          { key: "show_points" as const, label: "Points / Tampons", desc: "Compteur de progression", emoji: "⭐" },
-          { key: "show_expiration" as const, label: "Date d'expiration", desc: "Validité de la carte", emoji: "📅" },
-          { key: "show_rewards_preview" as const, label: "Prochaine récompense", desc: "Motivation visuelle", emoji: "🎁" },
-        ].map(item => (
-          <div key={item.key} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-            <div className="flex items-center gap-3">
-              <span className="text-base">{item.emoji}</span>
-              <div>
-                <p className="text-sm font-medium">{item.label}</p>
-                <p className="text-[10px] text-muted-foreground">{item.desc}</p>
-              </div>
-            </div>
-            <Switch checked={form[item.key]} onCheckedChange={v => update(item.key, v)} />
-          </div>
-        ))}
+        <ToggleRow emoji="👤" label="Nom du client" desc="Affiché en gros sur la carte" checked={form.show_customer_name} onChange={v => update("show_customer_name", v)} />
+        <ToggleRow emoji="📱" label="QR Code" desc="Permet de scanner la carte" checked={form.show_qr_code} onChange={v => update("show_qr_code", v)} />
+        <ToggleRow emoji="⭐" label="Points / Tampons" desc="Le compteur de progression" checked={form.show_points} onChange={v => update("show_points", v)} />
+        <ToggleRow emoji="📅" label="Date d'expiration" desc="Validité de la carte" checked={form.show_expiration} onChange={v => update("show_expiration", v)} />
+        <ToggleRow emoji="🎁" label="Prochaine récompense" desc="Motivation pour le client" checked={form.show_rewards_preview} onChange={v => update("show_rewards_preview", v)} />
       </div>
-    </SectionCard>
+    </Panel>
   );
+
+  /* ═══════════════ SECTION: ENGAGEMENT ═══════════════ */
 
   const renderEngagement = () => (
-    <SectionCard title="Engagement & relances" icon={Sparkles}>
-      {/* Auto reminder */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-base">🔔</span>
-          <div>
-            <p className="text-sm font-medium">Relance des inactifs</p>
-            <p className="text-[10px] text-muted-foreground">Push automatique après X jours</p>
-          </div>
-        </div>
-        <Switch checked={form.auto_reminder_enabled} onCheckedChange={v => update("auto_reminder_enabled", v)} />
-      </div>
-      {form.auto_reminder_enabled && (
-        <SliderField
-          label="Jours d'inactivité avant relance"
-          value={form.auto_reminder_days}
-          onChange={(v) => update("auto_reminder_days", v)}
-          min={3} max={30} step={1}
-          suffix="jour" pluralSuffix="jours"
+    <div className="space-y-4">
+      <Panel title="Relance des inactifs" subtitle="Ramenez vos clients automatiquement" icon={Bell}>
+        <ToggleRow
+          emoji="🔔"
+          label="Activer la relance automatique"
+          desc="Envoie un push quand un client est inactif"
+          checked={form.auto_reminder_enabled}
+          onChange={v => update("auto_reminder_enabled", v)}
         />
-      )}
+        {form.auto_reminder_enabled && (
+          <SmartSlider
+            label="Jours avant relance"
+            icon={Clock}
+            value={form.auto_reminder_days}
+            onChange={(v) => update("auto_reminder_days", v)}
+            min={3} max={30}
+            suffix="jour" pluralSuffix="jours"
+            hint={`Un push sera envoyé après ${form.auto_reminder_days} jours sans visite`}
+          />
+        )}
+      </Panel>
 
-      <div className="border-t border-border/30 pt-3">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-base">🎯</span>
-          <div>
-            <p className="text-sm font-medium">Alerte de récompense proche</p>
-            <p className="text-[10px] text-muted-foreground">Notification quand le client est proche de sa récompense</p>
-          </div>
-        </div>
-        <SliderField
+      <Panel title="Alerte de récompense" subtitle="Motivez vos clients proches du but" icon={Target}>
+        <SmartSlider
           label="Seuil d'alerte"
+          icon={Gift}
           value={form.reward_alert_threshold}
           onChange={(v) => update("reward_alert_threshold", v)}
-          min={1} max={10} step={1}
+          min={1} max={10}
           suffix="pt" pluralSuffix="pts restants"
-          hint={`Notification quand il reste ${form.reward_alert_threshold} point${form.reward_alert_threshold > 1 ? "s" : ""}`}
+          hint={`Notification quand il reste ${form.reward_alert_threshold} point${form.reward_alert_threshold > 1 ? "s" : ""} avant la récompense`}
         />
-      </div>
-    </SectionCard>
+      </Panel>
+    </div>
   );
+
+  /* ═══════════════ SECTION: OUTILS ═══════════════ */
 
   const renderTools = () => (
     <div className="space-y-4">
       {/* QR Code */}
-      <SectionCard title="QR Code & Vitrine" icon={QrCode}>
+      <Panel title="QR Code & Vitrine" subtitle="Partagez votre programme de fidélité" icon={QrCode}>
         <div className="flex flex-col items-center space-y-4">
           <div
             id="qr-printable"
-            className="relative p-5 rounded-2xl flex flex-col items-center gap-3 w-full max-w-[260px]"
+            className="relative p-6 rounded-2xl flex flex-col items-center gap-3 w-full max-w-[280px]"
             style={{
-              background: `linear-gradient(145deg, ${form.primary_color}12 0%, ${form.secondary_color || form.primary_color}08 100%)`,
+              background: `linear-gradient(145deg, ${form.primary_color}15 0%, ${form.secondary_color || form.primary_color}08 100%)`,
               border: `2px solid ${form.primary_color}20`,
             }}
           >
-            {logoUrl && <img src={logoUrl} alt={form.name} className="w-10 h-10 rounded-xl object-cover" />}
-            <div className="p-2.5 bg-background rounded-xl shadow-sm">
-              <QRCodeSVG id="business-qr-svg" value={publicUrl} size={140} level="H" includeMargin={false} fgColor={form.primary_color || "#6B46C1"} />
+            {logoUrl && <img src={logoUrl} alt={form.name} className="w-12 h-12 rounded-xl object-cover shadow-sm" />}
+            <div className="p-3 bg-background rounded-xl shadow-sm border border-border/30">
+              <QRCodeSVG id="business-qr-svg" value={publicUrl} size={150} level="H" includeMargin={false} fgColor={form.primary_color || "#6B46C1"} />
             </div>
             <div className="text-center">
-              <p className="font-semibold text-xs">{form.name || "Mon Commerce"}</p>
-              <p className="text-[9px] text-muted-foreground mt-0.5">Scannez pour votre carte fidélité</p>
+              <p className="font-bold text-sm">{form.name || "Mon Commerce"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Scannez pour rejoindre le programme fidélité</p>
             </div>
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-8">
-              <Download className="w-3 h-3" /> PNG
+            <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9">
+              <Download className="w-3.5 h-3.5" /> PNG
             </Button>
-            <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-8">
-              <Copy className="w-3 h-3" /> Lien
+            <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9">
+              <Copy className="w-3.5 h-3.5" /> Lien
             </Button>
             <Button
               onClick={() => {
@@ -731,28 +868,28 @@ const CustomizePage = () => {
                 w.document.write(`<!DOCTYPE html><html><head><title>QR - ${form.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;}</style></head><body>${printContent.outerHTML}</body></html>`);
                 w.document.close(); w.focus(); w.print();
               }}
-              variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-8"
+              variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9"
             >
-              <Printer className="w-3 h-3" /> Print
+              <Printer className="w-3.5 h-3.5" /> Imprimer
             </Button>
           </div>
 
           <div className="flex items-center gap-2 w-full">
-            <code className="text-[10px] bg-secondary/60 px-3 py-1.5 rounded-lg flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{publicUrl}</code>
-            <Button size="icon" variant="ghost" className="rounded-lg h-7 w-7 shrink-0" onClick={() => window.open(publicUrl, "_blank")}>
+            <code className="text-[10px] bg-accent/40 px-3 py-2 rounded-lg flex-1 overflow-hidden text-ellipsis whitespace-nowrap border border-border/20">{publicUrl}</code>
+            <Button size="icon" variant="ghost" className="rounded-lg h-8 w-8 shrink-0" onClick={() => window.open(publicUrl, "_blank")}>
               <ExternalLink className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
-      </SectionCard>
+      </Panel>
 
       {/* Templates */}
-      <SectionCard title="Template métier" icon={Layout}>
+      <Panel title="Template métier" subtitle="Pré-configurations par secteur d'activité" icon={Layout}>
         <TemplatePicker currentTemplate={form.business_template} onSelect={handleTemplateSelect} />
-      </SectionCard>
+      </Panel>
 
       {/* Modules */}
-      <SectionCard title="Modules" icon={Shield}>
+      <Panel title="Modules actifs" subtitle="Activez ou désactivez des fonctionnalités" icon={Shield}>
         <FeatureToggles
           config={{
             feature_gamification: form.feature_gamification,
@@ -763,7 +900,7 @@ const CustomizePage = () => {
           onChange={(key, value) => update(key as keyof typeof form, value as any)}
           plan={business?.subscription_plan || "starter"}
         />
-      </SectionCard>
+      </Panel>
     </div>
   );
 
@@ -776,23 +913,28 @@ const CustomizePage = () => {
     tools: renderTools,
   };
 
+  /* ═══════════════ LAYOUT ═══════════════ */
+
   return (
     <DashboardLayout
       title="Carte de fidélité"
-      subtitle="Personnalisez votre carte, vos règles et votre design"
+      subtitle="Personnalisez entièrement votre programme"
       headerAction={
-        <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 shadow-md">
+        <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 shadow-md hover:shadow-lg transition-shadow">
           <Save className="w-4 h-4" /> {saving ? "Sauvegarde..." : "Sauvegarder"}
         </Button>
       }
     >
       <div className="grid lg:grid-cols-[1fr,340px] gap-6">
-        {/* ─── MOBILE PREVIEW (small screens) ─── */}
+        {/* ─── MOBILE PREVIEW ─── */}
         <div className="lg:hidden">
-          <details className="rounded-2xl bg-card border border-border/50 overflow-hidden">
+          <details className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
             <summary className="p-4 cursor-pointer flex items-center justify-between text-sm font-medium">
-              <span className="flex items-center gap-2">👁️ Aperçu en temps réel</span>
-              <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">Live</Badge>
+              <span className="flex items-center gap-2">
+                <Eye className="w-4 h-4 text-primary" />
+                Aperçu en temps réel
+              </span>
+              <Badge variant="outline" className="text-[9px] border-primary/30 text-primary animate-pulse">● Live</Badge>
             </summary>
             <div className="flex justify-center pb-4 px-4">
               {walletPassElement}
@@ -802,8 +944,8 @@ const CustomizePage = () => {
 
         {/* ─── LEFT: Nav + Content ─── */}
         <div className="space-y-4">
-          {/* Section navigation — horizontal scroll on mobile */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          {/* Navigation */}
+          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide bg-accent/30 rounded-2xl p-1.5 border border-border/30">
             {sections.map(s => {
               const Icon = s.icon;
               const active = activeSection === s.id;
@@ -811,27 +953,27 @@ const CustomizePage = () => {
                 <button
                   key={s.id}
                   onClick={() => setActiveSection(s.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border whitespace-nowrap transition-all text-xs font-medium shrink-0 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 ${
                     active
-                      ? "border-primary bg-primary/10 text-primary shadow-sm"
-                      : "border-border/40 text-muted-foreground hover:border-primary/20 hover:text-foreground hover:bg-accent/30"
+                      ? "bg-card text-foreground shadow-md border border-border/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className={`w-3.5 h-3.5 ${active ? "text-primary" : ""}`} />
                   {s.label}
                 </button>
               );
             })}
           </div>
 
-          {/* Active section content */}
+          {/* Active section */}
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
             >
               {sectionRenderers[activeSection]()}
             </motion.div>
@@ -840,16 +982,16 @@ const CustomizePage = () => {
 
         {/* ─── RIGHT: Sticky preview ─── */}
         <div className="lg:sticky lg:top-20 self-start space-y-3 hidden lg:block">
-          <div className="p-4 rounded-2xl bg-card border border-border/50">
-            <div className="flex items-center justify-between mb-3">
+          <div className="p-4 rounded-2xl bg-card border border-border/50 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-sm">Aperçu</h2>
-                <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">Live</Badge>
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <h2 className="font-bold text-sm">Aperçu</h2>
               </div>
-              <div className="flex rounded-lg bg-secondary/60 p-0.5">
+              <div className="flex rounded-xl bg-accent/40 p-0.5 border border-border/30">
                 <button
                   onClick={() => setPreviewDevice("iphone")}
-                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
                     previewDevice === "iphone" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
@@ -857,7 +999,7 @@ const CustomizePage = () => {
                 </button>
                 <button
                   onClick={() => setPreviewDevice("samsung")}
-                  className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
                     previewDevice === "samsung" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
                   }`}
                 >
@@ -882,7 +1024,7 @@ const CustomizePage = () => {
                 </motion.div>
               </AnimatePresence>
             </div>
-            <p className="text-center text-[9px] text-muted-foreground mt-3">
+            <p className="text-center text-[10px] text-muted-foreground mt-3 font-medium">
               Rendu identique au {previewDevice === "iphone" ? "Apple" : "Google"} Wallet
             </p>
           </div>
@@ -891,29 +1033,5 @@ const CustomizePage = () => {
     </DashboardLayout>
   );
 };
-
-/* ────────────────────────── SliderField component ────────────────────────── */
-
-function SliderField({ label, value, onChange, min, max, step, suffix, pluralSuffix, prefix, hint }: {
-  label: string; value: number; onChange: (v: number) => void;
-  min: number; max: number; step: number;
-  suffix: string; pluralSuffix?: string; prefix?: string; hint?: string;
-}) {
-  const displayVal = `${prefix ? prefix + " " : ""}${value} ${value > 1 && pluralSuffix ? pluralSuffix : suffix}`;
-  return (
-    <div className="rounded-xl bg-accent/30 border border-border/30 p-3.5 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium">{label}</Label>
-        <Badge variant="outline" className="text-[10px] tabular-nums font-bold h-5 px-2">{displayVal}</Badge>
-      </div>
-      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={min} max={max} step={step} />
-      <div className="flex justify-between text-[9px] text-muted-foreground">
-        <span>{min} {suffix}</span>
-        <span>{max} {pluralSuffix || suffix}</span>
-      </div>
-      {hint && <p className="text-[10px] text-muted-foreground text-center">{hint}</p>}
-    </div>
-  );
-}
 
 export default CustomizePage;
