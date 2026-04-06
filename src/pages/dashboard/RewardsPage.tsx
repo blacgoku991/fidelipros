@@ -16,8 +16,17 @@ import { Plus, Gift, Trophy, Trash2, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+const UNIT_LABELS: Record<string, { singular: string; plural: string; short: string }> = {
+  stamps: { singular: "tampon", plural: "tampons", short: "tampons" },
+  points: { singular: "point", plural: "points", short: "pts" },
+  cashback: { singular: "€", plural: "€", short: "€" },
+  subscription: { singular: "point", plural: "points", short: "pts" },
+};
+
 const RewardsPage = () => {
   const { business } = useAuth();
+  const loyaltyType = business?.loyalty_type || "points";
+  const units = UNIT_LABELS[loyaltyType] || UNIT_LABELS.points;
   const [rewards, setRewards] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", points_required: 10 });
@@ -93,7 +102,7 @@ const RewardsPage = () => {
               <div className="space-y-2"><Label>Nom *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Café offert" className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Un café au choix..." className="rounded-xl" /></div>
               <div className="space-y-2">
-                <Label>Points requis</Label>
+                <Label>{loyaltyType === "stamps" ? "Tampons requis" : loyaltyType === "cashback" ? "Montant requis (€)" : "Points requis"}</Label>
                 <Input type="number" min={1} value={form.points_required} onChange={(e) => setForm({ ...form, points_required: Math.max(1, parseInt(e.target.value) || 1) })} className="rounded-xl" />
               </div>
               <Button onClick={handleAdd} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">Créer la récompense</Button>
@@ -141,10 +150,10 @@ const RewardsPage = () => {
                   </div>
                   {r.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{r.description}</p>}
                   <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <div className="flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-amber-500" />
-                      <span className="text-xs font-semibold text-amber-600">{r.points_required} pts requis</span>
-                    </div>
+                     <div className="flex items-center gap-1">
+                       <Trophy className="w-3 h-3 text-amber-500" />
+                       <span className="text-xs font-semibold text-amber-600">{r.points_required} {units.short} requis</span>
+                     </div>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <BarChart3 className="w-3 h-3" />
                       <span>Réclamée <strong className="text-foreground">{approxClaimed}</strong> fois</span>
@@ -198,10 +207,10 @@ const RewardsPage = () => {
                       <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{t.name}</p>
                       {t.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>}
                     </div>
-                    <div className="flex items-center gap-0.5 text-amber-600 shrink-0">
-                      <Trophy className="w-3 h-3" />
-                      <span className="text-xs font-semibold">{t.points_required}</span>
-                    </div>
+                     <div className="flex items-center gap-0.5 text-amber-600 shrink-0">
+                       <Trophy className="w-3 h-3" />
+                       <span className="text-xs font-semibold">{t.points_required} {units.short}</span>
+                     </div>
                   </div>
                 </motion.button>
               ))}
