@@ -638,7 +638,14 @@ const Dashboard = () => {
                 <h2 className="font-display font-bold text-lg tracking-tight">Scanner une carte</h2>
                 <p className="text-sm text-muted-foreground mt-1">Pointez la caméra vers le QR code du client</p>
               </div>
-              <QrCameraScanner onScan={(code) => processCardCode(code)} disabled={scanning} paused={scannerPaused} />
+              <QrCameraScanner onScan={(code) => {
+                setCardCode(code);
+                if (!needsAmount) {
+                  processCardCode(code);
+                } else {
+                  toast.info("Code scanné ! Entrez le montant puis validez.");
+                }
+              }} disabled={scanning} paused={scannerPaused} />
               <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">ou code manuel</span>
@@ -648,6 +655,21 @@ const Dashboard = () => {
                 <Input value={cardCode} onChange={(e) => setCardCode(e.target.value)} placeholder="Entrez le code carte..." className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40" onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)} />
                 <Button onClick={() => processCardCode(cardCode)} disabled={scanning || !cardCode.trim()} className="bg-gradient-primary text-primary-foreground rounded-xl h-11 px-6 font-semibold shrink-0 shadow-md">Valider</Button>
               </div>
+              {needsAmount && (
+                <div className="flex gap-2 items-center max-w-sm mx-auto">
+                  <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={scanAmount}
+                    onChange={(e) => setScanAmount(e.target.value)}
+                    placeholder="Montant de l'achat (€)"
+                    className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40"
+                    onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)}
+                  />
+                </div>
+              )}
               {!isOnline && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
                   <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
