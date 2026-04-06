@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook, Lock } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
@@ -418,6 +418,8 @@ const SettingsPage = () => {
 
   // POS and Webhooks are admin-only features
   const ADMIN_ONLY_SECTIONS: SectionKey[] = ["integrations", "webhooks"];
+  const FRANCHISE_ONLY_SECTIONS: SectionKey[] = ["etablissements"];
+  const isFranchise = business?.is_franchise === true;
   const visibleSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
 
   return (
@@ -426,39 +428,51 @@ const SettingsPage = () => {
 
         {/* Mobile tabs */}
         <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x scrollbar-hide">
-          {visibleSections.map((s) => (
+          {visibleSections.map((s) => {
+            const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
+            return (
             <button
               key={s.key}
-              onClick={() => setActiveSection(s.key)}
+              onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap snap-start transition-all ${
-                activeSection === s.key
+                isLocked
+                  ? "bg-muted/50 text-muted-foreground/50 cursor-not-allowed"
+                  : activeSection === s.key
                   ? "bg-primary text-primary-foreground"
                   : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
               }`}
             >
               <s.Icon className="w-3.5 h-3.5" />
               {s.label}
+              {isLocked && <Lock className="w-3 h-3 ml-0.5" />}
             </button>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex gap-6 items-start">
           {/* Desktop sidebar */}
           <nav className="hidden lg:flex flex-col gap-0.5 w-52 shrink-0 sticky top-4">
-            {visibleSections.map((s) => (
+            {visibleSections.map((s) => {
+              const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
+              return (
               <button
                 key={s.key}
-                onClick={() => setActiveSection(s.key)}
+                onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium text-left w-full transition-all ${
-                  activeSection === s.key
+                  isLocked
+                    ? "text-muted-foreground/40 cursor-not-allowed"
+                    : activeSection === s.key
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
                 <s.Icon className="w-4 h-4 shrink-0" />
                 {s.label}
+                {isLocked && <Lock className="w-3.5 h-3.5 ml-auto" />}
               </button>
-            ))}
+              );
+            })}
           </nav>
 
           {/* Content panel */}
