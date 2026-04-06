@@ -438,11 +438,15 @@ const Dashboard = () => {
     { done: onboarding.hasCampaign, label: siteSettings?.onboarding_step_4 || "Créer votre première campagne", path: "/dashboard/campaigns", icon: Send },
   ];
 
+  const [tooltipOpen, setTooltipOpen] = useState<string | null>(null);
+
   const statCards = [
-    { label: "Clients", value: stats.clients, icon: Users, gradient: "from-primary to-primary/70", trend: getTrend(stats.clients, stats30dAgo.clients) },
-    { label: "Retour", value: totalScans >= 10 ? `${stats.returnRate}%` : "—", icon: TrendingUp, gradient: "from-emerald-500 to-emerald-400", trend: null as number | null, insufficientData: totalScans < 10 },
-    { label: "Scans", value: stats.scansToday + todayScans, icon: QrCode, gradient: "from-accent to-amber-400", trend: getTrend(stats.scansToday, stats30dAgo.scansToday) },
-    { label: "Récompenses", value: stats.rewardsGiven, icon: Gift, gradient: "from-rose-500 to-pink-400", trend: getTrend(stats.rewardsGiven, stats30dAgo.rewardsGiven) },
+    { label: "Clients", value: stats.clients, icon: Users, gradient: "from-primary to-primary/70", trend: getTrend(stats.clients, stats30dAgo.clients), tooltip: "Nombre total de clients enregistrés dans votre programme de fidélité." },
+    { label: "Taux de retour", value: totalScans >= 10 ? `${stats.returnRate}%` : "—", icon: TrendingUp, gradient: "from-emerald-500 to-emerald-400", trend: null as number | null, insufficientData: totalScans < 10, tooltip: "Pourcentage de clients qui sont revenus plus d'une fois. Un bon taux est > 30%. Nécessite au moins 10 scans." },
+    { label: "Scans aujourd'hui", value: stats.scansToday + todayScans, icon: QrCode, gradient: "from-accent to-amber-400", trend: getTrend(stats.scansToday, stats30dAgo.scansToday), tooltip: "Nombre de passages scannés aujourd'hui. Compare avec la période précédente pour voir la tendance." },
+    { label: "Récompenses", value: stats.rewardsGiven, icon: Gift, gradient: "from-rose-500 to-pink-400", trend: getTrend(stats.rewardsGiven, stats30dAgo.rewardsGiven), tooltip: "Nombre total de récompenses distribuées à vos clients fidèles." },
+    { label: "Visites moy.", value: stats.avgVisits || "—", icon: BarChart3, gradient: "from-blue-500 to-blue-400", trend: null as number | null, tooltip: "Nombre moyen de visites par client. Plus c'est élevé, plus vos clients sont fidèles." },
+    { label: "Note moyenne", value: stats.avgRating ? `${stats.avgRating}/5` : "—", icon: StarIcon, gradient: "from-yellow-500 to-amber-400", trend: null as number | null, tooltip: "Note moyenne laissée par vos clients. Basée sur les avis collectés via votre programme." },
   ];
 
   return (
