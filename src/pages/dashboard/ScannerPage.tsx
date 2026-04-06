@@ -244,9 +244,9 @@ const ScannerPage = () => {
             ) : (
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
-                  onScan={(code) => {
+                 onScan={(code) => {
                     setCardCode(code);
-                    if (!isCashback) {
+                    if (!needsAmount) {
                       handleScan(code);
                     } else {
                       toast.info("Code scanné ! Entrez le montant puis validez.");
