@@ -276,6 +276,7 @@ const Dashboard = () => {
     if (updateError) {
       setPopup({ open: true, type: "error", title: "Erreur", message: "La mise à jour des points a échoué. Réessayez." });
       setScanning(false);
+      scanLockRef.current = false;
       return;
     }
 
