@@ -200,7 +200,14 @@ const Dashboard = () => {
   }, []);
 
   const processCardCode = async (code: string, isSyncMode = false) => {
-    if (!code.trim() || !business || !user) return;
+    // Prevent concurrent scan executions (double-scan guard)
+    if (scanLockRef.current) return;
+    scanLockRef.current = true;
+
+    if (!code.trim() || !business || !user) {
+      scanLockRef.current = false;
+      return;
+    }
 
     // Offline fallback: queue scan and show toast
     if (!isOnline && !isSyncMode) {
@@ -208,6 +215,7 @@ const Dashboard = () => {
       setPendingScanCount(await getPendingCount());
       toast.info("Scan enregistré hors-ligne. Il sera synchronisé au retour de la connexion.");
       setCardCode("");
+      scanLockRef.current = false;
       return;
     }
 
@@ -220,7 +228,28 @@ const Dashboard = () => {
     if (!card || cardError) {
       setPopup({ open: true, type: "error", title: "Carte introuvable", message: "Ce code ne correspond à aucune carte active." });
       setScanning(false);
+      scanLockRef.current = false;
       return;
+    }
+
+    // ── Anti double-scan: check cooldown ──────────────────────────
+    const { data: cooldown } = await supabase
+      .from("scan_cooldowns")
+      .select("last_scan")
+      .eq("card_id", card.id)
+      .maybeSingle();
+
+    if (cooldown?.last_scan) {
+      const elapsed = (Date.now() - new Date(cooldown.last_scan).getTime()) / 1000;
+      if (elapsed < 30) {
+        const remaining = Math.ceil(30 - elapsed);
+        toast.warning(`⏱ Scan trop rapide`, {
+          description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
+        });
+        setScanning(false);
+        scanLockRef.current = false;
+        return;
+      }
     }
 
     const loyaltyType = business.loyalty_type || "points";
