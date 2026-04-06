@@ -32,6 +32,8 @@ const ScannerPage = () => {
 
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
+  const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
+  const needsAmount = isCashback || isEuroToPoints;
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
   const handleScan = async (codeOverride?: string) => {
@@ -45,7 +47,7 @@ const ScannerPage = () => {
       scanLockRef.current = false;
       return;
     }
-    if (isCashback && (!amount || parseFloat(amount) <= 0)) {
+    if (needsAmount && (!amount || parseFloat(amount) <= 0)) {
       toast.error("Entrez le montant de l'achat");
       scanLockRef.current = false;
       return;
@@ -89,10 +91,14 @@ const ScannerPage = () => {
 
     // Calculate points increment based on loyalty type
     let increment = 1;
-    if (isCashback) {
+    if (needsAmount) {
       const purchaseAmount = parseFloat(amount) || 0;
       const pointsPerEuro = (business as any).points_per_euro || 1;
-      increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
+      if (isCashback) {
+        increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
+      } else {
+        increment = Math.floor(purchaseAmount * pointsPerEuro);
+      }
       if (increment < 1) increment = 1;
     } else {
       increment = (business as any).points_per_visit || 1;
@@ -238,9 +244,9 @@ const ScannerPage = () => {
             ) : (
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
-                  onScan={(code) => {
+                 onScan={(code) => {
                     setCardCode(code);
-                    if (!isCashback) {
+                    if (!needsAmount) {
                       handleScan(code);
                     } else {
                       toast.info("Code scanné ! Entrez le montant puis validez.");
@@ -268,7 +274,7 @@ const ScannerPage = () => {
               </Button>
             </div>
 
-            {isCashback && (
+            {needsAmount && (
               <div className="flex gap-2 items-center">
                 <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
@@ -285,8 +291,8 @@ const ScannerPage = () => {
             )}
 
             <p className="text-[11px] text-center text-muted-foreground">
-              {isCashback
-                ? "Scannez le QR code ou entrez le code + montant"
+              {needsAmount
+                ? `Scannez le QR code ou entrez le code + montant (${(business as any).points_per_euro || 1}€ = ${(business as any).points_per_euro || 1} ${labels.unit}${((business as any).points_per_euro || 1) > 1 ? 's' : ''})`
                 : "Scannez le QR code ou entrez le code manuellement"}
             </p>
           </div>

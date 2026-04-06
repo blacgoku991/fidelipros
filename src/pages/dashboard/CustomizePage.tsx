@@ -363,15 +363,42 @@ const CustomizePage = () => {
                   <Input type="number" value={form.max_points_per_card} onChange={(e) => update("max_points_per_card", parseInt(e.target.value) || 10)} className="rounded-xl text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">{form.loyalty_type === "cashback" ? "Points par euro" : "Points par visite"}</Label>
+                  <Label className="text-xs">
+                    {form.loyalty_type === "cashback" ? "Points par euro" : form.loyalty_type === "points" && form.points_per_euro > 0 ? "Points par euro" : "Points par visite"}
+                  </Label>
                   <Input
                     type="number"
-                    value={form.loyalty_type === "cashback" ? form.points_per_euro : form.points_per_visit}
-                    onChange={(e) => update(form.loyalty_type === "cashback" ? "points_per_euro" : "points_per_visit", parseInt(e.target.value) || 1)}
+                    value={form.loyalty_type === "cashback" ? form.points_per_euro : form.loyalty_type === "points" && form.points_per_euro > 0 ? form.points_per_euro : form.points_per_visit}
+                    onChange={(e) => {
+                      if (form.loyalty_type === "cashback" || (form.loyalty_type === "points" && form.points_per_euro > 0)) {
+                        update("points_per_euro", parseInt(e.target.value) || 1);
+                      } else {
+                        update("points_per_visit", parseInt(e.target.value) || 1);
+                      }
+                    }}
                     className="rounded-xl text-sm"
                   />
                 </div>
               </div>
+
+              {form.loyalty_type === "points" && (
+                <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/50 border border-border/30">
+                  <div>
+                    <p className="text-xs font-medium">Convertir les euros en points</p>
+                    <p className="text-[10px] text-muted-foreground">Demande le montant de l'achat au scan et convertit en points (ex: 10€ = 10 pts)</p>
+                  </div>
+                  <Switch
+                    checked={form.points_per_euro > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        update("points_per_euro", 1);
+                      } else {
+                        update("points_per_euro", 0);
+                      }
+                    }}
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label className="text-xs">Récompense</Label>
                 <Input value={form.reward_description} onChange={(e) => update("reward_description", e.target.value)} className="rounded-xl text-sm" placeholder="Café offert !" />

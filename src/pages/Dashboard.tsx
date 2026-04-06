@@ -22,7 +22,7 @@ import {
   Download, Copy, ExternalLink, Printer, Flame, Gift, Eye,
   Mail, Phone, History, MapPin, Star as StarIcon, MessageSquare,
   CheckCircle2, Circle, Palette, Send, Camera, ArrowUp, ArrowDown, Info,
-  BarChart3,
+  BarChart3, Euro,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -79,6 +79,7 @@ const Dashboard = () => {
 
   // Scanner
   const [cardCode, setCardCode] = useState("");
+  const [scanAmount, setScanAmount] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
   const scanLockRef = useRef(false);
@@ -86,6 +87,11 @@ const Dashboard = () => {
   const [todayScans, setTodayScans] = useState(0);
   const isOnline = useOnlineStatus();
   const [pendingScanCount, setPendingScanCount] = useState(0);
+
+  const loyaltyType = business?.loyalty_type || "stamps";
+  const isCashback = loyaltyType === "cashback";
+  const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
+  const needsAmount = isCashback || isEuroToPoints;
 
   // Popup
   const [popup, setPopup] = useState<{
@@ -231,6 +237,12 @@ const Dashboard = () => {
       return;
     }
 
+    if (needsAmount && !isSyncMode && (!scanAmount || parseFloat(scanAmount) <= 0)) {
+      toast.error("Entrez le montant de l'achat");
+      scanLockRef.current = false;
+      return;
+    }
+
     // Offline fallback: queue scan and show toast
     if (!isOnline && !isSyncMode) {
       await queueScan({ cardCode: code.trim(), businessId: business.id, userId: user.id, timestamp: new Date().toISOString() });
@@ -274,14 +286,24 @@ const Dashboard = () => {
       }
     }
 
-    const loyaltyType = business.loyalty_type || "points";
-    const pointsToAdd = business.points_per_visit || 1;
+    const lt = business.loyalty_type || "points";
+    let pointsToAdd = business.points_per_visit || 1;
+    if (needsAmount && !isSyncMode) {
+      const purchaseAmount = parseFloat(scanAmount) || 0;
+      const ppe = business.points_per_euro || 1;
+      if (isCashback) {
+        pointsToAdd = Math.floor(purchaseAmount * ppe / 100);
+      } else {
+        pointsToAdd = Math.floor(purchaseAmount * ppe);
+      }
+      if (pointsToAdd < 1) pointsToAdd = 1;
+    }
     const maxPts = card.max_points || business.max_points_per_card || 10;
     const newPoints = (card.current_points || 0) + pointsToAdd;
     const rewardEarned = newPoints >= maxPts;
     const customer = card.customers;
-    const unitLabel = loyaltyType === "stamps" ? "tampon" : "point";
-    const unitLabelPlural = loyaltyType === "stamps" ? "tampons" : "points";
+    const unitLabel = lt === "stamps" ? "tampon" : lt === "cashback" ? "€" : "point";
+    const unitLabelPlural = lt === "stamps" ? "tampons" : lt === "cashback" ? "€" : "points";
     const addedLabel = pointsToAdd > 1 ? `+${pointsToAdd} ${unitLabelPlural}` : `+1 ${unitLabel}`;
 
     const changeMsg = rewardEarned
@@ -404,6 +426,7 @@ const Dashboard = () => {
     setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
+    setScanAmount("");
     setScanning(false);
     scanLockRef.current = false;
     fetchStats();
@@ -615,7 +638,14 @@ const Dashboard = () => {
                 <h2 className="font-display font-bold text-lg tracking-tight">Scanner une carte</h2>
                 <p className="text-sm text-muted-foreground mt-1">Pointez la caméra vers le QR code du client</p>
               </div>
-              <QrCameraScanner onScan={(code) => processCardCode(code)} disabled={scanning} paused={scannerPaused} />
+              <QrCameraScanner onScan={(code) => {
+                setCardCode(code);
+                if (!needsAmount) {
+                  processCardCode(code);
+                } else {
+                  toast.info("Code scanné ! Entrez le montant puis validez.");
+                }
+              }} disabled={scanning} paused={scannerPaused} />
               <div className="flex items-center gap-4">
                 <div className="flex-1 h-px bg-border" />
                 <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">ou code manuel</span>
@@ -625,6 +655,21 @@ const Dashboard = () => {
                 <Input value={cardCode} onChange={(e) => setCardCode(e.target.value)} placeholder="Entrez le code carte..." className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40" onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)} />
                 <Button onClick={() => processCardCode(cardCode)} disabled={scanning || !cardCode.trim()} className="bg-gradient-primary text-primary-foreground rounded-xl h-11 px-6 font-semibold shrink-0 shadow-md">Valider</Button>
               </div>
+              {needsAmount && (
+                <div className="flex gap-2 items-center max-w-sm mx-auto">
+                  <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={scanAmount}
+                    onChange={(e) => setScanAmount(e.target.value)}
+                    placeholder="Montant de l'achat (€)"
+                    className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40"
+                    onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)}
+                  />
+                </div>
+              )}
               {!isOnline && (
                 <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm">
                   <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
