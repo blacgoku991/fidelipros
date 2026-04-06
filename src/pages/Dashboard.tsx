@@ -80,6 +80,7 @@ const Dashboard = () => {
   const [cardCode, setCardCode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scannerPaused, setScannerPaused] = useState(false);
+  const scanLockRef = useRef(false);
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
   const isOnline = useOnlineStatus();
