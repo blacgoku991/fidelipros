@@ -89,7 +89,17 @@ const CardViewPage = () => {
         .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,google_review_enabled,google_place_id,google_review_message,google_review_threshold,slug,is_demo")
         .eq("id", cardData.business_id)
         .maybeSingle();
-      if (biz) setBusiness(biz);
+      if (biz) {
+        setBusiness(biz);
+        // Fetch active rewards for the business
+        const { data: rewardsData } = await supabase
+          .from("rewards")
+          .select("id, title, description, points_required")
+          .eq("business_id", biz.id)
+          .eq("is_active", true)
+          .order("points_required", { ascending: true });
+        if (rewardsData) setRewards(rewardsData);
+      }
 
       // Check if customer can leave a review (visited in last 24h and no review today)
       if (cardData.customers) {
