@@ -1068,6 +1068,29 @@ const SettingsPage = () => {
             )}
           </div>
 
+          <div className="border-t border-border/30" />
+
+          {/* Tier thresholds */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              <div>
+                <p className="text-sm font-medium">Seuils de niveaux</p>
+                <p className="text-[11px] text-muted-foreground">Points nécessaires pour passer Argent / Or</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pl-6">
+              <div className="space-y-1">
+                <Label className="text-xs">🥈 Argent (Silver)</Label>
+                <Input type="number" min={1} value={tierSilverPoints} onChange={e => setTierSilverPoints(parseInt(e.target.value) || 10)} className="rounded-xl" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">⭐ Or (Gold)</Label>
+                <Input type="number" min={1} value={tierGoldPoints} onChange={e => setTierGoldPoints(parseInt(e.target.value) || 25)} className="rounded-xl" />
+              </div>
+            </div>
+          </div>
+
           <Button
             onClick={handleSaveAutomation}
             disabled={savingAuto}
