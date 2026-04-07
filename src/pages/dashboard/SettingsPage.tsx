@@ -161,6 +161,8 @@ const SettingsPage = () => {
       setWelcomePushMessage(business.welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
       setVipAutoEnabled(business.vip_auto_enabled || false);
       setVipAutoThreshold(business.vip_auto_threshold || 50);
+      setTierSilverPoints((business as any).tier_silver_points || 10);
+      setTierGoldPoints((business as any).tier_gold_points || 25);
     }
   }, [business]);
 
