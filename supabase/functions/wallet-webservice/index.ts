@@ -390,6 +390,17 @@ async function handleGetLatestPass(
     .eq("is_active", true)
     .order("points_required", { ascending: true });
 
+  // Fetch claimed reward titles for this card
+  const { data: claimsData } = await supabase
+    .from("points_history")
+    .select("note")
+    .eq("card_id", card.id)
+    .eq("action", "reward_claim");
+  const claimedTitles = (claimsData || []).map((c: any) => {
+    const match = c.note?.match(/Récompense récupérée : (.+?) \(/);
+    return match ? match[1] : "";
+  }).filter(Boolean);
+
   await supabase
     .from("customer_cards")
     .update({
@@ -399,7 +410,7 @@ async function handleGetLatestPass(
     .eq("id", card.id);
 
   try {
-    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || []);
+    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || [], claimedTitles);
     return new Response(pkpass as unknown as BodyInit, {
       status: 200,
       headers: {
@@ -421,7 +432,8 @@ async function buildPkpassForUpdate(
   business: any,
   customer: any,
   authToken: string,
-  rewards: any[] = []
+  rewards: any[] = [],
+  claimedTitles: string[] = []
 ): Promise<Uint8Array> {
   const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
   if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
@@ -479,15 +491,26 @@ async function buildPkpassForUpdate(
         { key: "reward", label: "RÉCOMPENSE", value: `${card.rewards_earned || 0}`, textAlignment: "PKTextAlignmentRight" },
       ],
       auxiliaryFields: [
-        ...(rewards.length > 0 ? [{
-          key: "next_reward",
-          label: "PROCHAINE RÉCOMPENSE",
-          value: (() => {
-            const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
-            if (!nextReward) return business.reward_description || "Récompense offerte !";
-            return nextReward.title;
-          })(),
-        }] : business.reward_description ? [{
+        ...(rewards.length > 0 ? (() => {
+          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedTitles.includes(r.title));
+          const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
+          const fields: any[] = [];
+          if (unclaimedUnlocked) {
+            fields.push({
+              key: "unlocked_reward",
+              label: "🎉 À RÉCUPÉRER",
+              value: unclaimedUnlocked.title,
+            });
+          }
+          if (nextReward) {
+            fields.push({
+              key: "next_reward",
+              label: "PROCHAINE RÉCOMPENSE",
+              value: nextReward.title,
+            });
+          }
+          return fields;
+        })() : business.reward_description ? [{
           key: "next_reward",
           label: "RÉCOMPENSE",
           value: business.reward_description,
