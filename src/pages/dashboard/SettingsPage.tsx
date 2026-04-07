@@ -368,6 +368,8 @@ const SettingsPage = () => {
       welcome_push_message: welcomePushMessage,
       vip_auto_enabled: vipAutoEnabled,
       vip_auto_threshold: vipAutoThreshold,
+      tier_silver_points: tierSilverPoints,
+      tier_gold_points: tierGoldPoints,
     } as any).eq("id", business.id);
     setSavingAuto(false);
     if (error) toast.error("Erreur de sauvegarde");
