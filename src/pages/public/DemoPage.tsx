@@ -44,7 +44,7 @@ export default function DemoPage() {
     (async () => {
       const { data: biz } = await supabase
         .from("businesses")
-        .select("*")
+        .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,slug,is_demo")
         .eq("slug", slug)
         .eq("is_demo", true)
         .maybeSingle();
@@ -62,7 +62,7 @@ export default function DemoPage() {
 
       const { data: cards } = await supabase
         .from("customer_cards")
-        .select("*")
+        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed")
         .eq("business_id", biz.id)
         .limit(1);
       if (cards?.[0]) setCard(cards[0]);

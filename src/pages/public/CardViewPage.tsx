@@ -75,7 +75,7 @@ const CardViewPage = () => {
       if (!cardCode) return;
       const { data: cardData } = await supabase
         .from("customer_cards")
-        .select("*, customers(*)")
+        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed, customers(*)")
         .eq("card_code", cardCode)
         .maybeSingle();
 
@@ -85,7 +85,7 @@ const CardViewPage = () => {
 
       const { data: biz } = await supabase
         .from("businesses")
-        .select("*")
+        .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,google_review_enabled,google_place_id,google_review_message,google_review_threshold,slug,is_demo")
         .eq("id", cardData.business_id)
         .maybeSingle();
       if (biz) setBusiness(biz);
