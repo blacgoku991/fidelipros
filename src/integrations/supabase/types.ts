@@ -1762,12 +1762,70 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_public_business: {
+        Args: { p_slug: string }
+        Returns: {
+          accent_color: string
+          address: string
+          card_animation_intensity: string
+          card_bg_image_url: string
+          card_bg_type: string
+          card_style: string
+          category: string
+          city: string
+          description: string
+          foreground_color: string
+          google_place_id: string
+          google_review_enabled: boolean
+          google_review_message: string
+          google_review_threshold: number
+          id: string
+          is_demo: boolean
+          label_color: string
+          latitude: number
+          logo_url: string
+          longitude: number
+          loyalty_type: string
+          max_points_per_card: number
+          name: string
+          phone: string
+          points_per_euro: number
+          points_per_visit: number
+          primary_color: string
+          promo_text: string
+          reward_description: string
+          secondary_color: string
+          show_customer_name: boolean
+          show_expiration: boolean
+          show_points: boolean
+          show_qr_code: boolean
+          show_rewards_preview: boolean
+          slug: string
+          website: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      lookup_card_by_code: {
+        Args: { p_card_code: string }
+        Returns: {
+          business_id: string
+          card_code: string
+          created_at: string
+          current_points: number
+          customer_id: string
+          id: string
+          is_active: boolean
+          last_visit: string
+          max_points: number
+          rewards_earned: number
+          wallet_pass_installed: boolean
+        }[]
       }
       move_to_dlq: {
         Args: {
