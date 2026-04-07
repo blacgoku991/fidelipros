@@ -638,19 +638,7 @@ const CustomizePage = () => {
           </Panel>
         )}
 
-        {/* Reward */}
-        <Panel title="Récompense" subtitle="Ce que le client reçoit en atteignant l'objectif" icon={Gift}>
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">🎁 Récompense offerte</Label>
-            <Input
-              value={form.reward_description}
-              onChange={(e) => update("reward_description", e.target.value)}
-              className="rounded-xl h-11 font-medium"
-              placeholder="Café offert, -10% sur la prochaine commande..."
-            />
-            <p className="text-[10px] text-muted-foreground">Décrivez la récompense que recevra le client. Soyez précis et attractif !</p>
-          </div>
-        </Panel>
+        {/* Rewards are managed in the dedicated Récompenses page */}
 
         {/* Onboarding */}
         <Panel title="Inscription client" subtitle="Comment les nouveaux clients rejoignent votre programme" icon={Users}>
