@@ -71,6 +71,8 @@ const SettingsPage = () => {
   const [vipAutoEnabled, setVipAutoEnabled] = useState(false);
   const [vipAutoThreshold, setVipAutoThreshold] = useState(50);
   const [savingAuto, setSavingAuto] = useState(false);
+  const [tierSilverPoints, setTierSilverPoints] = useState(10);
+  const [tierGoldPoints, setTierGoldPoints] = useState(25);
 
   // Geofencing
   const [geoEnabled, setGeoEnabled] = useState(false);
