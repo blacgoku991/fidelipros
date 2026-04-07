@@ -269,16 +269,26 @@ export async function buildPkpass(
         },
       ],
       auxiliaryFields: [
-        ...(rewards.length > 0 ? [{
-          key: "next_reward",
-          label: "PROCHAINE RÉCOMPENSE",
-          value: (() => {
-            // Find the next reward the customer can earn
-            const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent) || rewards[0];
-            if (!nextReward) return business.reward_description || "Récompense offerte !";
-            return nextReward.title;
-          })(),
-        }] : business.reward_description ? [{
+        ...(rewards.length > 0 ? (() => {
+          const unlockedReward = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent);
+          const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
+          const fields: any[] = [];
+          if (unlockedReward) {
+            fields.push({
+              key: "unlocked_reward",
+              label: "🎉 À RÉCUPÉRER",
+              value: unlockedReward.title,
+            });
+          }
+          if (nextReward) {
+            fields.push({
+              key: "next_reward",
+              label: "PROCHAINE RÉCOMPENSE",
+              value: nextReward.title,
+            });
+          }
+          return fields;
+        })() : business.reward_description ? [{
           key: "next_reward",
           label: "RÉCOMPENSE",
           value: business.reward_description,
