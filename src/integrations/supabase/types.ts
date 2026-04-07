@@ -181,6 +181,8 @@ export type Database = {
           subscription_status:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          tier_gold_points: number
+          tier_silver_points: number
           trial_ends_at: string | null
           updated_at: string
           vip_auto_enabled: boolean | null
@@ -271,6 +273,8 @@ export type Database = {
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          tier_gold_points?: number
+          tier_silver_points?: number
           trial_ends_at?: string | null
           updated_at?: string
           vip_auto_enabled?: boolean | null
@@ -361,6 +365,8 @@ export type Database = {
           subscription_status?:
             | Database["public"]["Enums"]["subscription_status"]
             | null
+          tier_gold_points?: number
+          tier_silver_points?: number
           trial_ends_at?: string | null
           updated_at?: string
           vip_auto_enabled?: boolean | null

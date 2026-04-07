@@ -71,6 +71,8 @@ const SettingsPage = () => {
   const [vipAutoEnabled, setVipAutoEnabled] = useState(false);
   const [vipAutoThreshold, setVipAutoThreshold] = useState(50);
   const [savingAuto, setSavingAuto] = useState(false);
+  const [tierSilverPoints, setTierSilverPoints] = useState(10);
+  const [tierGoldPoints, setTierGoldPoints] = useState(25);
 
   // Geofencing
   const [geoEnabled, setGeoEnabled] = useState(false);
@@ -161,6 +163,8 @@ const SettingsPage = () => {
       setWelcomePushMessage(business.welcome_push_message || "Bienvenue ! Votre carte de fidélité est prête 🎉");
       setVipAutoEnabled(business.vip_auto_enabled || false);
       setVipAutoThreshold(business.vip_auto_threshold || 50);
+      setTierSilverPoints((business as any).tier_silver_points || 10);
+      setTierGoldPoints((business as any).tier_gold_points || 25);
     }
   }, [business]);
 
@@ -364,6 +368,8 @@ const SettingsPage = () => {
       welcome_push_message: welcomePushMessage,
       vip_auto_enabled: vipAutoEnabled,
       vip_auto_threshold: vipAutoThreshold,
+      tier_silver_points: tierSilverPoints,
+      tier_gold_points: tierGoldPoints,
     } as any).eq("id", business.id);
     setSavingAuto(false);
     if (error) toast.error("Erreur de sauvegarde");
@@ -1060,6 +1066,29 @@ const SettingsPage = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="border-t border-border/30" />
+
+          {/* Tier thresholds */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-yellow-500" />
+              <div>
+                <p className="text-sm font-medium">Seuils de niveaux</p>
+                <p className="text-[11px] text-muted-foreground">Points nécessaires pour passer Argent / Or</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 pl-6">
+              <div className="space-y-1">
+                <Label className="text-xs">🥈 Argent (Silver)</Label>
+                <Input type="number" min={1} value={tierSilverPoints} onChange={e => setTierSilverPoints(parseInt(e.target.value) || 10)} className="rounded-xl" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">⭐ Or (Gold)</Label>
+                <Input type="number" min={1} value={tierGoldPoints} onChange={e => setTierGoldPoints(parseInt(e.target.value) || 25)} className="rounded-xl" />
+              </div>
+            </div>
           </div>
 
           <Button

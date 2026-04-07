@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown, Bell, Wallet, Cake, ExternalLink } from "lucide-react";
+import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown, Bell, Wallet, Cake, ExternalLink, Gift } from "lucide-react";
 import { CustomerTimeline } from "@/components/dashboard/CustomerTimeline";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -60,6 +60,7 @@ const levelOrder: Record<string, number> = { bronze: 0, silver: 1, gold: 2 };
 const ClientsPage = () => {
   const { user, business, locationId, locationName } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
+  const [rewards, setRewards] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -74,6 +75,7 @@ const ClientsPage = () => {
   const [clientNotifs, setClientNotifs] = useState<Record<string, any[]>>({});
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [claimingReward, setClaimingReward] = useState<string | null>(null);
 
   const fetchCustomers = async () => {
     if (!business) return;
@@ -114,7 +116,49 @@ const ClientsPage = () => {
     if (data) setClientNotifs(prev => ({ ...prev, [customerId]: data }));
   };
 
-  useEffect(() => { fetchCustomers(); }, [business]);
+  const fetchRewards = async () => {
+    if (!business) return;
+    const { data } = await supabase
+      .from("rewards")
+      .select("id, title, description, points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+    if (data) setRewards(data);
+  };
+
+  const handleClaimReward = async (customerId: string, cardId: string, reward: any) => {
+    if (!business || !user) return;
+    setClaimingReward(reward.id);
+    // Log the claim in points_history
+    await supabase.from("points_history").insert({
+      customer_id: customerId,
+      business_id: business.id,
+      card_id: cardId,
+      points_added: 0,
+      action: "reward_claim",
+      note: `Récompense récupérée : ${reward.title} (${reward.points_required} pts)`,
+      scanned_by: user.id,
+    });
+    // Increment rewards_earned on card
+    const { data: cardData } = await supabase
+      .from("customer_cards")
+      .select("rewards_earned")
+      .eq("id", cardId)
+      .single();
+    await supabase.from("customer_cards").update({
+      rewards_earned: (cardData?.rewards_earned || 0) + 1,
+      updated_at: new Date().toISOString(),
+    }).eq("id", cardId);
+    toast.success(`✅ ${reward.title} marquée comme récupérée !`);
+    setClaimingReward(null);
+    // Refresh history
+    setClientHistory(prev => { const n = { ...prev }; delete n[customerId]; return n; });
+    fetchHistory(customerId);
+    fetchCustomers();
+  };
+
+  useEffect(() => { fetchCustomers(); fetchRewards(); }, [business]);
 
   const planLimits = getPlanLimits((business as any)?.subscription_plan);
   const isAtClientLimit = planLimits.max_clients !== Infinity && customers.length >= planLimits.max_clients;
@@ -525,6 +569,47 @@ const ClientsPage = () => {
                         <p className="text-[11px] text-muted-foreground">Niveau</p>
                       </div>
                     </div>
+
+                    {/* Rewards section */}
+                    {rewards.length > 0 && card && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                          <Gift className="w-3.5 h-3.5" /> Récompenses
+                        </p>
+                        {rewards.map((r: any) => {
+                          const currentPts = card.current_points || 0;
+                          const unlocked = currentPts >= r.points_required;
+                          const claimedInHistory = (clientHistory[selected.id] || []).some(
+                            (h: any) => h.action === "reward_claim" && h.note?.includes(r.title)
+                          );
+                          return (
+                            <div key={r.id} className={`p-3 rounded-xl border ${unlocked && !claimedInHistory ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold truncate">{r.title}</p>
+                                  <p className="text-xs text-muted-foreground">{r.points_required} pts requis</p>
+                                </div>
+                                {unlocked && !claimedInHistory ? (
+                                  <Button
+                                    size="sm"
+                                    className="rounded-xl gap-1.5 text-xs bg-accent text-accent-foreground shrink-0"
+                                    disabled={claimingReward === r.id}
+                                    onClick={() => handleClaimReward(selected.id, card.id, r)}
+                                  >
+                                    <Gift className="w-3.5 h-3.5" />
+                                    {claimingReward === r.id ? "..." : "Récupérer"}
+                                  </Button>
+                                ) : claimedInHistory ? (
+                                  <Badge variant="outline" className="text-[10px] shrink-0">✅ Récupérée</Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground shrink-0">{currentPts}/{r.points_required}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Card info */}
                     {card && (

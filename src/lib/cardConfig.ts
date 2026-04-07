@@ -134,6 +134,7 @@ export function getLoyaltyLabels(type: LoyaltyType) {
 export function buildApplePassFields(
   config: UnifiedCardConfig,
   customer: CardCustomerData,
+  rewards?: { title: string; points_required: number }[],
 ): {
   headerFields: PassField[];
   primaryFields: PassField[];
@@ -159,7 +160,7 @@ export function buildApplePassFields(
   // ── Primary: not used in Loyaltify-style (kept empty)
   const primaryFields: PassField[] = [];
 
-  // ── Secondary: MEMBER name + REWARD count (clean 2-field layout)
+  // ── Secondary: MEMBER name + REWARD count + NEXT REWARD
   const secondaryFields: PassField[] = [];
   if (config.showCustomerName) {
     secondaryFields.push({
@@ -173,6 +174,25 @@ export function buildApplePassFields(
     label: "RÉCOMPENSE",
     value: String(customer.rewardsEarned),
   });
+
+  // Add next reward if rewards are configured
+  if (rewards && rewards.length > 0) {
+    const unlockedReward = [...rewards].reverse().find(r => customer.currentPoints >= r.points_required);
+    const nextReward = rewards.find(r => r.points_required > customer.currentPoints);
+    if (unlockedReward) {
+      secondaryFields.push({
+        key: "unlocked",
+        label: "🎉 À RÉCUPÉRER",
+        value: unlockedReward.title,
+      });
+    } else if (nextReward) {
+      secondaryFields.push({
+        key: "next_reward",
+        label: "PROCHAINE RÉCOMPENSE",
+        value: nextReward.title,
+      });
+    }
+  }
 
   // ── Auxiliary: clean design, only show expiry if enabled
   const auxiliaryFields: PassField[] = [];

@@ -29,6 +29,7 @@ const ScannerPage = () => {
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
   const scanLockRef = useRef(false);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
@@ -173,7 +174,7 @@ const ScannerPage = () => {
         current_streak: newStreak,
         longest_streak: Math.max(newStreak, customer.longest_streak),
         last_visit_at: new Date().toISOString(),
-        level: customer.total_points + increment >= 25 ? "gold" : customer.total_points + increment >= 10 ? "silver" : "bronze",
+        level: customer.total_points + increment >= ((business as any).tier_gold_points || 25) ? "gold" : customer.total_points + increment >= ((business as any).tier_silver_points || 10) ? "silver" : "bronze",
       })
       .eq("id", customer.id);
 
@@ -249,11 +250,12 @@ const ScannerPage = () => {
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
                  onScan={(code) => {
-                    setCardCode(code);
                     if (!needsAmount) {
                       handleScan(code);
                     } else {
+                      setCardCode(code);
                       toast.info("Code scanné ! Entrez le montant puis validez.");
+                      setTimeout(() => amountInputRef.current?.focus(), 100);
                     }
                   }}
                   disabled={scanning}
@@ -282,6 +284,7 @@ const ScannerPage = () => {
               <div className="flex gap-2 items-center">
                 <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
+                  ref={amountInputRef}
                   type="number"
                   step="0.01"
                   min="0"
