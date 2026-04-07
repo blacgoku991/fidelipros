@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { buildCardConfig, buildCustomerData, buildApplePassFields, getProgressInfo, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Share, Download, X, MessageSquare } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Share, Download, X, MessageSquare, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { StarRating } from "@/components/public/StarRating";
