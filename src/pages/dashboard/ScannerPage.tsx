@@ -116,7 +116,11 @@ const ScannerPage = () => {
       .eq("is_active", true)
       .order("points_required", { ascending: true });
 
-    const rewardEarned = newPoints >= card.max_points;
+    // Use highest reward threshold if rewards exist, otherwise fall back to max_points
+    const highestRewardThreshold = rewards && rewards.length > 0
+      ? Math.max(...rewards.map((r: any) => r.points_required))
+      : card.max_points;
+    const rewardEarned = newPoints >= highestRewardThreshold;
 
     if (rewards && rewards.length > 0) {
       earnedReward = rewards.filter((r: any) => r.points_required <= newPoints)
