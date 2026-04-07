@@ -100,6 +100,22 @@ const CardViewPage = () => {
           .eq("is_active", true)
           .order("points_required", { ascending: true });
         if (rewardsData) setRewards(rewardsData);
+
+        // Fetch claimed rewards from points_history
+        if (cardData.id) {
+          const { data: claimsData } = await supabase
+            .from("points_history")
+            .select("note")
+            .eq("card_id", cardData.id)
+            .eq("action", "reward_claim");
+          if (claimsData) {
+            const titles = claimsData.map((c: any) => {
+              const match = c.note?.match(/Récompense récupérée : (.+?) \(/);
+              return match ? match[1] : "";
+            }).filter(Boolean);
+            setClaimedRewardTitles(titles);
+          }
+        }
       }
 
       // Check if customer can leave a review (visited in last 24h and no review today)
