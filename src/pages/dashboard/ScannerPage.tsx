@@ -250,11 +250,12 @@ const ScannerPage = () => {
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
                  onScan={(code) => {
-                    setCardCode(code);
                     if (!needsAmount) {
                       handleScan(code);
                     } else {
+                      setCardCode(code);
                       toast.info("Code scanné ! Entrez le montant puis validez.");
+                      setTimeout(() => amountInputRef.current?.focus(), 100);
                     }
                   }}
                   disabled={scanning}
