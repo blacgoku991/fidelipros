@@ -580,41 +580,20 @@ const CustomizePage = () => {
                 </div>
               </>
             )}
-
-            <Divider label="Objectif" />
-
-            <SmartSlider
-              label="Points pour la récompense"
-              icon={Gift}
-              value={form.max_points_per_card}
-              onChange={(v) => update("max_points_per_card", v)}
-              min={5} max={200} step={5}
-              suffix="pt" pluralSuffix="pts"
-              hint={
-                euroMode
-                  ? `≈ ${Math.ceil(form.max_points_per_card / (form.points_per_euro || 1))}€ d'achats pour atteindre la récompense`
-                  : `= ${Math.ceil(form.max_points_per_card / (form.points_per_visit || 1))} visite${Math.ceil(form.max_points_per_card / (form.points_per_visit || 1)) > 1 ? "s" : ""} pour atteindre la récompense`
-              }
-            />
           </Panel>
         )}
 
         {isStamps && (
-          <Panel title="Configuration des tampons" subtitle="Nombre de tampons avant la récompense" icon={Stamp}>
-            <SmartSlider
-              label="Tampons requis"
-              icon={Target}
-              value={form.max_points_per_card}
-              onChange={(v) => update("max_points_per_card", v)}
-              min={3} max={20}
-              suffix="tampon" pluralSuffix="tampons"
-              hint={`Le client devra passer ${form.max_points_per_card} fois pour obtenir sa récompense`}
-            />
+          <Panel title="Configuration des tampons" subtitle="Réglez le nombre de tampons par visite" icon={Stamp}>
+            <div className="flex items-start gap-2.5 text-[11px] text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+              <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <span>Les récompenses et leurs seuils se configurent dans l'onglet <strong>Récompenses</strong> du menu.</span>
+            </div>
           </Panel>
         )}
 
         {isCashback && (
-          <Panel title="Configuration du cashback" subtitle="Taux de retour et seuil de récompense" icon={Coins}>
+          <Panel title="Configuration du cashback" subtitle="Taux de retour en points" icon={Coins}>
             <SmartSlider
               label="Taux de conversion"
               icon={TrendingUp}
@@ -625,16 +604,10 @@ const CustomizePage = () => {
               suffix="pt" pluralSuffix="pts"
             />
             <SimulationBox pointsPerEuro={form.points_per_euro || 1} label="Gains par achat" />
-            <Divider label="Seuil" />
-            <SmartSlider
-              label="Seuil de récompense"
-              icon={Gift}
-              value={form.max_points_per_card}
-              onChange={(v) => update("max_points_per_card", v)}
-              min={10} max={500} step={10}
-              suffix="pt" pluralSuffix="pts"
-              hint={`≈ ${Math.ceil(form.max_points_per_card / (form.points_per_euro || 1))}€ d'achats pour la récompense`}
-            />
+            <div className="flex items-start gap-2.5 text-[11px] text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+              <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <span>Les seuils de récompense se configurent dans l'onglet <strong>Récompenses</strong> du menu.</span>
+            </div>
           </Panel>
         )}
 
