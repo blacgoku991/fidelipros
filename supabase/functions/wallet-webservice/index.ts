@@ -432,7 +432,8 @@ async function buildPkpassForUpdate(
   business: any,
   customer: any,
   authToken: string,
-  rewards: any[] = []
+  rewards: any[] = [],
+  claimedTitles: string[] = []
 ): Promise<Uint8Array> {
   const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
   if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
