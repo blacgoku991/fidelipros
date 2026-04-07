@@ -22,7 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown, Bell, Wallet, Cake, ExternalLink } from "lucide-react";
+import { Plus, Search, Star, Crown, Flame, Trash2, Copy, Mail, Phone, Calendar, Award, Download, Send, Filter, ArrowUp, ArrowDown, ChevronsUpDown, Bell, Wallet, Cake, ExternalLink, Gift } from "lucide-react";
 import { CustomerTimeline } from "@/components/dashboard/CustomerTimeline";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
