@@ -62,7 +62,7 @@ export default function DemoPage() {
 
       const { data: cards } = await supabase
         .from("customer_cards")
-        .select("*")
+        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed")
         .eq("business_id", biz.id)
         .limit(1);
       if (cards?.[0]) setCard(cards[0]);
