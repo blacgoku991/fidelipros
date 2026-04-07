@@ -24,6 +24,7 @@ const CardViewPage = () => {
   const [card, setCard] = useState<any>(null);
   const [customer, setCustomer] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
+  const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
