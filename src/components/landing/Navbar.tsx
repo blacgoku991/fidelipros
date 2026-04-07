@@ -87,7 +87,7 @@ export function Navbar() {
                 <Menu className="w-4 h-4" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-[80vw] max-w-xs p-6 safe-area-top">
+            <SheetContent side="right" className="w-[80vw] max-w-xs p-6 safe-area-top safe-area-bottom">
               <SheetHeader className="mb-8">
                 <SheetTitle className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
