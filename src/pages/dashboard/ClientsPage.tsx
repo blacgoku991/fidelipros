@@ -116,7 +116,18 @@ const ClientsPage = () => {
     if (data) setClientNotifs(prev => ({ ...prev, [customerId]: data }));
   };
 
-  useEffect(() => { fetchCustomers(); }, [business]);
+  const fetchRewards = async () => {
+    if (!business) return;
+    const { data } = await supabase
+      .from("rewards")
+      .select("id, title, description, points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+    if (data) setRewards(data);
+  };
+
+  useEffect(() => { fetchCustomers(); fetchRewards(); }, [business]);
 
   const planLimits = getPlanLimits((business as any)?.subscription_plan);
   const isAtClientLimit = planLimits.max_clients !== Infinity && customers.length >= planLimits.max_clients;
