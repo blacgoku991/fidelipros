@@ -390,6 +390,17 @@ async function handleGetLatestPass(
     .eq("is_active", true)
     .order("points_required", { ascending: true });
 
+  // Fetch claimed reward titles for this card
+  const { data: claimsData } = await supabase
+    .from("points_history")
+    .select("note")
+    .eq("card_id", card.id)
+    .eq("action", "reward_claim");
+  const claimedTitles = (claimsData || []).map((c: any) => {
+    const match = c.note?.match(/Récompense récupérée : (.+?) \(/);
+    return match ? match[1] : "";
+  }).filter(Boolean);
+
   await supabase
     .from("customer_cards")
     .update({
