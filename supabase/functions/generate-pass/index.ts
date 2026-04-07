@@ -282,14 +282,14 @@ export async function buildPkpass(
       ],
       auxiliaryFields: [
         ...(rewards.length > 0 ? (() => {
-          const unlockedReward = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent);
+          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedTitles.includes(r.title));
           const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
           const fields: any[] = [];
-          if (unlockedReward) {
+          if (unclaimedUnlocked) {
             fields.push({
               key: "unlocked_reward",
               label: "🎉 À RÉCUPÉRER",
-              value: unlockedReward.title,
+              value: unclaimedUnlocked.title,
             });
           }
           if (nextReward) {
