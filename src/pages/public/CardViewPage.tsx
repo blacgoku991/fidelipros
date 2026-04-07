@@ -35,6 +35,7 @@ const CardViewPage = () => {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [claimedRewardTitles, setClaimedRewardTitles] = useState<string[]>([]);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
