@@ -150,7 +150,7 @@ const CardViewPage = () => {
   // ── Unified config ──
   const config = buildCardConfig(business);
   const customerData = buildCustomerData(card, customer);
-  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = buildApplePassFields(config, customerData);
+  const { headerFields, primaryFields, secondaryFields, auxiliaryFields } = buildApplePassFields(config, customerData, rewards);
   const progressInfo = getProgressInfo(config, customerData);
   const labels = getLoyaltyLabels(config.loyaltyType);
 
