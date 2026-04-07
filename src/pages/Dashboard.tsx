@@ -615,18 +615,18 @@ const Dashboard = () => {
 
       {/* ── Tabs ── */}
       <Tabs defaultValue="scanner" className="space-y-6">
-        <TabsList className="bg-card border border-border/40 rounded-2xl p-1.5 h-auto shadow-sm w-full sm:w-auto overflow-x-auto flex-nowrap">
-          <TabsTrigger value="scanner" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
-            <QrCode className="w-4 h-4" /> Scanner
+        <TabsList className="bg-card border border-border/40 rounded-2xl p-1 sm:p-1.5 h-auto shadow-sm w-full overflow-x-auto flex-nowrap scrollbar-hide">
+          <TabsTrigger value="scanner" className="rounded-xl gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all flex-1 sm:flex-none">
+            <QrCode className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Scanner
           </TabsTrigger>
-          <TabsTrigger value="clients" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
-            <Users className="w-4 h-4" /> Clients
+          <TabsTrigger value="clients" className="rounded-xl gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all flex-1 sm:flex-none">
+            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Clients
           </TabsTrigger>
-          <TabsTrigger value="stats" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
-            <TrendingUp className="w-4 h-4" /> Stats
+          <TabsTrigger value="stats" className="rounded-xl gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all flex-1 sm:flex-none">
+            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Stats
           </TabsTrigger>
-          <TabsTrigger value="qrcode" className="rounded-xl gap-2 px-4 py-2.5 text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">
-            <Eye className="w-4 h-4" /> Vitrine
+          <TabsTrigger value="qrcode" className="rounded-xl gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 text-[11px] sm:text-xs font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all flex-1 sm:flex-none">
+            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> Vitrine
           </TabsTrigger>
         </TabsList>
 

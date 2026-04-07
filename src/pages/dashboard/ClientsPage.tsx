@@ -291,15 +291,15 @@ const ClientsPage = () => {
       title="Clients"
       subtitle={`${customers.length} client(s) enregistré(s)${planLimits.max_clients !== Infinity ? ` / ${planLimits.max_clients} max` : ""}`}
       headerAction={
-        <div className="flex items-center gap-2">
-          <Button onClick={exportCSV} variant="outline" className="rounded-xl gap-2 text-xs">
-            <Download className="w-4 h-4" /> CSV
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <Button onClick={exportCSV} variant="outline" className="rounded-xl gap-1.5 text-xs h-8 sm:h-9 px-2.5 sm:px-3">
+            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">CSV</span>
           </Button>
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2" disabled={isAtClientLimit}
+              <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-1.5 text-xs h-8 sm:h-9 px-2.5 sm:px-3" disabled={isAtClientLimit}
                 title={isAtClientLimit ? `Limite de ${planLimits.max_clients} clients atteinte` : undefined}>
-                <Plus className="w-4 h-4" /> Ajouter
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Ajouter</span>
               </Button>
             </DialogTrigger>
             <DialogContent>
