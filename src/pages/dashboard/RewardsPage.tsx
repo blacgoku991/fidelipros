@@ -194,6 +194,9 @@ const RewardsPage = () => {
                     className="data-[state=checked]:bg-emerald-500"
                   />
                 </div>
+                <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={() => openEdit(r)}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => deleteReward(r.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
