@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AppleWalletPass } from "@/components/AppleWalletPass";
 import { buildCardConfig, buildCustomerData, buildApplePassFields, getProgressInfo, getLoyaltyLabels } from "@/lib/cardConfig";
 import { motion, AnimatePresence } from "framer-motion";
-import { Flame, Star, Crown, Trophy, Share, Download, X, MessageSquare } from "lucide-react";
+import { Flame, Star, Crown, Trophy, Share, Download, X, MessageSquare, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { StarRating } from "@/components/public/StarRating";
@@ -24,6 +24,7 @@ const CardViewPage = () => {
   const [card, setCard] = useState<any>(null);
   const [customer, setCustomer] = useState<any>(null);
   const [business, setBusiness] = useState<any>(null);
+  const [rewards, setRewards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [walletLoading, setWalletLoading] = useState(false);
   const [googleWalletLoading, setGoogleWalletLoading] = useState(false);
@@ -88,7 +89,17 @@ const CardViewPage = () => {
         .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,google_review_enabled,google_place_id,google_review_message,google_review_threshold,slug,is_demo")
         .eq("id", cardData.business_id)
         .maybeSingle();
-      if (biz) setBusiness(biz);
+      if (biz) {
+        setBusiness(biz);
+        // Fetch active rewards for the business
+        const { data: rewardsData } = await supabase
+          .from("rewards")
+          .select("id, title, description, points_required")
+          .eq("business_id", biz.id)
+          .eq("is_active", true)
+          .order("points_required", { ascending: true });
+        if (rewardsData) setRewards(rewardsData);
+      }
 
       // Check if customer can leave a review (visited in last 24h and no review today)
       if (cardData.customers) {
@@ -267,30 +278,72 @@ const CardViewPage = () => {
           Code : <span className="font-mono">{customerData.cardCode}</span>
         </p>
 
-        {/* Progress info */}
-        <div className="p-5 rounded-2xl bg-card border border-border/50">
-          {!progressInfo.isComplete ? (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Flame className="w-5 h-5 text-accent" />
+        {/* Progress info — next reward */}
+        {rewards.length > 0 ? (
+          <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-4">
+            <p className="font-semibold text-sm flex items-center gap-2">
+              <Gift className="w-4 h-4 text-accent" /> Vos récompenses
+            </p>
+            {rewards.map((r: any) => {
+              const unlocked = customerData.currentPoints >= r.points_required;
+              const progress = Math.min(100, (customerData.currentPoints / r.points_required) * 100);
+              return (
+                <div key={r.id} className={`p-3 rounded-xl border transition-all ${unlocked ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${unlocked ? "bg-accent/20" : "bg-muted"}`}>
+                        {unlocked ? <Trophy className="w-4 h-4 text-accent" /> : <Gift className="w-4 h-4 text-muted-foreground" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-sm font-semibold truncate ${unlocked ? "text-accent" : ""}`}>{r.title}</p>
+                        {r.description && <p className="text-xs text-muted-foreground truncate">{r.description}</p>}
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      {unlocked ? (
+                        <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-1 rounded-full">🎉 À récupérer !</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground font-medium">{customerData.currentPoints}/{r.points_required} {labels.unitPlural}</span>
+                      )}
+                    </div>
+                  </div>
+                  {!unlocked && (
+                    <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-accent/60 transition-all" style={{ width: `${progress}%` }} />
+                    </div>
+                  )}
+                  {unlocked && (
+                    <p className="text-xs text-accent mt-2 font-medium">Présentez votre carte en magasin pour récupérer cette récompense</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-5 rounded-2xl bg-card border border-border/50">
+            {!progressInfo.isComplete ? (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">{progressInfo.remainingText}</p>
+                  <p className="text-xs text-muted-foreground">{config.rewardDescription}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-sm">{progressInfo.remainingText}</p>
-                <p className="text-xs text-muted-foreground">{config.rewardDescription}</p>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="font-semibold text-sm">Récompense disponible ! 🎉</p>
+                  <p className="text-xs text-muted-foreground">Présentez votre carte en magasin</p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Récompense disponible ! 🎉</p>
-                <p className="text-xs text-muted-foreground">Présentez votre carte en magasin</p>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
