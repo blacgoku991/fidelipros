@@ -9,7 +9,7 @@ interface AuthNavbarProps {
 
 export function AuthNavbar({ backTo }: AuthNavbarProps) {
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-background/80 backdrop-blur-lg border-b border-border/40 flex items-center px-4 sm:px-6">
+    <nav className="fixed top-0 inset-x-0 z-50 h-14 bg-background/80 backdrop-blur-lg border-b border-border/40 flex items-center px-4 sm:px-6 safe-area-top">
       <div className="flex items-center gap-2">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
