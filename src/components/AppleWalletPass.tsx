@@ -259,6 +259,18 @@ export function AppleWalletPass({
                 {footerText}
               </p>
             )}
+            <p
+              style={{
+                color: lbl,
+                fontSize: `${7 * s}px`,
+                letterSpacing: "0.04em",
+                marginTop: `${3 * s}px`,
+                opacity: 0.7,
+              }}
+            >
+              Proposé par{" "}
+              <span style={{ fontWeight: 600 }}>fidélipro.com</span>
+            </p>
           </div>
         )}
 
