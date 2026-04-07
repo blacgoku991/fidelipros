@@ -157,10 +157,10 @@ const RewardsPage = () => {
             transition={{ delay: i * 0.04 }}
             className={`p-4 rounded-2xl bg-card border transition-all hover:-translate-y-0.5 hover:shadow-md ${r.is_active ? "border-border/50 hover:border-amber-500/20" : "border-border/30 opacity-60"}`}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-md">
-                  <Gift className="w-5 h-5 text-white" />
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-md">
+                  <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -182,8 +182,7 @@ const RewardsPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {/* Toggle actif/inactif avec label */}
+              <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                 <div className="flex items-center gap-1.5">
                   <span className={`text-[10px] font-semibold transition-colors ${r.is_active ? "text-emerald-600" : "text-muted-foreground"}`}>
                     {r.is_active ? "Actif" : "Inactif"}

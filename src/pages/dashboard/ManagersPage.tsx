@@ -201,9 +201,42 @@ export default function ManagersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
+        {/* Mobile: card list */}
+        <div className="space-y-3 sm:hidden">
+          {managers.map(m => (
+            <Card key={m.id}>
+              <CardContent className="p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm font-medium truncate">{m.user_email || m.user_id.slice(0, 8) + "…"}</span>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive h-8 w-8 shrink-0" onClick={() => handleRemove(m.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{m.location_name}</span>
+                  </div>
+                  <Badge variant={m.has_profile ? "default" : "secondary"} className="text-[10px]">
+                    {m.has_profile ? "Actif" : "Invité"}
+                  </Badge>
+                  {m.invited_at && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {new Date(m.invited_at).toLocaleDateString("fr-FR")}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Desktop: table */}
+        <Card className="hidden sm:block">
+          <CardContent className="p-0 overflow-x-auto">
+            <Table className="min-w-[500px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Manager</TableHead>
