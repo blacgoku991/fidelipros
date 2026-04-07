@@ -179,30 +179,23 @@ export function buildApplePassFields(
 
   // Add next reward if rewards are configured (skip already claimed)
   if (rewards && rewards.length > 0) {
-    const unlockedReward = [...rewards].reverse().find(r => 
+    const unclaimedUnlocked = [...rewards].reverse().find(r => 
       customer.currentPoints >= r.points_required && !claimed.includes(r.title)
     );
-    const nextReward = rewards.find(r => 
-      r.points_required > customer.currentPoints || 
-      (customer.currentPoints >= r.points_required && !claimed.includes(r.title))
-    );
-    const firstUnclaimed = unlockedReward || (nextReward && customer.currentPoints >= nextReward.points_required && !claimed.includes(nextReward.title) ? nextReward : null);
+    const nextReward = rewards.find(r => r.points_required > customer.currentPoints);
     
-    if (firstUnclaimed) {
+    if (unclaimedUnlocked) {
       secondaryFields.push({
         key: "unlocked",
         label: "🎉 À RÉCUPÉRER",
-        value: firstUnclaimed.title,
+        value: unclaimedUnlocked.title,
       });
-    } else {
-      const next = rewards.find(r => r.points_required > customer.currentPoints);
-      if (next) {
-        secondaryFields.push({
-          key: "next_reward",
-          label: "PROCHAINE RÉCOMPENSE",
-          value: next.title,
-        });
-      }
+    } else if (nextReward) {
+      secondaryFields.push({
+        key: "next_reward",
+        label: "PROCHAINE RÉCOMPENSE",
+        value: nextReward.title,
+      });
     }
   }
 
