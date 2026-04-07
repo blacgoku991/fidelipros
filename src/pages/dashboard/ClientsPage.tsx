@@ -570,6 +570,47 @@ const ClientsPage = () => {
                       </div>
                     </div>
 
+                    {/* Rewards section */}
+                    {rewards.length > 0 && card && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                          <Gift className="w-3.5 h-3.5" /> Récompenses
+                        </p>
+                        {rewards.map((r: any) => {
+                          const currentPts = card.current_points || 0;
+                          const unlocked = currentPts >= r.points_required;
+                          const claimedInHistory = (clientHistory[selected.id] || []).some(
+                            (h: any) => h.action === "reward_claim" && h.note?.includes(r.title)
+                          );
+                          return (
+                            <div key={r.id} className={`p-3 rounded-xl border ${unlocked && !claimedInHistory ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-semibold truncate">{r.title}</p>
+                                  <p className="text-xs text-muted-foreground">{r.points_required} pts requis</p>
+                                </div>
+                                {unlocked && !claimedInHistory ? (
+                                  <Button
+                                    size="sm"
+                                    className="rounded-xl gap-1.5 text-xs bg-accent text-accent-foreground shrink-0"
+                                    disabled={claimingReward === r.id}
+                                    onClick={() => handleClaimReward(selected.id, card.id, r)}
+                                  >
+                                    <Gift className="w-3.5 h-3.5" />
+                                    {claimingReward === r.id ? "..." : "Récupérer"}
+                                  </Button>
+                                ) : claimedInHistory ? (
+                                  <Badge variant="outline" className="text-[10px] shrink-0">✅ Récupérée</Badge>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground shrink-0">{currentPts}/{r.points_required}</span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     {/* Card info */}
                     {card && (
                       <div className="space-y-2">
