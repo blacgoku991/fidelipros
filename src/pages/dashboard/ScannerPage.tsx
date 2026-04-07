@@ -174,7 +174,7 @@ const ScannerPage = () => {
         current_streak: newStreak,
         longest_streak: Math.max(newStreak, customer.longest_streak),
         last_visit_at: new Date().toISOString(),
-        level: customer.total_points + increment >= 25 ? "gold" : customer.total_points + increment >= 10 ? "silver" : "bronze",
+        level: customer.total_points + increment >= ((business as any).tier_gold_points || 25) ? "gold" : customer.total_points + increment >= ((business as any).tier_silver_points || 10) ? "silver" : "bronze",
       })
       .eq("id", customer.id);
 
