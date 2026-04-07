@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Gift, Trophy, Trash2, BarChart3 } from "lucide-react";
+import { Plus, Gift, Trophy, Trash2, BarChart3, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
