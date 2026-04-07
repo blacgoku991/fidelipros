@@ -339,7 +339,7 @@ const Dashboard = () => {
     const newTotalPoints = (customer.total_points || 0) + pointsToAdd;
     const prevLevel = customer.level || "bronze";
     const newLevel: "bronze" | "silver" | "gold" =
-      newTotalPoints >= 25 ? "gold" : newTotalPoints >= 10 ? "silver" : "bronze";
+      newTotalPoints >= ((business as any).tier_gold_points || 25) ? "gold" : newTotalPoints >= ((business as any).tier_silver_points || 10) ? "silver" : "bronze";
     const levelChanged = newLevel !== prevLevel && (newLevel === "silver" || newLevel === "gold");
 
     const { error: custErr } = await supabase.from("customers").update({
