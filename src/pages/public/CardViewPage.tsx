@@ -75,7 +75,7 @@ const CardViewPage = () => {
       if (!cardCode) return;
       const { data: cardData } = await supabase
         .from("customer_cards")
-        .select("*, customers(*)")
+        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed, customers(*)")
         .eq("card_code", cardCode)
         .maybeSingle();
 
