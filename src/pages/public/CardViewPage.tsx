@@ -35,6 +35,7 @@ const CardViewPage = () => {
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [claimedRewardTitles, setClaimedRewardTitles] = useState<string[]>([]);
 
   const isAppleDevice = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || (navigator as any).standalone;
@@ -99,6 +100,22 @@ const CardViewPage = () => {
           .eq("is_active", true)
           .order("points_required", { ascending: true });
         if (rewardsData) setRewards(rewardsData);
+
+        // Fetch claimed rewards from points_history
+        if (cardData.id) {
+          const { data: claimsData } = await supabase
+            .from("points_history")
+            .select("note")
+            .eq("card_id", cardData.id)
+            .eq("action", "reward_claim");
+          if (claimsData) {
+            const titles = claimsData.map((c: any) => {
+              const match = c.note?.match(/Récompense récupérée : (.+?) \(/);
+              return match ? match[1] : "";
+            }).filter(Boolean);
+            setClaimedRewardTitles(titles);
+          }
+        }
       }
 
       // Check if customer can leave a review (visited in last 24h and no review today)
@@ -286,33 +303,36 @@ const CardViewPage = () => {
             </p>
             {rewards.map((r: any) => {
               const unlocked = customerData.currentPoints >= r.points_required;
+              const claimed = claimedRewardTitles.includes(r.title);
               const progress = Math.min(100, (customerData.currentPoints / r.points_required) * 100);
               return (
-                <div key={r.id} className={`p-3 rounded-xl border transition-all ${unlocked ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                <div key={r.id} className={`p-3 rounded-xl border transition-all ${claimed ? "border-border/30 bg-muted/20 opacity-70" : unlocked ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${unlocked ? "bg-accent/20" : "bg-muted"}`}>
-                        {unlocked ? <Trophy className="w-4 h-4 text-accent" /> : <Gift className="w-4 h-4 text-muted-foreground" />}
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${claimed ? "bg-muted" : unlocked ? "bg-accent/20" : "bg-muted"}`}>
+                        {claimed ? <span className="text-sm">✅</span> : unlocked ? <Trophy className="w-4 h-4 text-accent" /> : <Gift className="w-4 h-4 text-muted-foreground" />}
                       </div>
                       <div className="min-w-0">
-                        <p className={`text-sm font-semibold truncate ${unlocked ? "text-accent" : ""}`}>{r.title}</p>
+                        <p className={`text-sm font-semibold truncate ${claimed ? "text-muted-foreground line-through" : unlocked ? "text-accent" : ""}`}>{r.title}</p>
                         {r.description && <p className="text-xs text-muted-foreground truncate">{r.description}</p>}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      {unlocked ? (
+                      {claimed ? (
+                        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded-full">✅ Récupérée</span>
+                      ) : unlocked ? (
                         <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-1 rounded-full">🎉 À récupérer !</span>
                       ) : (
                         <span className="text-xs text-muted-foreground font-medium">{customerData.currentPoints}/{r.points_required} {labels.unitPlural}</span>
                       )}
                     </div>
                   </div>
-                  {!unlocked && (
+                  {!unlocked && !claimed && (
                     <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full bg-accent/60 transition-all" style={{ width: `${progress}%` }} />
                     </div>
                   )}
-                  {unlocked && (
+                  {unlocked && !claimed && (
                     <p className="text-xs text-accent mt-2 font-medium">Présentez votre carte en magasin pour récupérer cette récompense</p>
                   )}
                 </div>

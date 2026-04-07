@@ -135,6 +135,7 @@ export function buildApplePassFields(
   config: UnifiedCardConfig,
   customer: CardCustomerData,
   rewards?: { title: string; points_required: number }[],
+  claimedTitles?: string[],
 ): {
   headerFields: PassField[];
   primaryFields: PassField[];
@@ -142,6 +143,7 @@ export function buildApplePassFields(
   auxiliaryFields: PassField[];
 } {
   const labels = getLoyaltyLabels(config.loyaltyType);
+  const claimed = claimedTitles || [];
 
   // ── Header: top-right — count
   const headerFields: PassField[] = [];
@@ -175,22 +177,32 @@ export function buildApplePassFields(
     value: String(customer.rewardsEarned),
   });
 
-  // Add next reward if rewards are configured
+  // Add next reward if rewards are configured (skip already claimed)
   if (rewards && rewards.length > 0) {
-    const unlockedReward = [...rewards].reverse().find(r => customer.currentPoints >= r.points_required);
-    const nextReward = rewards.find(r => r.points_required > customer.currentPoints);
-    if (unlockedReward) {
+    const unlockedReward = [...rewards].reverse().find(r => 
+      customer.currentPoints >= r.points_required && !claimed.includes(r.title)
+    );
+    const nextReward = rewards.find(r => 
+      r.points_required > customer.currentPoints || 
+      (customer.currentPoints >= r.points_required && !claimed.includes(r.title))
+    );
+    const firstUnclaimed = unlockedReward || (nextReward && customer.currentPoints >= nextReward.points_required && !claimed.includes(nextReward.title) ? nextReward : null);
+    
+    if (firstUnclaimed) {
       secondaryFields.push({
         key: "unlocked",
         label: "🎉 À RÉCUPÉRER",
-        value: unlockedReward.title,
+        value: firstUnclaimed.title,
       });
-    } else if (nextReward) {
-      secondaryFields.push({
-        key: "next_reward",
-        label: "PROCHAINE RÉCOMPENSE",
-        value: nextReward.title,
-      });
+    } else {
+      const next = rewards.find(r => r.points_required > customer.currentPoints);
+      if (next) {
+        secondaryFields.push({
+          key: "next_reward",
+          label: "PROCHAINE RÉCOMPENSE",
+          value: next.title,
+        });
+      }
     }
   }
 
