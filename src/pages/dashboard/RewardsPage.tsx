@@ -113,12 +113,12 @@ const RewardsPage = () => {
       title="Récompenses"
       subtitle="Configurez les récompenses de votre programme"
       headerAction={
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <Dialog open={addOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setAddOpen(true); }}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2"><Plus className="w-4 h-4" /> Ajouter</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Nouvelle récompense</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingReward ? "Modifier la récompense" : "Nouvelle récompense"}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="space-y-2"><Label>Nom *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Café offert" className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Un café au choix..." className="rounded-xl" /></div>
@@ -126,7 +126,7 @@ const RewardsPage = () => {
                 <Label>{loyaltyType === "stamps" ? "Tampons requis" : loyaltyType === "cashback" ? "Montant requis (€)" : "Points requis"}</Label>
                 <Input type="number" min={1} value={form.points_required} onChange={(e) => setForm({ ...form, points_required: Math.max(1, parseInt(e.target.value) || 1) })} className="rounded-xl" />
               </div>
-              <Button onClick={handleAdd} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">Créer la récompense</Button>
+              <Button onClick={handleSave} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">{editingReward ? "Enregistrer" : "Créer la récompense"}</Button>
             </div>
           </DialogContent>
         </Dialog>
