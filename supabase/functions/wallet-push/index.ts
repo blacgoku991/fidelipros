@@ -154,11 +154,11 @@ Deno.serve(async (req) => {
       let fieldValueActuallyChanged = false;
 
       if (act === "points_increment" || act === "full_test" || act === "send_test_notification") {
-        // Actually increment points — the VALUE must change for visible notification
-        newPts = Math.min(oldPts + 1, maxPts);
-        cardUpdate.current_points = newPts;
-        fieldValueActuallyChanged = newPts !== oldPts;
-        console.log(`[Wallet Push] Points ${oldPts} → ${newPts} for card ${sn} (changed=${fieldValueActuallyChanged})`);
+        // DO NOT increment points here — the scanner already updated current_points.
+        // Just flag that the field value changed so APNs push fires.
+        newPts = cardData?.current_points || 0;
+        fieldValueActuallyChanged = true;
+        console.log(`[Wallet Push] Points=${newPts} for card ${sn} (scanner already updated, no re-increment)`);
       }
 
       // Only set wallet_change_message for campaigns (user-facing notifications)
