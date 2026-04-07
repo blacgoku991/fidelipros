@@ -127,6 +127,37 @@ const ClientsPage = () => {
     if (data) setRewards(data);
   };
 
+  const handleClaimReward = async (customerId: string, cardId: string, reward: any) => {
+    if (!business || !user) return;
+    setClaimingReward(reward.id);
+    // Log the claim in points_history
+    await supabase.from("points_history").insert({
+      customer_id: customerId,
+      business_id: business.id,
+      card_id: cardId,
+      points_added: 0,
+      action: "reward_claim",
+      note: `Récompense récupérée : ${reward.title} (${reward.points_required} pts)`,
+      scanned_by: user.id,
+    });
+    // Increment rewards_earned on card
+    const { data: cardData } = await supabase
+      .from("customer_cards")
+      .select("rewards_earned")
+      .eq("id", cardId)
+      .single();
+    await supabase.from("customer_cards").update({
+      rewards_earned: (cardData?.rewards_earned || 0) + 1,
+      updated_at: new Date().toISOString(),
+    }).eq("id", cardId);
+    toast.success(`✅ ${reward.title} marquée comme récupérée !`);
+    setClaimingReward(null);
+    // Refresh history
+    setClientHistory(prev => { const n = { ...prev }; delete n[customerId]; return n; });
+    fetchHistory(customerId);
+    fetchCustomers();
+  };
+
   useEffect(() => { fetchCustomers(); fetchRewards(); }, [business]);
 
   const planLimits = getPlanLimits((business as any)?.subscription_plan);
