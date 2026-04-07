@@ -303,7 +303,7 @@ const CardViewPage = () => {
                       {unlocked ? (
                         <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-1 rounded-full">🎉 À récupérer !</span>
                       ) : (
-                        <span className="text-xs text-muted-foreground font-medium">{customerData.currentPoints}/{r.points_required} {labels.unitShort}</span>
+                        <span className="text-xs text-muted-foreground font-medium">{customerData.currentPoints}/{r.points_required} {labels.unitPlural}</span>
                       )}
                     </div>
                   </div>
