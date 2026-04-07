@@ -60,6 +60,7 @@ const levelOrder: Record<string, number> = { bronze: 0, silver: 1, gold: 2 };
 const ClientsPage = () => {
   const { user, business, locationId, locationName } = useAuth();
   const [customers, setCustomers] = useState<any[]>([]);
+  const [rewards, setRewards] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
   const [addOpen, setAddOpen] = useState(false);
@@ -74,6 +75,7 @@ const ClientsPage = () => {
   const [clientNotifs, setClientNotifs] = useState<Record<string, any[]>>({});
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [claimingReward, setClaimingReward] = useState<string | null>(null);
 
   const fetchCustomers = async () => {
     if (!business) return;
