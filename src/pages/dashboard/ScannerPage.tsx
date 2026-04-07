@@ -29,6 +29,7 @@ const ScannerPage = () => {
   const [lastScan, setLastScan] = useState<any>(null);
   const [todayScans, setTodayScans] = useState(0);
   const scanLockRef = useRef(false);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
