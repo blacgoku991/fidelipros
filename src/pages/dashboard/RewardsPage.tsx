@@ -57,17 +57,37 @@ const RewardsPage = () => {
 
   useEffect(() => { fetchRewards(); }, [business]);
 
-  const handleAdd = async () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !business) { toast.error("Titre requis"); return; }
     if (form.points_required < 1) { toast.error("Les points requis doivent être au minimum 1"); return; }
-    const { error } = await supabase.from("rewards").insert({
-      business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
-    });
-    if (error) { toast.error("Erreur lors de la création"); return; }
-    toast.success("Récompense créée !");
-    setAddOpen(false);
-    setForm({ title: "", description: "", points_required: 10 });
+
+    if (editingReward) {
+      const { error } = await supabase.from("rewards").update({
+        title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
+      }).eq("id", editingReward.id);
+      if (error) { toast.error("Erreur lors de la mise à jour"); return; }
+      toast.success("Récompense modifiée !");
+    } else {
+      const { error } = await supabase.from("rewards").insert({
+        business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
+      });
+      if (error) { toast.error("Erreur lors de la création"); return; }
+      toast.success("Récompense créée !");
+    }
+    closeDialog();
     fetchRewards();
+  };
+
+  const closeDialog = () => {
+    setAddOpen(false);
+    setEditingReward(null);
+    setForm({ title: "", description: "", points_required: 10 });
+  };
+
+  const openEdit = (r: any) => {
+    setEditingReward(r);
+    setForm({ title: r.title, description: r.description || "", points_required: r.points_required });
+    setAddOpen(true);
   };
 
   const useTemplate = (t: any) => {
