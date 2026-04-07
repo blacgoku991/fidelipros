@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Gift, Trophy, Trash2, BarChart3 } from "lucide-react";
+import { Plus, Gift, Trophy, Trash2, BarChart3, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -29,6 +29,7 @@ const RewardsPage = () => {
   const units = UNIT_LABELS[loyaltyType] || UNIT_LABELS.points;
   const [rewards, setRewards] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingReward, setEditingReward] = useState<any>(null);
   const [form, setForm] = useState({ title: "", description: "", points_required: 10 });
   const [totalClaimed, setTotalClaimed] = useState(0);
 
@@ -56,17 +57,37 @@ const RewardsPage = () => {
 
   useEffect(() => { fetchRewards(); }, [business]);
 
-  const handleAdd = async () => {
+  const handleSave = async () => {
     if (!form.title.trim() || !business) { toast.error("Titre requis"); return; }
     if (form.points_required < 1) { toast.error("Les points requis doivent être au minimum 1"); return; }
-    const { error } = await supabase.from("rewards").insert({
-      business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
-    });
-    if (error) { toast.error("Erreur lors de la création"); return; }
-    toast.success("Récompense créée !");
-    setAddOpen(false);
-    setForm({ title: "", description: "", points_required: 10 });
+
+    if (editingReward) {
+      const { error } = await supabase.from("rewards").update({
+        title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
+      }).eq("id", editingReward.id);
+      if (error) { toast.error("Erreur lors de la mise à jour"); return; }
+      toast.success("Récompense modifiée !");
+    } else {
+      const { error } = await supabase.from("rewards").insert({
+        business_id: business.id, title: form.title.trim(), description: form.description.trim() || null, points_required: form.points_required,
+      });
+      if (error) { toast.error("Erreur lors de la création"); return; }
+      toast.success("Récompense créée !");
+    }
+    closeDialog();
     fetchRewards();
+  };
+
+  const closeDialog = () => {
+    setAddOpen(false);
+    setEditingReward(null);
+    setForm({ title: "", description: "", points_required: 10 });
+  };
+
+  const openEdit = (r: any) => {
+    setEditingReward(r);
+    setForm({ title: r.title, description: r.description || "", points_required: r.points_required });
+    setAddOpen(true);
   };
 
   const useTemplate = (t: any) => {
@@ -92,12 +113,12 @@ const RewardsPage = () => {
       title="Récompenses"
       subtitle="Configurez les récompenses de votre programme"
       headerAction={
-        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <Dialog open={addOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setAddOpen(true); }}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary text-primary-foreground rounded-xl gap-2"><Plus className="w-4 h-4" /> Ajouter</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Nouvelle récompense</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{editingReward ? "Modifier la récompense" : "Nouvelle récompense"}</DialogTitle></DialogHeader>
             <div className="space-y-4 mt-4">
               <div className="space-y-2"><Label>Nom *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Café offert" className="rounded-xl" /></div>
               <div className="space-y-2"><Label>Description</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Un café au choix..." className="rounded-xl" /></div>
@@ -105,7 +126,7 @@ const RewardsPage = () => {
                 <Label>{loyaltyType === "stamps" ? "Tampons requis" : loyaltyType === "cashback" ? "Montant requis (€)" : "Points requis"}</Label>
                 <Input type="number" min={1} value={form.points_required} onChange={(e) => setForm({ ...form, points_required: Math.max(1, parseInt(e.target.value) || 1) })} className="rounded-xl" />
               </div>
-              <Button onClick={handleAdd} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">Créer la récompense</Button>
+              <Button onClick={handleSave} className="w-full bg-gradient-primary text-primary-foreground rounded-xl">{editingReward ? "Enregistrer" : "Créer la récompense"}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -173,6 +194,9 @@ const RewardsPage = () => {
                     className="data-[state=checked]:bg-emerald-500"
                   />
                 </div>
+                <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-primary h-8 w-8" onClick={() => openEdit(r)}>
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-destructive h-8 w-8" onClick={() => deleteReward(r.id)}>
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
