@@ -59,7 +59,7 @@ export function MobileHeader({ onLogout, items = [], groups }: MobileHeaderProps
               <Menu className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[80vw] max-w-xs p-0">
+          <SheetContent side="left" className="w-[80vw] max-w-xs p-0 safe-area-top safe-area-bottom">
             <div className="flex flex-col h-full">
               <SheetHeader className="p-5 pb-4 border-b border-border/40">
                 <SheetTitle className="flex items-center gap-2.5">
