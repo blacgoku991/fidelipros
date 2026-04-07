@@ -284,6 +284,7 @@ const ScannerPage = () => {
               <div className="flex gap-2 items-center">
                 <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
+                  ref={amountInputRef}
                   type="number"
                   step="0.01"
                   min="0"
