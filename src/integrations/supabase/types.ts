@@ -1762,6 +1762,22 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_demo_customers: {
+        Args: { p_business_id: string }
+        Returns: {
+          badges: string[]
+          business_id: string
+          created_at: string
+          current_streak: number
+          full_name: string
+          id: string
+          last_visit_at: string
+          level: string
+          longest_streak: number
+          total_points: number
+          total_visits: number
+        }[]
+      }
       get_public_business: {
         Args: { p_slug: string }
         Returns: {
@@ -1843,6 +1859,16 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      update_card_wallet_status: {
+        Args: {
+          p_card_code: string
+          p_wallet_change_message?: string
+          p_wallet_installed_at?: string
+          p_wallet_last_fetched_at?: string
+          p_wallet_pass_installed?: boolean
+        }
+        Returns: boolean
       }
     }
     Enums: {
