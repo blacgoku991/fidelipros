@@ -217,7 +217,7 @@ const ScannerPage = () => {
       });
     } else {
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
-        description: `${newPoints}/${card.max_points} ${labels.unitPlural}`,
+        description: `${newPoints}/${highestRewardThreshold} ${labels.unitPlural}`,
       });
     }
 
