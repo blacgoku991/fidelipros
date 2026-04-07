@@ -29,6 +29,7 @@ const RewardsPage = () => {
   const units = UNIT_LABELS[loyaltyType] || UNIT_LABELS.points;
   const [rewards, setRewards] = useState<any[]>([]);
   const [addOpen, setAddOpen] = useState(false);
+  const [editingReward, setEditingReward] = useState<any>(null);
   const [form, setForm] = useState({ title: "", description: "", points_required: 10 });
   const [totalClaimed, setTotalClaimed] = useState(0);
 
