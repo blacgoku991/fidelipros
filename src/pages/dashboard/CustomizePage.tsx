@@ -893,7 +893,7 @@ const CustomizePage = () => {
           primaryColor={form.primary_color || "#6B46C1"}
           secondaryColor={form.secondary_color || form.primary_color || "#6B46C1"}
           publicUrl={publicUrl}
-          promoText={form.promo_text || undefined}
+          promoText={(form as any).promo_text || undefined}
         />
       </Panel>
 
