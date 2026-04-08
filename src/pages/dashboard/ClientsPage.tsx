@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveInstances, claimRewardInstance, type RewardInstance } from "@/hooks/useRewardInstances";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
