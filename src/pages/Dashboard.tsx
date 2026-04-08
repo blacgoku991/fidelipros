@@ -474,9 +474,9 @@ const Dashboard = () => {
       setPopup({ open: true, type: "reward", title: "🎉 Récompense débloquée !", message: `${customer.full_name} a gagné sa récompense !`, details: "Le compteur a été remis à zéro." });
     } else if (rewardPending) {
       const pendingDetails = minPurchase > 0 && purchaseAmountForCheck < minPurchase
-        ? `Minimum d'achat requis : ${minPurchase}€`
+        ? `Montant de la commande : ${purchaseAmountForCheck}€ — Minimum requis : ${minPurchase}€. La récompense sera débloquée au prochain passage avec un achat d'au moins ${minPurchase}€.`
         : "Disponible au prochain passage";
-      setPopup({ open: true, type: "success", title: "🎁 Récompense en attente", message: `${customer.full_name} — seuil atteint !`, details: pendingDetails });
+      setPopup({ open: true, type: "success", title: "🎁 Récompense en attente", message: `${customer.full_name} — seuil de points atteint !`, details: pendingDetails });
     } else {
       setPopup({ open: true, type: "success", title: `${addedLabel} !`, message: `${customer.full_name} — ${newPoints}/${maxPts} ${unitLabelPlural}` });
     }

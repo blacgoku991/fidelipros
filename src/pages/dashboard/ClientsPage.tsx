@@ -140,7 +140,8 @@ const ClientsPage = () => {
       note: `Récompense récupérée : ${reward.title} (${reward.points_required} pts)`,
       scanned_by: user.id,
     });
-    // Increment rewards_earned on card
+    // Increment rewards_earned on card + update wallet change message
+    const changeMsg = `✅ Récompense récupérée : ${reward.title}`;
     const { data: cardData } = await supabase
       .from("customer_cards")
       .select("rewards_earned")
@@ -148,8 +149,20 @@ const ClientsPage = () => {
       .single();
     await supabase.from("customer_cards").update({
       rewards_earned: (cardData?.rewards_earned || 0) + 1,
+      wallet_change_message: changeMsg,
       updated_at: new Date().toISOString(),
     }).eq("id", cardId);
+    // Push notification to Apple Wallet
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "reward_claimed", change_message: changeMsg }),
+      });
+    } catch { /* non-blocking */ }
     toast.success(`✅ ${reward.title} marquée comme récupérée !`);
     setClaimingReward(null);
     // Refresh history
