@@ -937,6 +937,29 @@ const SettingsPage = () => {
                 </div>
               </div>
 
+              {/* Cooldown frequency */}
+              <div className="space-y-2">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Clock className="w-3 h-3" /> Fréquence max par client
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Chaque client ne recevra la notification de proximité qu'une seule fois par période choisie.
+                </p>
+                <select
+                  value={geoCooldownHours}
+                  onChange={(e) => setGeoCooldownHours(Number(e.target.value))}
+                  className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value={6}>1 fois toutes les 6 heures</option>
+                  <option value={12}>1 fois toutes les 12 heures</option>
+                  <option value={24}>1 fois par jour</option>
+                  <option value={48}>1 fois tous les 2 jours</option>
+                  <option value={72}>1 fois tous les 3 jours</option>
+                  <option value={168}>1 fois par semaine</option>
+                  <option value={336}>1 fois toutes les 2 semaines</option>
+                  <option value={720}>1 fois par mois</option>
+                </select>
+              </div>
 
               {/* Preview */}
               <div className="rounded-2xl bg-muted/60 p-3.5 border border-border/30">
