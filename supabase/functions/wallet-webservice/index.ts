@@ -407,7 +407,7 @@ async function handleGetLatestPass(
     .eq("id", card.id);
 
   try {
-    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || [], claimedTitles);
+    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || [], claimedRewardIds);
     return new Response(pkpass as unknown as BodyInit, {
       status: 200,
       headers: {
