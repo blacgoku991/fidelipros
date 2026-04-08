@@ -987,9 +987,9 @@ const CustomizePage = () => {
         </div>
 
         {/* ─── LEFT: Nav + Content ─── */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {/* Navigation */}
-          <div className="overflow-x-auto -mx-1 px-1 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:-mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 w-max">
               {sections.map(s => {
                 const Icon = s.icon;

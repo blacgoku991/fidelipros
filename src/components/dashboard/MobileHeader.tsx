@@ -45,7 +45,7 @@ export function MobileHeader({ onLogout, items = [], groups }: MobileHeaderProps
 
   return (
     <div
-      className="lg:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border/40 safe-area-x"
+      className="lg:hidden sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border/40"
       style={{ paddingTop: "max(env(safe-area-inset-top, 0px), 12px)" }}
     >
       <div className="flex items-center justify-between px-4 py-3">
