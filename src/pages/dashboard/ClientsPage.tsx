@@ -448,7 +448,13 @@ const ClientsPage = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-                  onClick={() => { setSelected(customer); fetchHistory(customer.id); fetchNotifs(customer.id); }}
+                  onClick={() => {
+                    setSelected(customer);
+                    fetchHistory(customer.id);
+                    fetchNotifs(customer.id);
+                    const card = customer.customer_cards?.[0];
+                    if (card) fetchRewardInstances(card.id);
+                  }}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
