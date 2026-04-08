@@ -92,6 +92,9 @@ export async function processRewardsAfterScan({
 
     const existing = instanceByRewardId.get(reward.id);
 
+    // Skip already claimed rewards — don't re-create them
+    if (existing && existing.status === "claimed") continue;
+
     if (!existing) {
       // Newly unlocked reward → create as pending
       const { data: inserted } = await supabase
