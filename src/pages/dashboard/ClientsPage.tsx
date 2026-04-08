@@ -140,7 +140,7 @@ const ClientsPage = () => {
       note: `Récompense récupérée : ${reward.title} (${reward.points_required} pts)`,
       scanned_by: user.id,
     });
-    // Increment rewards_earned on card + update wallet change message
+    // Increment rewards_earned on card + reset points to 0 + update wallet change message
     const changeMsg = `✅ Récompense récupérée : ${reward.title}`;
     const { data: cardData } = await supabase
       .from("customer_cards")
@@ -148,6 +148,7 @@ const ClientsPage = () => {
       .eq("id", cardId)
       .single();
     await supabase.from("customer_cards").update({
+      current_points: 0,
       rewards_earned: (cardData?.rewards_earned || 0) + 1,
       wallet_change_message: changeMsg,
       updated_at: new Date().toISOString(),
@@ -156,11 +157,11 @@ const ClientsPage = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? "";
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "points_increment", change_message: changeMsg }),
+        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "reward_claimed", change_message: changeMsg }),
       });
     } catch { /* non-blocking */ }
     toast.success(`✅ ${reward.title} marquée comme récupérée !`);
