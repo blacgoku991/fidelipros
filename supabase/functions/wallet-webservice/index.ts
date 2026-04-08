@@ -385,7 +385,7 @@ async function handleGetLatestPass(
   // Fetch active rewards for this business (same as generate-pass)
   const { data: rewards } = await supabase
     .from("rewards")
-    .select("title, description, points_required")
+    .select("id, title, description, points_required")
     .eq("business_id", card.business_id)
     .eq("is_active", true)
     .order("points_required", { ascending: true });
