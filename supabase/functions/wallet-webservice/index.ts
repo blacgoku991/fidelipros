@@ -482,8 +482,7 @@ async function buildPkpassForUpdate(
           label: business.loyalty_type === "stamps" ? "TAMPONS" : business.loyalty_type === "cashback" ? "CAGNOTTE" : business.loyalty_type === "subscription" ? "PLAN" : "POINTS",
           value: business.loyalty_type === "cashback" ? `${pointsCurrent},00 €` : business.loyalty_type === "subscription" ? "Premium ✓" : pointsCurrent,
           textAlignment: "PKTextAlignmentRight",
-          // No changeMessage here — points updates are silent.
-          // Only the latest_offer backField triggers visible notifications.
+          changeMessage: business.loyalty_type === "cashback" ? "💰 Cagnotte mise à jour : %@" : business.loyalty_type === "stamps" ? "✅ Tampons mis à jour : %@" : "⭐ Points mis à jour : %@",
         },
       ],
       primaryFields: [],

@@ -219,16 +219,15 @@ const ScannerPage = () => {
       ...newlyUnlocked.map(r => ({ reward: r.reward, status: "unlocked_pending_next_order" as const })),
     ];
 
-    const pointsMsg = isCashback
-      ? `+${increment}${labels.unit} de cagnotte ! Total : ${newPoints}${labels.unit}`
-      : `+${increment} ${unitLabel} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
+    // Wallet message: only reward info goes to latest_offer (triggers its own notif)
+    // Points notification is handled separately by the points header field changeMessage
     const rewardMsg = buildWalletMessage(allActive);
-    const walletMsg = rewardMsg ? `${pointsMsg}\n${rewardMsg}` : pointsMsg;
+    const walletMsg = rewardMsg || null; // null = no latest_offer update, only points change
 
     // Update card
     await supabase.from("customer_cards").update({
       current_points: newPoints,
-      wallet_change_message: walletMsg,
+      ...(walletMsg ? { wallet_change_message: walletMsg } : {}),
       updated_at: new Date().toISOString(),
     }).eq("id", card.id);
 
