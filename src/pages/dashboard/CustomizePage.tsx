@@ -8,6 +8,7 @@ import { SamsungMockup } from "@/components/SamsungMockup";
 import { LogoUpload } from "@/components/dashboard/LogoUpload";
 import { TemplatePicker } from "@/components/dashboard/TemplatePicker";
 import { FeatureToggles } from "@/components/dashboard/FeatureToggles";
+import { QrPrintTemplates } from "@/components/dashboard/QrPrintTemplates";
 import { defaultConfig, type BusinessConfig, type BusinessTemplate } from "@/lib/businessTemplates";
 import { buildCardConfig, buildDemoCustomer, buildApplePassFields } from "@/lib/cardConfig";
 import { Button } from "@/components/ui/button";
