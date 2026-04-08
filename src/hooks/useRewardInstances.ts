@@ -77,9 +77,14 @@ export async function processRewardsAfterScan({
 
   if (!rewards || rewards.length === 0) return { newlyUnlocked: [], nowClaimable: [], alreadyClaimable: [] };
 
-  // 2. Fetch ALL instances (including claimed) to avoid re-creating claimed rewards
+  // 2. Fetch ALL instances (including claimed) grouped by reward_id
   const allInstances = await getAllInstances(cardId);
-  const instanceByRewardId = new Map(allInstances.map((i) => [i.reward_id, i]));
+  const instancesByRewardId = new Map<string, RewardInstance[]>();
+  for (const inst of allInstances) {
+    const arr = instancesByRewardId.get(inst.reward_id) || [];
+    arr.push(inst);
+    instancesByRewardId.set(inst.reward_id, arr);
+  }
 
   const newlyUnlocked: Array<{ reward: typeof rewards[0]; instance: RewardInstance }> = [];
   const nowClaimable: Array<{ reward: typeof rewards[0]; instance: RewardInstance }> = [];
@@ -90,13 +95,31 @@ export async function processRewardsAfterScan({
   for (const reward of rewards) {
     if (currentPoints < reward.points_required) continue; // not unlocked yet
 
-    const existing = instanceByRewardId.get(reward.id);
+    const instances = instancesByRewardId.get(reward.id) || [];
+    const claimedCount = instances.filter(i => i.status === "claimed").length;
+    const activeInstance = instances.find(i => i.status !== "claimed");
 
-    // Skip already claimed rewards — don't re-create them
-    if (existing && existing.status === "claimed") continue;
+    // How many times can this reward be earned at the current points level
+    const maxEarnable = Math.floor(currentPoints / reward.points_required);
+    const totalInstances = instances.length;
 
-    if (!existing) {
-      // Newly unlocked reward → create as pending
+    if (activeInstance) {
+      // There's already a non-claimed instance — process its state
+      if (activeInstance.status === "unlocked_pending_next_order") {
+        if (meetsMinPurchase) {
+          await supabase
+            .from("reward_instances")
+            .update({ status: "claimable_now" as any })
+            .eq("id", activeInstance.id);
+          nowClaimable.push({ reward, instance: { ...activeInstance, status: "claimable_now" } });
+        } else {
+          alreadyClaimable.push({ reward, instance: activeInstance });
+        }
+      } else if (activeInstance.status === "claimable_now") {
+        alreadyClaimable.push({ reward, instance: activeInstance });
+      }
+    } else if (totalInstances < maxEarnable) {
+      // All instances are claimed AND customer has earned enough for a new cycle → create new
       const { data: inserted } = await supabase
         .from("reward_instances")
         .insert({
@@ -113,21 +136,8 @@ export async function processRewardsAfterScan({
       if (inserted) {
         newlyUnlocked.push({ reward, instance: inserted as RewardInstance });
       }
-    } else if (existing.status === "unlocked_pending_next_order") {
-      // Was pending from last scan → now claimable if min purchase met
-      if (meetsMinPurchase) {
-        await supabase
-          .from("reward_instances")
-          .update({ status: "claimable_now" as any })
-          .eq("id", existing.id);
-        nowClaimable.push({ reward, instance: { ...existing, status: "claimable_now" } });
-      } else {
-        // Still pending because min purchase not met
-        alreadyClaimable.push({ reward, instance: existing });
-      }
-    } else if (existing.status === "claimable_now") {
-      alreadyClaimable.push({ reward, instance: existing });
     }
+    // else: all claimed and not enough points for another cycle → skip
   }
 
   return { newlyUnlocked, nowClaimable, alreadyClaimable };
