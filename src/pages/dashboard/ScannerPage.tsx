@@ -158,7 +158,7 @@ const ScannerPage = () => {
         .sort((a: any, b: any) => b.points_required - a.points_required)[0];
     }
 
-    const effectivePoints = rewardEarned ? 0 : newPoints;
+    const effectivePoints = newPoints;
     const unitLabel = increment > 1 ? labels.unitPlural : labels.unit;
     const changeMsg = rewardEarned
       ? `🎁 ${earnedReward?.title || "Récompense"} débloquée chez ${business.name} !`

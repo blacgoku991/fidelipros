@@ -147,10 +147,35 @@ const ClientsPage = () => {
       .select("rewards_earned")
       .eq("id", cardId)
       .single();
+    // Fetch current card points and check if another reward is still unlocked
+    const { data: currentCard } = await supabase
+      .from("customer_cards")
+      .select("current_points")
+      .eq("id", cardId)
+      .single();
+    const currentPts = currentCard?.current_points || 0;
+
+    // Check if another reward is still available after this one
+    const { data: allRewards } = await supabase
+      .from("rewards")
+      .select("title, points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: true });
+
+    const otherUnlocked = allRewards?.filter(
+      (r: any) => r.points_required <= currentPts && r.points_required !== reward.points_required
+    );
+    const hasAnotherReward = otherUnlocked && otherUnlocked.length > 0;
+
+    // Keep points as-is, only update wallet message
+    const walletMsg = hasAnotherReward
+      ? `🎁 ${otherUnlocked![otherUnlocked!.length - 1].title} à récupérer !`
+      : changeMsg;
+
     await supabase.from("customer_cards").update({
-      current_points: 0,
       rewards_earned: (cardData?.rewards_earned || 0) + 1,
-      wallet_change_message: changeMsg,
+      wallet_change_message: walletMsg,
       updated_at: new Date().toISOString(),
     }).eq("id", cardId);
     // Push notification to Apple Wallet
