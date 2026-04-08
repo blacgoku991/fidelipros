@@ -339,7 +339,23 @@ const ScannerPage = () => {
     }
 
     // Fetch highest reward threshold for progress bar
-...
+    const { data: rewards } = await supabase
+      .from("rewards")
+      .select("points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: false })
+      .limit(1);
+
+    const maxPts = rewards?.[0]?.points_required || card.max_points;
+
+    setLastScan({
+      customerName: customer.full_name,
+      points: newPoints,
+      maxPoints: maxPts,
+      increment,
+    });
+
     // Always show success overlay first, then reward popup after it fades
     setSuccess(true);
     setTimeout(() => {
