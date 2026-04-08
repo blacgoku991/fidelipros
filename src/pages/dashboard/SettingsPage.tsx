@@ -85,6 +85,7 @@ const SettingsPage = () => {
   const [geoTimeEnd, setGeoTimeEnd] = useState("20:00");
   const [savingGeo, setSavingGeo] = useState(false);
   const [satellitePoints, setSatellitePoints] = useState<{ lat: number; lng: number }[]>([]);
+  const [geoCooldownHours, setGeoCooldownHours] = useState(24);
 
   // Multi-locations
   const [locations, setLocations] = useState<any[]>([]);
