@@ -299,19 +299,57 @@ const Dashboard = () => {
       if (pointsToAdd < 1) pointsToAdd = 1;
     }
     const maxPts = card.max_points || business.max_points_per_card || 10;
-    const newPoints = (card.current_points || 0) + pointsToAdd;
-    const rewardEarned = newPoints >= maxPts;
+    const currentPts = card.current_points || 0;
+    const newPoints = currentPts + pointsToAdd;
+
+    // ── Reward redemption logic with configurable conditions ──
+    const bReward = business as any;
+    const nextVisitOnly = bReward.reward_next_visit_only === true;
+    const minPurchase = parseFloat(bReward.reward_min_purchase) || 0;
+    const purchaseAmountForCheck = needsAmount ? (parseFloat(scanAmount) || 0) : Infinity;
+
+    // Was the threshold already reached BEFORE this scan?
+    const wasAlreadyReady = currentPts >= maxPts;
+    // Is the threshold reached now (after adding points)?
+    const reachesThresholdNow = newPoints >= maxPts;
+
+    let rewardEarned = false;
+    let rewardPending = false;
+
+    if (wasAlreadyReady) {
+      // Threshold was already met — this is a "next visit"
+      if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
+        // Minimum purchase not met — reward stays pending
+        rewardPending = true;
+      } else {
+        rewardEarned = true;
+      }
+    } else if (reachesThresholdNow) {
+      if (nextVisitOnly) {
+        // Must come back next time — don't claim now
+        rewardPending = true;
+      } else if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
+        rewardPending = true;
+      } else {
+        rewardEarned = true;
+      }
+    }
+
     const customer = card.customers;
     const unitLabel = lt === "stamps" ? "tampon" : lt === "cashback" ? "€" : "point";
     const unitLabelPlural = lt === "stamps" ? "tampons" : lt === "cashback" ? "€" : "points";
     const addedLabel = pointsToAdd > 1 ? `+${pointsToAdd} ${unitLabelPlural}` : `+1 ${unitLabel}`;
 
+    const effectivePoints = rewardEarned ? 0 : newPoints;
+
     const changeMsg = rewardEarned
       ? `🎁 Récompense débloquée chez ${business.name} !`
-      : `${addedLabel} chez ${business.name} ! ${newPoints}/${maxPts} ${unitLabelPlural}.`;
+      : rewardPending
+        ? `🎁 Récompense en attente${minPurchase > 0 ? ` (min. ${minPurchase}€)` : ""} chez ${business.name}`
+        : `${addedLabel} chez ${business.name} ! ${newPoints}/${maxPts} ${unitLabelPlural}.`;
 
     const { error: updateError } = await supabase.from("customer_cards").update({
-      current_points: rewardEarned ? 0 : newPoints,
+      current_points: effectivePoints,
       rewards_earned: rewardEarned ? (card.rewards_earned || 0) + 1 : card.rewards_earned,
       wallet_change_message: changeMsg,
       updated_at: new Date().toISOString(),
