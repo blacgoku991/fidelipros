@@ -40,7 +40,7 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
         <MobileHeader onLogout={logout} items={items} groups={groups} />
 
         {/* Page header */}
-        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+68px)] lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+68px)] lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-5 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
               <h1 className="text-base sm:text-2xl font-display font-bold tracking-tight truncate">{title}</h1>
@@ -58,7 +58,7 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
         </div>
 
         {/* Page content */}
-        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
+        <div className="flex-1 min-w-0 px-5 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
           <SubscriptionGuard>
             {children}
           </SubscriptionGuard>

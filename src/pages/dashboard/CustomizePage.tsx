@@ -940,56 +940,82 @@ const CustomizePage = () => {
         </Button>
       }
     >
-      <div className="grid lg:grid-cols-[minmax(0,1fr),340px] gap-6 min-w-0">
-        {/* ─── MOBILE PREVIEW ─── */}
-        <div className="lg:hidden min-w-0">
-          <details open className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
-            <summary className="p-4 cursor-pointer flex items-center justify-between text-sm font-medium">
-              <span className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-primary" />
-                Aperçu en temps réel
-              </span>
-              <Badge variant="outline" className="text-[9px] border-primary/30 text-primary animate-pulse">● Live</Badge>
-            </summary>
-            <div className="px-4 pb-4 space-y-3">
-              <div className="flex justify-center">
-                <div className="flex rounded-xl bg-accent/40 p-0.5 border border-border/30">
-                  <button
-                    onClick={() => setPreviewDevice("iphone")}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                      previewDevice === "iphone" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    }`}
-                  >
-                    🍎 iPhone
-                  </button>
-                  <button
-                    onClick={() => setPreviewDevice("samsung")}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
-                      previewDevice === "samsung" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
-                    }`}
-                  >
-                    🤖 Android
-                  </button>
-                </div>
+      {/* ─── MOBILE PREVIEW ─── */}
+      <div className="lg:hidden">
+        <details open className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
+          <summary className="p-4 cursor-pointer flex items-center justify-between text-sm font-medium">
+            <span className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-primary" />
+              Aperçu en temps réel
+            </span>
+            <Badge variant="outline" className="text-[9px] border-primary/30 text-primary animate-pulse">● Live</Badge>
+          </summary>
+          <div className="px-4 pb-4 space-y-3">
+            <div className="flex justify-center">
+              <div className="flex rounded-xl bg-accent/40 p-0.5 border border-border/30">
+                <button
+                  onClick={() => setPreviewDevice("iphone")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                    previewDevice === "iphone" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  🍎 iPhone
+                </button>
+                <button
+                  onClick={() => setPreviewDevice("samsung")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                    previewDevice === "samsung" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                  }`}
+                >
+                  🤖 Android
+                </button>
               </div>
-              <div className="flex justify-center">
+            </div>
+            <div className="flex justify-center overflow-hidden">
+              <div className="transform scale-[0.85] sm:scale-100 origin-top">
                 {previewDevice === "iphone" ? (
                   <IPhoneMockup width={previewWidth + 20}>{walletPassElement}</IPhoneMockup>
                 ) : (
                   <SamsungMockup width={previewWidth + 20}>{walletPassElement}</SamsungMockup>
                 )}
               </div>
-              <p className="text-center text-[10px] text-muted-foreground font-medium">
-                Rendu identique au {previewDevice === "iphone" ? "Apple" : "Google"} Wallet
-              </p>
             </div>
-          </details>
-        </div>
+            <p className="text-center text-[10px] text-muted-foreground font-medium">
+              Rendu identique au {previewDevice === "iphone" ? "Apple" : "Google"} Wallet
+            </p>
+          </div>
+        </details>
+      </div>
 
+      {/* ─── TABS NAVIGATION ─── */}
+      <div className="overflow-x-auto lg:hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 w-max">
+          {sections.map(s => {
+            const Icon = s.icon;
+            const active = activeSection === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 ${
+                  active
+                    ? "bg-card text-foreground shadow-md border border-border/50"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <Icon className={`w-3.5 h-3.5 ${active ? "text-primary" : ""}`} />
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-[minmax(0,1fr),340px] gap-6 min-w-0">
         {/* ─── LEFT: Nav + Content ─── */}
         <div className="space-y-4 min-w-0">
-          {/* Navigation */}
-          <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:-mx-0 sm:px-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {/* Desktop Navigation */}
+          <div className="hidden lg:block">
             <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 w-max">
               {sections.map(s => {
                 const Icon = s.icon;

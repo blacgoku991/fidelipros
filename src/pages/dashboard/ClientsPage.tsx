@@ -329,7 +329,7 @@ const ClientsPage = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un client..." className="pl-10 rounded-xl h-10" />
         </div>
-        <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 shrink-0" style={{ WebkitOverflowScrolling: 'touch' }}>
           {(["all", "bronze", "silver", "gold"] as LevelFilter[]).map(level => (
             <button
               key={level}

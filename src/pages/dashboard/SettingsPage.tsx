@@ -483,27 +483,29 @@ const SettingsPage = () => {
       <div className="max-w-5xl">
 
         {/* Mobile tabs */}
-        <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {visibleSections.map((s) => {
-            const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
-            return (
-            <button
-              key={s.key}
-              onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap snap-start transition-all ${
-                isLocked
-                  ? "bg-muted/50 text-muted-foreground/50 cursor-not-allowed"
-                  : activeSection === s.key
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border/50 text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <s.Icon className="w-3.5 h-3.5" />
-              {s.label}
-              {isLocked && <Lock className="w-3 h-3 ml-0.5" />}
-            </button>
-            );
-          })}
+        <div className="overflow-x-auto lg:hidden mb-5" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex gap-1.5 bg-accent/30 rounded-2xl p-1.5 border border-border/30 w-max">
+            {visibleSections.map((s) => {
+              const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => !isLocked ? setActiveSection(s.key) : toast.info("Cette section est réservée au plan Franchise.")}
+                  className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                    isLocked
+                      ? "text-muted-foreground/50 cursor-not-allowed"
+                      : activeSection === s.key
+                      ? "bg-card text-foreground shadow-md border border-border/50"
+                      : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                  }`}
+                >
+                  <s.Icon className="w-3.5 h-3.5" />
+                  {s.label}
+                  {isLocked && <Lock className="w-3 h-3 ml-0.5" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex gap-6 items-start">
