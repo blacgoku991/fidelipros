@@ -350,14 +350,17 @@ const ScannerPage = () => {
       increment,
     });
 
-    setSuccess(true);
+    // Only show the success overlay if NO reward popup is displayed
+    const hasRewardPopup = hasClaimable || hasNewUnlocked;
+    if (!hasRewardPopup) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    }
     setTodayScans((p) => p + 1);
     setCardCode("");
     setAmount("");
     setScanning(false);
     scanLockRef.current = false;
-
-    setTimeout(() => setSuccess(false), 3000);
   };
 
   return (
