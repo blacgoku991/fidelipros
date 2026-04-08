@@ -35,6 +35,8 @@ const ScannerPage = () => {
   const isCashback = loyaltyType === "cashback";
   const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
   const needsAmount = isCashback || isEuroToPoints;
+  const minPurchaseAmount = parseFloat((business as any)?.reward_min_purchase) || 0;
+  const showAmountInput = needsAmount || minPurchaseAmount > 0;
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
   const handleScan = async (codeOverride?: string) => {
@@ -48,8 +50,8 @@ const ScannerPage = () => {
       scanLockRef.current = false;
       return;
     }
-    if (needsAmount && (!amount || parseFloat(amount) <= 0)) {
-      toast.error("Entrez le montant de l'achat");
+    if (showAmountInput && (!amount || parseFloat(amount) <= 0)) {
+      toast.error("Entrez le montant de la commande");
       scanLockRef.current = false;
       return;
     }
@@ -126,7 +128,7 @@ const ScannerPage = () => {
     const bReward = business as any;
     const nextVisitOnly = bReward.reward_next_visit_only === true;
     const minPurchase = parseFloat(bReward.reward_min_purchase) || 0;
-    const purchaseAmountForCheck = needsAmount ? (parseFloat(amount) || 0) : Infinity;
+    const purchaseAmountForCheck = showAmountInput ? (parseFloat(amount) || 0) : Infinity;
 
     const currentPts = card.current_points;
     const wasAlreadyReady = currentPts >= highestRewardThreshold;
@@ -245,13 +247,16 @@ const ScannerPage = () => {
 
     if (rewardEarned) {
       toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
-        description: `${customer.full_name} a gagné sa récompense !`,
+        description: `${customer.full_name} a gagné sa récompense ! Compteur remis à zéro.`,
+        duration: 6000,
       });
     } else if (rewardPending) {
-      toast.info(`🎁 Récompense en attente`, {
-        description: minPurchase > 0 && purchaseAmountForCheck < minPurchase
-          ? `Minimum d'achat requis : ${minPurchase}€`
-          : `Disponible au prochain passage de ${customer.full_name}`,
+      const pendingMsg = minPurchase > 0 && purchaseAmountForCheck < minPurchase
+        ? `Commande : ${purchaseAmountForCheck}€ — Minimum requis : ${minPurchase}€. Prochaine commande ≥ ${minPurchase}€ pour récupérer.`
+        : `Disponible au prochain passage de ${customer.full_name}`;
+      toast.warning(`🎁 Récompense en attente — ${customer.full_name}`, {
+        description: pendingMsg,
+        duration: 8000,
       });
     } else {
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
@@ -287,7 +292,7 @@ const ScannerPage = () => {
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
                  onScan={(code) => {
-                    if (!needsAmount) {
+                    if (!showAmountInput) {
                       handleScan(code);
                     } else {
                       setCardCode(code);
@@ -317,7 +322,7 @@ const ScannerPage = () => {
               </Button>
             </div>
 
-            {needsAmount && (
+            {showAmountInput && (
               <div className="flex gap-2 items-center">
                 <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                 <Input
@@ -327,7 +332,7 @@ const ScannerPage = () => {
                   min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Montant de l'achat (€)"
+                  placeholder={minPurchaseAmount > 0 && !needsAmount ? `Montant de la commande (min. ${minPurchaseAmount}€)` : "Montant de l'achat (€)"}
                   className="rounded-xl"
                   onKeyDown={(e) => e.key === "Enter" && handleScan(undefined)}
                 />
@@ -335,8 +340,10 @@ const ScannerPage = () => {
             )}
 
             <p className="text-[11px] text-center text-muted-foreground">
-              {needsAmount
-                ? `Scannez le QR code ou entrez le code + montant (${(business as any).points_per_euro || 1}€ = ${(business as any).points_per_euro || 1} ${labels.unit}${((business as any).points_per_euro || 1) > 1 ? 's' : ''})`
+              {showAmountInput
+                ? needsAmount
+                  ? `Scannez le QR code ou entrez le code + montant (${(business as any).points_per_euro || 1}€ = ${(business as any).points_per_euro || 1} ${labels.unit}${((business as any).points_per_euro || 1) > 1 ? 's' : ''})`
+                  : `Entrez le montant pour vérifier le minimum d'achat (${minPurchaseAmount}€)`
                 : "Scannez le QR code ou entrez le code manuellement"}
             </p>
           </div>

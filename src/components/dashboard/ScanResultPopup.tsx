@@ -1,11 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle, Trophy, X } from "lucide-react";
+import { CheckCircle, XCircle, Trophy, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface ScanResultPopupProps {
   open: boolean;
   onClose: () => void;
-  type: "success" | "reward" | "error";
+  type: "success" | "reward" | "error" | "pending";
   title: string;
   message: string;
   details?: string;
@@ -24,6 +24,12 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
       iconColor: "text-amber-500",
       bgGlow: "from-amber-500/20 to-amber-500/5",
       borderColor: "border-amber-200 dark:border-amber-500/30",
+    },
+    pending: {
+      icon: Clock,
+      iconColor: "text-orange-500",
+      bgGlow: "from-orange-500/20 to-orange-500/5",
+      borderColor: "border-orange-200 dark:border-orange-500/30",
     },
     error: {
       icon: XCircle,

@@ -160,7 +160,7 @@ const ClientsPage = () => {
       await fetch(`https://${projectId}.supabase.co/functions/v1/wallet-push`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "reward_claimed", change_message: changeMsg }),
+        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "points_increment", change_message: changeMsg }),
       });
     } catch { /* non-blocking */ }
     toast.success(`✅ ${reward.title} marquée comme récupérée !`);

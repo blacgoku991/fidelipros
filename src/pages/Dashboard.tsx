@@ -92,11 +92,13 @@ const Dashboard = () => {
   const isCashback = loyaltyType === "cashback";
   const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
   const needsAmount = isCashback || isEuroToPoints;
+  const minPurchaseAmount = parseFloat((business as any)?.reward_min_purchase) || 0;
+  const showAmountInput = needsAmount || minPurchaseAmount > 0;
 
   // Popup
   const [popup, setPopup] = useState<{
     open: boolean;
-    type: "success" | "reward" | "error";
+    type: "success" | "reward" | "error" | "pending";
     title: string;
     message: string;
     details?: string;
@@ -237,8 +239,8 @@ const Dashboard = () => {
       return;
     }
 
-    if (needsAmount && !isSyncMode && (!scanAmount || parseFloat(scanAmount) <= 0)) {
-      toast.error("Entrez le montant de l'achat");
+    if (showAmountInput && !isSyncMode && (!scanAmount || parseFloat(scanAmount) <= 0)) {
+      toast.error("Entrez le montant de la commande");
       scanLockRef.current = false;
       return;
     }
@@ -306,7 +308,7 @@ const Dashboard = () => {
     const bReward = business as any;
     const nextVisitOnly = bReward.reward_next_visit_only === true;
     const minPurchase = parseFloat(bReward.reward_min_purchase) || 0;
-    const purchaseAmountForCheck = needsAmount ? (parseFloat(scanAmount) || 0) : Infinity;
+    const purchaseAmountForCheck = showAmountInput ? (parseFloat(scanAmount) || 0) : Infinity;
 
     // Was the threshold already reached BEFORE this scan?
     const wasAlreadyReady = currentPts >= maxPts;
@@ -476,7 +478,7 @@ const Dashboard = () => {
       const pendingDetails = minPurchase > 0 && purchaseAmountForCheck < minPurchase
         ? `Montant de la commande : ${purchaseAmountForCheck}€ — Minimum requis : ${minPurchase}€. La récompense sera débloquée au prochain passage avec un achat d'au moins ${minPurchase}€.`
         : "Disponible au prochain passage";
-      setPopup({ open: true, type: "success", title: "🎁 Récompense en attente", message: `${customer.full_name} — seuil de points atteint !`, details: pendingDetails });
+      setPopup({ open: true, type: "pending", title: "🎁 Récompense en attente", message: `${customer.full_name} — seuil de points atteint !`, details: pendingDetails });
     } else {
       setPopup({ open: true, type: "success", title: `${addedLabel} !`, message: `${customer.full_name} — ${newPoints}/${maxPts} ${unitLabelPlural}` });
     }
@@ -685,7 +687,7 @@ const Dashboard = () => {
               </div>
               <QrCameraScanner onScan={(code) => {
                 setCardCode(code);
-                if (!needsAmount) {
+                if (!showAmountInput) {
                   processCardCode(code);
                 } else {
                   toast.info("Code scanné ! Entrez le montant puis validez.");
@@ -700,7 +702,7 @@ const Dashboard = () => {
                 <Input value={cardCode} onChange={(e) => setCardCode(e.target.value)} placeholder="Entrez le code carte..." className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40" onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)} />
                 <Button onClick={() => processCardCode(cardCode)} disabled={scanning || !cardCode.trim()} className="bg-gradient-primary text-primary-foreground rounded-xl h-11 px-6 font-semibold shrink-0 shadow-md">Valider</Button>
               </div>
-              {needsAmount && (
+              {showAmountInput && (
                 <div className="flex gap-2 items-center max-w-sm mx-auto">
                   <Euro className="w-4 h-4 text-muted-foreground shrink-0" />
                   <Input
@@ -709,7 +711,7 @@ const Dashboard = () => {
                     min="0"
                     value={scanAmount}
                     onChange={(e) => setScanAmount(e.target.value)}
-                    placeholder="Montant de l'achat (€)"
+                    placeholder={minPurchaseAmount > 0 && !needsAmount ? `Montant de la commande (min. ${minPurchaseAmount}€)` : "Montant de l'achat (€)"}
                     className="rounded-xl h-11 text-sm bg-secondary/50 border-border/40"
                     onKeyDown={(e) => e.key === "Enter" && processCardCode(cardCode)}
                   />
