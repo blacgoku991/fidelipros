@@ -229,7 +229,7 @@ const ScannerPage = () => {
 
     setLastScan({
       customerName: customer.full_name,
-      points: rewardEarned ? 0 : newPoints,
+      points: effectivePoints,
       maxPoints: card.max_points,
       rewardEarned,
       rewardTitle: earnedReward?.title,
