@@ -219,10 +219,11 @@ const ScannerPage = () => {
       ...newlyUnlocked.map(r => ({ reward: r.reward, status: "unlocked_pending_next_order" as const })),
     ];
 
-    const walletMsg = buildWalletMessage(allActive) ||
-      (isCashback
-        ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
-        : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`);
+    const pointsMsg = isCashback
+      ? `+${increment}${labels.unit} de cagnotte ! Total : ${newPoints}${labels.unit}`
+      : `+${increment} ${unitLabel} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
+    const rewardMsg = buildWalletMessage(allActive);
+    const walletMsg = rewardMsg ? `${pointsMsg}\n${rewardMsg}` : pointsMsg;
 
     // Update card
     await supabase.from("customer_cards").update({
@@ -283,12 +284,15 @@ const ScannerPage = () => {
     // ── Build popup ──
     const hasClaimable = nowClaimable.length > 0 || alreadyClaimable.filter(r => r.instance.status === "claimable_now").length > 0;
     const hasNewUnlocked = newlyUnlocked.length > 0;
+    const hasRewardPopup = hasClaimable || hasNewUnlocked;
 
-    if (hasClaimable || hasNewUnlocked) {
+    // Prepare reward popup data (will be shown after success overlay)
+    let pendingPopup: (() => void) | null = null;
+
+    if (hasRewardPopup) {
       const rewardLines: any[] = [];
       const claimData: any[] = [];
 
-      // Claimable rewards first
       for (const r of nowClaimable) {
         rewardLines.push({ title: r.reward.title, status: "claimable_now" });
         claimData.push({
@@ -312,10 +316,9 @@ const ScannerPage = () => {
         });
       }
 
-      // Newly unlocked (pending next order)
       for (const r of newlyUnlocked) {
         rewardLines.push({ title: r.reward.title, status: "unlocked_pending_next_order" });
-        claimData.push(null); // not claimable yet
+        claimData.push(null);
       }
 
       const popType = nowClaimable.length > 0 ? "reward_claimable" : "reward";
@@ -329,9 +332,8 @@ const ScannerPage = () => {
         ? `${customer.full_name} a une récompense disponible sur cette commande.`
         : `${customer.full_name} — Disponible à la prochaine commande éligible.`;
 
-      showPopup(popType, popTitle, popMsg, `${newPoints} ${labels.unitPlural} au total`, rewardLines, claimData);
+      pendingPopup = () => showPopup(popType, popTitle, popMsg, `${newPoints} ${labels.unitPlural} au total`, rewardLines, claimData);
     } else {
-      // Simple points added
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
         description: `${newPoints} ${labels.unitPlural}`,
       });
@@ -355,12 +357,12 @@ const ScannerPage = () => {
       increment,
     });
 
-    // Only show the success overlay if NO reward popup is displayed
-    const hasRewardPopup = hasClaimable || hasNewUnlocked;
-    if (!hasRewardPopup) {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    }
+    // Always show success overlay first, then reward popup after it fades
+    setSuccess(true);
+    setTimeout(() => {
+      setSuccess(false);
+      if (pendingPopup) pendingPopup();
+    }, 2000);
     setTodayScans((p) => p + 1);
     setCardCode("");
     setAmount("");
