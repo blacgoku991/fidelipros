@@ -326,3 +326,13 @@ button, a, [role="button"] {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  body > *:not(#pwa-print-overlay) {
+    display: none !important;
+  }
+  #pwa-print-overlay {
+    position: static !important;
+    padding: 0 !important;
+  }
+}
