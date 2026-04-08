@@ -845,8 +845,8 @@ const CustomizePage = () => {
 
   const renderTools = () => (
     <div className="space-y-4">
-      {/* QR Code */}
-      <Panel title="QR Code & Vitrine" subtitle="Partagez votre programme de fidélité" icon={QrCode}>
+      {/* QR Code simple */}
+      <Panel title="QR Code & Lien" subtitle="Partagez votre programme de fidélité" icon={QrCode}>
         <div className="flex flex-col items-center space-y-4">
           <div
             id="qr-printable"
@@ -873,20 +873,6 @@ const CustomizePage = () => {
             <Button onClick={copyLink} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9">
               <Copy className="w-3.5 h-3.5" /> Lien
             </Button>
-            <Button
-              onClick={() => {
-                const el = document.getElementById("qr-printable");
-                if (!el) return;
-                const printOverlay = document.createElement("div");
-                printOverlay.id = "pwa-print-overlay";
-                printOverlay.innerHTML = `<style>#pwa-print-overlay{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}#pwa-print-overlay .qr-wrap{text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px}#pwa-print-overlay .qr-wrap img{width:60px;height:60px;border-radius:12px;object-fit:contain}#pwa-print-overlay .qr-wrap svg{width:240px;height:240px}#pwa-print-overlay .qr-wrap>div{background:none!important;box-shadow:none!important;border:none!important;padding:0!important;border-radius:0!important}#pwa-print-overlay .pwa-print-actions{position:fixed;bottom:24px;left:0;right:0;display:flex;gap:10px;justify-content:center}#pwa-print-overlay .pwa-print-actions button{padding:12px 28px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}</style><div class="qr-wrap">${el.innerHTML}</div><div class="pwa-print-actions"><button style="background:#333;color:#fff" onclick="window.print()">Imprimer</button><button style="background:#e5e5e5;color:#333" onclick="document.getElementById('pwa-print-overlay')?.remove()">Retour</button></div>`;
-                document.body.appendChild(printOverlay);
-                const cleanup = () => { document.getElementById('pwa-print-overlay')?.remove(); window.removeEventListener('afterprint', cleanup); };
-                window.addEventListener('afterprint', cleanup);
-              }}
-              variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9"
-            >
-              <Printer className="w-3.5 h-3.5" /> Imprimer</Button>
           </div>
 
           <div className="flex items-center gap-2 w-full">
@@ -896,6 +882,18 @@ const CustomizePage = () => {
             </Button>
           </div>
         </div>
+      </Panel>
+
+      {/* Affiche vitrine premium */}
+      <Panel title="Affiche Vitrine Premium" subtitle="Créez une affiche imprimable haut de gamme" icon={Printer}>
+        <QrPrintTemplates
+          businessName={form.name || "Mon Commerce"}
+          logoUrl={logoUrl}
+          primaryColor={form.primary_color || "#6B46C1"}
+          secondaryColor={form.secondary_color || form.primary_color || "#6B46C1"}
+          publicUrl={publicUrl}
+          promoText={form.promo_text || undefined}
+        />
       </Panel>
 
       {/* Templates */}
