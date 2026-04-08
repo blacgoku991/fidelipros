@@ -461,7 +461,7 @@ const Dashboard = () => {
         { onConflict: "card_id" }
       );
 
-    setLastScan({ customerName: customer.full_name, points: rewardEarned ? 0 : newPoints, maxPoints: maxPts, rewardEarned, loyaltyType });
+    setLastScan({ customerName: customer.full_name, points: effectivePoints, maxPoints: maxPts, rewardEarned, loyaltyType });
     setTodayScans((p) => p + 1);
     setCardCode("");
     setScanAmount("");
