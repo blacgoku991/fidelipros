@@ -949,8 +949,37 @@ const CustomizePage = () => {
               </span>
               <Badge variant="outline" className="text-[9px] border-primary/30 text-primary animate-pulse">● Live</Badge>
             </summary>
-            <div className="flex justify-center pb-4 px-4">
-              {walletPassElement}
+            <div className="px-4 pb-4 space-y-3">
+              <div className="flex justify-center">
+                <div className="flex rounded-xl bg-accent/40 p-0.5 border border-border/30">
+                  <button
+                    onClick={() => setPreviewDevice("iphone")}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                      previewDevice === "iphone" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    }`}
+                  >
+                    🍎 iPhone
+                  </button>
+                  <button
+                    onClick={() => setPreviewDevice("samsung")}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all ${
+                      previewDevice === "samsung" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground"
+                    }`}
+                  >
+                    🤖 Android
+                  </button>
+                </div>
+              </div>
+              <div className="flex justify-center">
+                {previewDevice === "iphone" ? (
+                  <IPhoneMockup width={previewWidth + 20}>{walletPassElement}</IPhoneMockup>
+                ) : (
+                  <SamsungMockup width={previewWidth + 20}>{walletPassElement}</SamsungMockup>
+                )}
+              </div>
+              <p className="text-center text-[10px] text-muted-foreground font-medium">
+                Rendu identique au {previewDevice === "iphone" ? "Apple" : "Google"} Wallet
+              </p>
             </div>
           </details>
         </div>
