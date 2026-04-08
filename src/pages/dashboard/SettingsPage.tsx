@@ -315,6 +315,7 @@ const SettingsPage = () => {
       geofence_time_start: geoTimeStart,
       geofence_time_end: geoTimeEnd,
       geofence_satellite_points: satellitePoints,
+      geofence_cooldown_hours: geoCooldownHours,
     } as any).eq("id", business.id);
 
     if (error) {
