@@ -580,7 +580,7 @@ const Dashboard = () => {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8">
         {statCards.map((stat, i) => {
           const Icon = stat.icon;
           const isTooltipOpen = tooltipOpen === stat.label;
@@ -901,7 +901,7 @@ const Dashboard = () => {
                         {c.phone && <Button variant="outline" size="sm" className="rounded-xl gap-2 text-xs flex-1" onClick={() => copyToClipboard(c.phone, "Téléphone")}><Phone className="w-3.5 h-3.5" /> {c.phone}</Button>}
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         <div className="p-3 rounded-xl bg-secondary/40 text-center">
                           <p className="text-lg font-bold">{c.total_visits || 0}</p>
                           <p className="text-[10px] text-muted-foreground">Visites</p>
