@@ -14,6 +14,9 @@ export interface BusinessConfig {
   points_per_visit: number;
   points_per_euro: number;
   reward_description: string;
+  // Reward redemption
+  reward_next_visit_only: boolean;
+  reward_min_purchase: number;
   // Card design
   primary_color: string;
   secondary_color: string;
