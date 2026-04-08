@@ -209,6 +209,7 @@ const SettingsPage = () => {
       setGeoTimeStart(business.geofence_time_start || "09:00");
       setGeoTimeEnd(business.geofence_time_end || "20:00");
       setSatellitePoints(Array.isArray(business.geofence_satellite_points) ? (business.geofence_satellite_points as { lat: number; lng: number }[]) : []);
+      setGeoCooldownHours((business as any).geofence_cooldown_hours ?? 24);
     }
   }, [business]);
 
