@@ -283,12 +283,15 @@ const ScannerPage = () => {
     // ── Build popup ──
     const hasClaimable = nowClaimable.length > 0 || alreadyClaimable.filter(r => r.instance.status === "claimable_now").length > 0;
     const hasNewUnlocked = newlyUnlocked.length > 0;
+    const hasRewardPopup = hasClaimable || hasNewUnlocked;
 
-    if (hasClaimable || hasNewUnlocked) {
+    // Prepare reward popup data (will be shown after success overlay)
+    let pendingPopup: (() => void) | null = null;
+
+    if (hasRewardPopup) {
       const rewardLines: any[] = [];
       const claimData: any[] = [];
 
-      // Claimable rewards first
       for (const r of nowClaimable) {
         rewardLines.push({ title: r.reward.title, status: "claimable_now" });
         claimData.push({
@@ -312,10 +315,9 @@ const ScannerPage = () => {
         });
       }
 
-      // Newly unlocked (pending next order)
       for (const r of newlyUnlocked) {
         rewardLines.push({ title: r.reward.title, status: "unlocked_pending_next_order" });
-        claimData.push(null); // not claimable yet
+        claimData.push(null);
       }
 
       const popType = nowClaimable.length > 0 ? "reward_claimable" : "reward";
@@ -329,38 +331,21 @@ const ScannerPage = () => {
         ? `${customer.full_name} a une récompense disponible sur cette commande.`
         : `${customer.full_name} — Disponible à la prochaine commande éligible.`;
 
-      showPopup(popType, popTitle, popMsg, `${newPoints} ${labels.unitPlural} au total`, rewardLines, claimData);
+      pendingPopup = () => showPopup(popType, popTitle, popMsg, `${newPoints} ${labels.unitPlural} au total`, rewardLines, claimData);
     } else {
-      // Simple points added
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
         description: `${newPoints} ${labels.unitPlural}`,
       });
     }
 
     // Fetch highest reward threshold for progress bar
-    const { data: rewards } = await supabase
-      .from("rewards")
-      .select("points_required")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("points_required", { ascending: false })
-      .limit(1);
-
-    const maxPts = rewards?.[0]?.points_required || card.max_points;
-
-    setLastScan({
-      customerName: customer.full_name,
-      points: newPoints,
-      maxPoints: maxPts,
-      increment,
-    });
-
-    // Only show the success overlay if NO reward popup is displayed
-    const hasRewardPopup = hasClaimable || hasNewUnlocked;
-    if (!hasRewardPopup) {
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    }
+...
+    // Always show success overlay first, then reward popup after it fades
+    setSuccess(true);
+    setTimeout(() => {
+      setSuccess(false);
+      if (pendingPopup) pendingPopup();
+    }, 2000);
     setTodayScans((p) => p + 1);
     setCardCode("");
     setAmount("");
