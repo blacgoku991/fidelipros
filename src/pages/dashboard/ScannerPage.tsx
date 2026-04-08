@@ -7,8 +7,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { QrCode, CheckCircle, Sparkles, Euro } from "lucide-react";
 import { QrCameraScanner } from "@/components/dashboard/QrCameraScanner";
+import { ScanResultPopup } from "@/components/dashboard/ScanResultPopup";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  processRewardsAfterScan,
+  claimRewardInstance,
+  buildWalletMessage,
+} from "@/hooks/useRewardInstances";
 
 const LOYALTY_LABELS: Record<string, { unit: string; unitPlural: string }> = {
   stamps: { unit: "tampon", unitPlural: "tampons" },
@@ -17,7 +23,6 @@ const LOYALTY_LABELS: Record<string, { unit: string; unitPlural: string }> = {
   subscription: { unit: "point", unitPlural: "points" },
 };
 
-// Cooldown duration in seconds between two scans of the same card
 const SCAN_COOLDOWN_SECONDS = 30;
 
 const ScannerPage = () => {
@@ -31,6 +36,16 @@ const ScannerPage = () => {
   const scanLockRef = useRef(false);
   const amountInputRef = useRef<HTMLInputElement>(null);
 
+  // Popup state
+  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupType, setPopupType] = useState<"success" | "reward" | "reward_claimable" | "pending" | "error">("success");
+  const [popupTitle, setPopupTitle] = useState("");
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupDetails, setPopupDetails] = useState<string | undefined>();
+  const [popupRewardLines, setPopupRewardLines] = useState<any[]>([]);
+  const [popupClaimData, setPopupClaimData] = useState<any[]>([]);
+  const [claimingIndex, setClaimingIndex] = useState<number | null>(null);
+
   const loyaltyType = business?.loyalty_type || "stamps";
   const isCashback = loyaltyType === "cashback";
   const isEuroToPoints = loyaltyType === "points" && (business?.points_per_euro || 0) > 0;
@@ -39,8 +54,77 @@ const ScannerPage = () => {
   const showAmountInput = needsAmount || minPurchaseAmount > 0;
   const labels = LOYALTY_LABELS[loyaltyType] || LOYALTY_LABELS.points;
 
+  const showPopup = (
+    type: typeof popupType,
+    title: string,
+    message: string,
+    details?: string,
+    rewardLines?: any[],
+    claimData?: any[],
+  ) => {
+    setPopupType(type);
+    setPopupTitle(title);
+    setPopupMessage(message);
+    setPopupDetails(details);
+    setPopupRewardLines(rewardLines || []);
+    setPopupClaimData(claimData || []);
+    setClaimingIndex(null);
+    setPopupOpen(true);
+  };
+
+  const handleClaimFromPopup = async (index: number) => {
+    const data = popupClaimData[index];
+    if (!data || !business || !user) return;
+    setClaimingIndex(index);
+
+    // Claim the instance
+    await claimRewardInstance(data.instanceId, data.scanId);
+
+    // Log in points_history
+    await supabase.from("points_history").insert({
+      customer_id: data.customerId,
+      business_id: business.id,
+      card_id: data.cardId,
+      points_added: 0,
+      action: "reward_claim",
+      note: `Récompense récupérée : ${data.rewardTitle}`,
+      scanned_by: user.id,
+    });
+
+    // Update card
+    await supabase.from("customer_cards").update({
+      rewards_earned: (data.currentRewardsEarned || 0) + 1,
+      wallet_change_message: `✅ Récompense récupérée : ${data.rewardTitle}`,
+      updated_at: new Date().toISOString(),
+    }).eq("id", data.cardId);
+
+    // Push wallet update
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token ?? "";
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          business_id: business.id,
+          customer_id: data.customerId,
+          action_type: "reward_claimed",
+          change_message: `✅ Récompense récupérée : ${data.rewardTitle}`,
+        }),
+      });
+    } catch { /* non-blocking */ }
+
+    toast.success(`✅ ${data.rewardTitle} récupérée !`);
+
+    // Update popup lines - mark this one as claimed
+    setPopupRewardLines(prev => prev.map((l, i) =>
+      i === index ? { ...l, status: "claimed" as const, title: `✅ ${l.title}` } : l
+    ));
+    setClaimingIndex(null);
+  };
+
   const handleScan = async (codeOverride?: string) => {
-    // Prevent concurrent scan executions (double-scan guard)
     if (scanLockRef.current) return;
     scanLockRef.current = true;
 
@@ -72,17 +156,17 @@ const ScannerPage = () => {
       return;
     }
 
-    // ── Anti double-scan: check cooldown ──────────────────────────
+    // Anti double-scan cooldown
     const { data: cooldown } = await supabase
-      .from("scan_cooldowns" as any)
+      .from("scan_cooldowns")
       .select("last_scan")
       .eq("card_id", card.id)
       .maybeSingle();
 
-    if ((cooldown as any)?.last_scan) {
-      const elapsed = (Date.now() - new Date((cooldown as any).last_scan).getTime()) / 1000;
+    if (cooldown?.last_scan) {
+      const elapsed = (Date.now() - new Date(cooldown.last_scan).getTime()) / 1000;
       if (elapsed < SCAN_COOLDOWN_SECONDS) {
-      const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
+        const remaining = Math.ceil(SCAN_COOLDOWN_SECONDS - elapsed);
         toast.warning(`⏱ Scan trop rapide`, {
           description: `Attendez encore ${remaining}s avant de scanner cette carte à nouveau.`,
         });
@@ -92,10 +176,10 @@ const ScannerPage = () => {
       }
     }
 
-    // Calculate points increment based on loyalty type
+    // Calculate points increment
     let increment = 1;
+    const purchaseAmount = parseFloat(amount) || 0;
     if (needsAmount) {
-      const purchaseAmount = parseFloat(amount) || 0;
       const pointsPerEuro = (business as any).points_per_euro || 1;
       if (isCashback) {
         increment = Math.floor(purchaseAmount * pointsPerEuro / 100);
@@ -109,74 +193,38 @@ const ScannerPage = () => {
 
     const newPoints = card.current_points + increment;
     const customer = card.customers;
-
-    // Check if a reward was earned — use rewards from DB if available
-    let earnedReward: any = null;
-    const { data: rewards } = await supabase
-      .from("rewards")
-      .select("title, points_required")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("points_required", { ascending: true });
-
-    // Use highest reward threshold if rewards exist, otherwise fall back to max_points
-    const highestRewardThreshold = rewards && rewards.length > 0
-      ? Math.max(...rewards.map((r: any) => r.points_required))
-      : card.max_points;
-
-    // ── Reward redemption logic with configurable conditions ──
-    const bReward = business as any;
-    const nextVisitOnly = bReward.reward_next_visit_only === true;
-    const minPurchase = parseFloat(bReward.reward_min_purchase) || 0;
-    const purchaseAmountForCheck = showAmountInput ? (parseFloat(amount) || 0) : Infinity;
-
-    const currentPts = card.current_points;
-    const wasAlreadyReady = currentPts >= highestRewardThreshold;
-    const reachesThresholdNow = newPoints >= highestRewardThreshold;
-
-    let rewardEarned = false;
-    let rewardPending = false;
-
-    if (wasAlreadyReady) {
-      if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
-        rewardPending = true;
-      } else {
-        rewardEarned = true;
-      }
-    } else if (reachesThresholdNow) {
-      if (nextVisitOnly) {
-        rewardPending = true;
-      } else if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
-        rewardPending = true;
-      } else {
-        rewardEarned = true;
-      }
-    }
-
-    if (rewards && rewards.length > 0) {
-      earnedReward = rewards.filter((r: any) => r.points_required <= newPoints)
-        .sort((a: any, b: any) => b.points_required - a.points_required)[0];
-    }
-
-    const effectivePoints = newPoints;
     const unitLabel = increment > 1 ? labels.unitPlural : labels.unit;
-    const changeMsg = rewardEarned
-      ? `🎁 ${earnedReward?.title || "Récompense"} débloquée chez ${business.name} !`
-      : rewardPending
-        ? `🎁 Récompense en attente${minPurchase > 0 ? ` (min. ${minPurchase}€)` : ""} chez ${business.name}`
-        : isCashback
-          ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
-          : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
 
-    await supabase
-      .from("customer_cards")
-      .update({
-        current_points: effectivePoints,
-        rewards_earned: rewardEarned ? card.rewards_earned + 1 : card.rewards_earned,
-        wallet_change_message: changeMsg,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", card.id);
+    // ── Process reward instances ──
+    const rewardResult = await processRewardsAfterScan({
+      cardId: card.id,
+      customerId: customer.id,
+      businessId: business.id,
+      currentPoints: newPoints,
+      purchaseAmount: showAmountInput ? purchaseAmount : null,
+      minPurchaseForClaim: minPurchaseAmount,
+    });
+
+    const { newlyUnlocked, nowClaimable, alreadyClaimable } = rewardResult;
+
+    // Build wallet change message
+    const allActive = [
+      ...nowClaimable.map(r => ({ reward: r.reward, status: "claimable_now" as const })),
+      ...alreadyClaimable.map(r => ({ reward: r.reward, status: r.instance.status as any })),
+      ...newlyUnlocked.map(r => ({ reward: r.reward, status: "unlocked_pending_next_order" as const })),
+    ];
+
+    const walletMsg = buildWalletMessage(allActive) ||
+      (isCashback
+        ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
+        : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`);
+
+    // Update card
+    await supabase.from("customer_cards").update({
+      current_points: newPoints,
+      wallet_change_message: walletMsg,
+      updated_at: new Date().toISOString(),
+    }).eq("id", card.id);
 
     // Wallet push
     try {
@@ -189,29 +237,29 @@ const ScannerPage = () => {
         body: JSON.stringify({
           business_id: business.id,
           customer_id: customer.id,
-          action_type: "points_increment",
-          change_message: changeMsg,
+          action_type: nowClaimable.length > 0 ? "reward_claimable" : newlyUnlocked.length > 0 ? "reward_unlocked" : "points_increment",
+          change_message: walletMsg,
         }),
       });
-    } catch (walletErr) {
-      console.warn("Wallet push failed (non-blocking):", walletErr);
-    }
+    } catch { /* non-blocking */ }
 
     // Update customer stats
     const newStreak = customer.current_streak + 1;
-    await supabase
-      .from("customers")
-      .update({
-        total_points: customer.total_points + increment,
-        total_visits: customer.total_visits + 1,
-        current_streak: newStreak,
-        longest_streak: Math.max(newStreak, customer.longest_streak),
-        last_visit_at: new Date().toISOString(),
-        level: customer.total_points + increment >= ((business as any).tier_gold_points || 25) ? "gold" : customer.total_points + increment >= ((business as any).tier_silver_points || 10) ? "silver" : "bronze",
-      })
-      .eq("id", customer.id);
+    await supabase.from("customers").update({
+      total_points: customer.total_points + increment,
+      total_visits: customer.total_visits + 1,
+      current_streak: newStreak,
+      longest_streak: Math.max(newStreak, customer.longest_streak),
+      last_visit_at: new Date().toISOString(),
+      level: customer.total_points + increment >= ((business as any).tier_gold_points || 25)
+        ? "gold"
+        : customer.total_points + increment >= ((business as any).tier_silver_points || 10)
+          ? "silver"
+          : "bronze",
+    }).eq("id", customer.id);
 
-    await supabase.from("points_history").insert({
+    // Log scan in points_history
+    const { data: scanHistory } = await supabase.from("points_history").insert({
       customer_id: customer.id,
       business_id: business.id,
       card_id: card.id,
@@ -219,22 +267,86 @@ const ScannerPage = () => {
       action: "scan",
       scanned_by: user.id,
       ...(locationId ? { location_id: locationId } : {}),
-    });
+    }).select("id").single();
 
-    // ── Update cooldown ──────────────────────────────────────────
-    await supabase
-      .from("scan_cooldowns" as any)
-      .upsert(
-        { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
-        { onConflict: "card_id" }
-      );
+    // Update cooldown
+    await supabase.from("scan_cooldowns").upsert(
+      { card_id: card.id, last_scan: new Date().toISOString(), scanned_by: user.id },
+      { onConflict: "card_id" }
+    );
+
+    // ── Build popup ──
+    const hasClaimable = nowClaimable.length > 0 || alreadyClaimable.filter(r => r.instance.status === "claimable_now").length > 0;
+    const hasNewUnlocked = newlyUnlocked.length > 0;
+
+    if (hasClaimable || hasNewUnlocked) {
+      const rewardLines: any[] = [];
+      const claimData: any[] = [];
+
+      // Claimable rewards first
+      for (const r of nowClaimable) {
+        rewardLines.push({ title: r.reward.title, status: "claimable_now" });
+        claimData.push({
+          instanceId: r.instance.id,
+          scanId: scanHistory?.id,
+          customerId: customer.id,
+          cardId: card.id,
+          rewardTitle: r.reward.title,
+          currentRewardsEarned: card.rewards_earned,
+        });
+      }
+      for (const r of alreadyClaimable.filter(x => x.instance.status === "claimable_now")) {
+        rewardLines.push({ title: r.reward.title, status: "claimable_now" });
+        claimData.push({
+          instanceId: r.instance.id,
+          scanId: scanHistory?.id,
+          customerId: customer.id,
+          cardId: card.id,
+          rewardTitle: r.reward.title,
+          currentRewardsEarned: card.rewards_earned,
+        });
+      }
+
+      // Newly unlocked (pending next order)
+      for (const r of newlyUnlocked) {
+        rewardLines.push({ title: r.reward.title, status: "unlocked_pending_next_order" });
+        claimData.push(null); // not claimable yet
+      }
+
+      const popType = nowClaimable.length > 0 ? "reward_claimable" : "reward";
+      const popTitle = nowClaimable.length > 0
+        ? "🎁 Récompense à donner !"
+        : hasNewUnlocked
+          ? "🎉 Nouvelle récompense débloquée !"
+          : `+${increment} ${unitLabel}`;
+
+      const popMsg = nowClaimable.length > 0
+        ? `${customer.full_name} a une récompense disponible sur cette commande.`
+        : `${customer.full_name} — Disponible à la prochaine commande éligible.`;
+
+      showPopup(popType, popTitle, popMsg, `${newPoints} ${labels.unitPlural} au total`, rewardLines, claimData);
+    } else {
+      // Simple points added
+      toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
+        description: `${newPoints} ${labels.unitPlural}`,
+      });
+    }
+
+    // Fetch highest reward threshold for progress bar
+    const { data: rewards } = await supabase
+      .from("rewards")
+      .select("points_required")
+      .eq("business_id", business.id)
+      .eq("is_active", true)
+      .order("points_required", { ascending: false })
+      .limit(1);
+
+    const maxPts = rewards?.[0]?.points_required || card.max_points;
 
     setLastScan({
       customerName: customer.full_name,
-      points: effectivePoints,
-      maxPoints: card.max_points,
-      rewardEarned,
-      rewardTitle: earnedReward?.title,
+      points: newPoints,
+      maxPoints: maxPts,
       increment,
     });
 
@@ -245,25 +357,6 @@ const ScannerPage = () => {
     setScanning(false);
     scanLockRef.current = false;
 
-    if (rewardEarned) {
-      toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
-        description: `${customer.full_name} a gagné sa récompense ! Compteur remis à zéro.`,
-        duration: 6000,
-      });
-    } else if (rewardPending) {
-      const pendingMsg = minPurchase > 0 && purchaseAmountForCheck < minPurchase
-        ? `Commande : ${purchaseAmountForCheck}€ — Minimum requis : ${minPurchase}€. Prochaine commande ≥ ${minPurchase}€ pour récupérer.`
-        : `Disponible au prochain passage de ${customer.full_name}`;
-      toast.warning(`🎁 Récompense en attente — ${customer.full_name}`, {
-        description: pendingMsg,
-        duration: 8000,
-      });
-    } else {
-      toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
-        description: `${newPoints}/${highestRewardThreshold} ${labels.unitPlural}`,
-      });
-    }
-
     setTimeout(() => setSuccess(false), 3000);
   };
 
@@ -271,7 +364,6 @@ const ScannerPage = () => {
     <DashboardLayout title="Scanner" subtitle="Scannez ou entrez le code d'une carte client">
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="p-6 rounded-2xl bg-card border border-border/50 flex flex-col items-center">
-          {/* QR Camera Scanner */}
           <AnimatePresence>
             {success ? (
               <motion.div
@@ -283,15 +375,13 @@ const ScannerPage = () => {
               >
                 <CheckCircle className="w-14 h-14 text-emerald-500" />
                 <p className="font-display font-bold text-emerald-600 text-sm">
-                  {lastScan?.rewardEarned
-                    ? `🎉 ${lastScan.rewardTitle || "Récompense"} !`
-                    : `+${lastScan?.increment || 1} ${labels.unit} !`}
+                  +{lastScan?.increment || 1} {labels.unit} !
                 </p>
               </motion.div>
             ) : (
               <motion.div key="scanner" className="w-full mb-4">
                 <QrCameraScanner
-                 onScan={(code) => {
+                  onScan={(code) => {
                     if (!showAmountInput) {
                       handleScan(code);
                     } else {
@@ -307,7 +397,6 @@ const ScannerPage = () => {
             )}
           </AnimatePresence>
 
-          {/* Manual code input + amount */}
           <div className="w-full max-w-xs space-y-3">
             <div className="flex gap-2">
               <Input
@@ -332,7 +421,7 @@ const ScannerPage = () => {
                   min="0"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder={minPurchaseAmount > 0 && !needsAmount ? `Montant de la commande (min. ${minPurchaseAmount}€)` : "Montant de l'achat (€)"}
+                  placeholder={minPurchaseAmount > 0 && !needsAmount ? `Montant (min. ${minPurchaseAmount}€)` : "Montant de l'achat (€)"}
                   className="rounded-xl"
                   onKeyDown={(e) => e.key === "Enter" && handleScan(undefined)}
                 />
@@ -342,8 +431,8 @@ const ScannerPage = () => {
             <p className="text-[11px] text-center text-muted-foreground">
               {showAmountInput
                 ? needsAmount
-                  ? `Scannez le QR code ou entrez le code + montant (${(business as any).points_per_euro || 1}€ = ${(business as any).points_per_euro || 1} ${labels.unit}${((business as any).points_per_euro || 1) > 1 ? 's' : ''})`
-                  : `Entrez le montant pour vérifier le minimum d'achat (${minPurchaseAmount}€)`
+                  ? `Scannez le QR ou entrez le code + montant`
+                  : `Entrez le montant pour vérifier le minimum (${minPurchaseAmount}€)`
                 : "Scannez le QR code ou entrez le code manuellement"}
             </p>
           </div>
@@ -366,22 +455,30 @@ const ScannerPage = () => {
                 <motion.div
                   className="h-full rounded-full bg-gradient-primary"
                   initial={{ width: 0 }}
-                  animate={{ width: `${(lastScan.points / lastScan.maxPoints) * 100}%` }}
+                  animate={{ width: `${Math.min((lastScan.points / lastScan.maxPoints) * 100, 100)}%` }}
                   transition={{ duration: 0.8 }}
                 />
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {lastScan.points}/{lastScan.maxPoints} {labels.unitPlural}
               </p>
-              {lastScan.rewardEarned && (
-                <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} className="mt-2 text-sm font-semibold text-accent">
-                  🎉 {lastScan.rewardTitle || "Récompense gagnée"} !
-                </motion.p>
-              )}
             </motion.div>
           )}
         </div>
       </div>
+
+      {/* Reward popup */}
+      <ScanResultPopup
+        open={popupOpen}
+        onClose={() => setPopupOpen(false)}
+        type={popupType}
+        title={popupTitle}
+        message={popupMessage}
+        details={popupDetails}
+        rewardLines={popupRewardLines}
+        onClaimReward={handleClaimFromPopup}
+        claimingIndex={claimingIndex}
+      />
     </DashboardLayout>
   );
 };
