@@ -489,7 +489,7 @@ async function buildPkpassForUpdate(
       ],
       auxiliaryFields: [
         ...(rewards.length > 0 ? (() => {
-          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedTitles.includes(r.title));
+          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedRewardIds.has(r.id));
           const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
           const fields: any[] = [];
           if (unclaimedUnlocked) {
