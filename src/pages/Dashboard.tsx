@@ -448,7 +448,7 @@ const Dashboard = () => {
         body: JSON.stringify({
           business_id: business.id,
           event_type: rewardEarned ? "customer.reward_claimed" : "customer.scan",
-          payload: { customer_id: customer.id, customer_name: customer.full_name, points: rewardEarned ? 0 : newPoints, max_points: maxPts, reward_earned: rewardEarned },
+          payload: { customer_id: customer.id, customer_name: customer.full_name, points: effectivePoints, max_points: maxPts, reward_earned: rewardEarned },
         }),
       }).catch(() => {});
     } catch { /* non-blocking */ }
