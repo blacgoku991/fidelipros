@@ -196,14 +196,19 @@ const ScannerPage = () => {
     const unitLabel = increment > 1 ? labels.unitPlural : labels.unit;
 
     // ── Process reward instances ──
-    const rewardResult = await processRewardsAfterScan({
-      cardId: card.id,
-      customerId: customer.id,
-      businessId: business.id,
-      currentPoints: newPoints,
-      purchaseAmount: showAmountInput ? purchaseAmount : null,
-      minPurchaseForClaim: minPurchaseAmount,
-    });
+    let rewardResult = { newlyUnlocked: [] as any[], nowClaimable: [] as any[], alreadyClaimable: [] as any[] };
+    try {
+      rewardResult = await processRewardsAfterScan({
+        cardId: card.id,
+        customerId: customer.id,
+        businessId: business.id,
+        currentPoints: newPoints,
+        purchaseAmount: showAmountInput ? purchaseAmount : null,
+        minPurchaseForClaim: minPurchaseAmount,
+      });
+    } catch (e) {
+      console.error("processRewardsAfterScan error:", e);
+    }
 
     const { newlyUnlocked, nowClaimable, alreadyClaimable } = rewardResult;
 
@@ -350,14 +355,17 @@ const ScannerPage = () => {
       increment,
     });
 
-    setSuccess(true);
+    // Only show the success overlay if NO reward popup is displayed
+    const hasRewardPopup = hasClaimable || hasNewUnlocked;
+    if (!hasRewardPopup) {
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    }
     setTodayScans((p) => p + 1);
     setCardCode("");
     setAmount("");
     setScanning(false);
     scanLockRef.current = false;
-
-    setTimeout(() => setSuccess(false), 3000);
   };
 
   return (
