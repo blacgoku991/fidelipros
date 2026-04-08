@@ -373,7 +373,7 @@ const CustomizePage = () => {
     <div className="space-y-4">
       <Panel title="Votre commerce" subtitle="Logo, bannière et informations" icon={Store}>
         {/* Logo & Banner */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Label className="text-xs font-semibold">Logo</Label>
@@ -440,7 +440,7 @@ const CustomizePage = () => {
           <Textarea value={form.description} onChange={(e) => update("description", e.target.value)} className="rounded-xl resize-none" rows={2} placeholder="Une phrase qui décrit votre commerce..." />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Catégorie</Label>
             <Select value={form.category} onValueChange={(v) => update("category", v)}>
@@ -488,7 +488,7 @@ const CustomizePage = () => {
       <div className="space-y-4">
         {/* Type Selector */}
         <Panel title="Type de programme" subtitle="Choisissez comment récompenser vos clients" icon={Zap}>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <OptionCard
               selected={isPoints}
               onClick={() => update("loyalty_type", "points")}
@@ -668,7 +668,7 @@ const CustomizePage = () => {
 
         {/* Onboarding */}
         <Panel title="Inscription client" subtitle="Comment les nouveaux clients rejoignent votre programme" icon={Users}>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             {[
               { val: "instant", emoji: "⚡", title: "Instantané", desc: "Scan & go" },
               { val: "email", emoji: "📧", title: "Email", desc: "Avec email" },
@@ -695,7 +695,7 @@ const CustomizePage = () => {
     <div className="space-y-4">
       {/* Quick Themes */}
       <Panel title="Thèmes rapides" subtitle="Appliquez un style en un clic" icon={Sparkles}>
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {presetThemes.map((theme) => (
             <button
               key={theme.label}
@@ -754,7 +754,7 @@ const CustomizePage = () => {
 
       {/* Card Style */}
       <Panel title="Style de carte" subtitle="Apparence visuelle" icon={CreditCard}>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {cardStyles.map(s => (
             <button
               key={s.value}
@@ -866,7 +866,7 @@ const CustomizePage = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-center gap-2">
             <Button onClick={downloadQR} variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9">
               <Download className="w-3.5 h-3.5" /> PNG
             </Button>
@@ -933,14 +933,14 @@ const CustomizePage = () => {
       title="Carte de fidélité"
       subtitle="Personnalisez entièrement votre programme"
       headerAction={
-        <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-primary-foreground rounded-xl gap-2 shadow-md hover:shadow-lg transition-shadow">
+        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto justify-center bg-gradient-primary text-primary-foreground rounded-xl gap-2 shadow-md hover:shadow-lg transition-shadow">
           <Save className="w-4 h-4" /> {saving ? "Sauvegarde..." : "Sauvegarder"}
         </Button>
       }
     >
-      <div className="grid lg:grid-cols-[1fr,340px] gap-6">
+      <div className="grid lg:grid-cols-[minmax(0,1fr),340px] gap-6 min-w-0">
         {/* ─── MOBILE PREVIEW ─── */}
-        <div className="lg:hidden">
+        <div className="lg:hidden min-w-0">
           <details className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
             <summary className="p-4 cursor-pointer flex items-center justify-between text-sm font-medium">
               <span className="flex items-center gap-2">
@@ -958,7 +958,7 @@ const CustomizePage = () => {
         {/* ─── LEFT: Nav + Content ─── */}
         <div className="space-y-4">
           {/* Navigation */}
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide bg-accent/30 rounded-2xl p-1.5 border border-border/30">
+          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory bg-accent/30 rounded-2xl p-1.5 border border-border/30">
             {sections.map(s => {
               const Icon = s.icon;
               const active = activeSection === s.id;
@@ -966,7 +966,7 @@ const CustomizePage = () => {
                 <button
                   key={s.id}
                   onClick={() => setActiveSection(s.id)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 snap-start ${
                     active
                       ? "bg-card text-foreground shadow-md border border-border/50"
                       : "text-muted-foreground hover:text-foreground hover:bg-card/50"

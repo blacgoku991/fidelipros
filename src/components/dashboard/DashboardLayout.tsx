@@ -36,12 +36,12 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
   return (
     <div className="min-h-screen bg-background">
       <DashboardSidebar items={items} groups={groups} onLogout={logout} />
-      <main className="lg:ml-64 min-h-screen flex flex-col">
+      <main className="lg:ml-64 min-h-screen flex flex-col min-w-0 overflow-x-hidden">
         <MobileHeader onLogout={logout} items={items} groups={groups} />
 
         {/* Page header */}
-        <div className="sticky top-0 lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
+        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+68px)] lg:top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border/40 px-4 sm:px-6 lg:px-8 py-3 sm:py-4 safe-area-x">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
               <h1 className="text-base sm:text-2xl font-display font-bold tracking-tight truncate">{title}</h1>
               {locationName && (
@@ -53,12 +53,12 @@ export function DashboardLayout({ children, title, subtitle, headerAction }: Das
                 <p className="text-muted-foreground text-[11px] sm:text-sm mt-0.5 truncate">{subtitle}</p>
               )}
             </div>
-            {headerAction && <div className="shrink-0 self-end sm:self-auto">{headerAction}</div>}
+            {headerAction && <div className="w-full sm:w-auto shrink-0 self-stretch sm:self-auto">{headerAction}</div>}
           </div>
         </div>
 
         {/* Page content */}
-        <div className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6 pb-20 lg:pb-6">
+        <div className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-6 safe-area-x">
           <SubscriptionGuard>
             {children}
           </SubscriptionGuard>
