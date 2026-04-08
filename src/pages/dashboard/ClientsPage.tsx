@@ -77,6 +77,7 @@ const ClientsPage = () => {
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [claimingReward, setClaimingReward] = useState<string | null>(null);
+  const [rewardInstances, setRewardInstances] = useState<Record<string, RewardInstance[]>>({});
 
   const fetchCustomers = async () => {
     if (!business) return;
