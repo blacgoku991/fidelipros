@@ -826,13 +826,12 @@ const CustomizePage = () => {
                 if (!printContent) return;
                 const w = window.open("", "_blank");
                 if (!w) return;
-                w.document.write(`<!DOCTYPE html><html><head><title>QR - ${form.name}</title><style>body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:system-ui;}</style></head><body>${printContent.outerHTML}</body></html>`);
-                w.document.close(); w.focus(); w.print();
+                w.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>QR - ${form.name}</title><style>*{box-sizing:border-box}body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;margin:0;padding:env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);font-family:system-ui,sans-serif;background:#f5f5f5}.qr-wrap{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center;max-width:90vw}.back-btn{margin-top:24px;padding:12px 32px;border:none;background:#6B46C1;color:#fff;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}.back-btn:active{opacity:.8}@media print{.back-btn,.print-btn{display:none!important}body{background:#fff;padding:0}.qr-wrap{box-shadow:none}}</style></head><body><div class="qr-wrap">${printContent.outerHTML}</div><button class="print-btn back-btn" style="background:#333;margin-top:16px" onclick="window.print()">🖨️ Imprimer</button><button class="back-btn" onclick="window.close();history.back()">← Retour</button></body></html>`);
+                w.document.close();
               }}
               variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9"
             >
-              <Printer className="w-3.5 h-3.5" /> Imprimer
-            </Button>
+              <Printer className="w-3.5 h-3.5" /> Imprimer</Button>
           </div>
 
           <div className="flex items-center gap-2 w-full">
