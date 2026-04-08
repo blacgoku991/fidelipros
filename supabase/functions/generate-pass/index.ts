@@ -195,7 +195,7 @@ export async function buildPkpass(
   customer: any,
   authToken: string,
   rewards: any[] = [],
-  claimedTitles: string[] = []
+  claimedRewardIds: Set<string> = new Set()
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
   const p12Base64 = requireEnv("APPLE_PASS_CERTIFICATE");
