@@ -616,28 +616,54 @@ const ClientsPage = () => {
                         {rewards.map((r: any) => {
                           const currentPts = card.current_points || 0;
                           const unlocked = currentPts >= r.points_required;
-                          const claimedInHistory = (clientHistory[selected.id] || []).some(
+                          const cardInstances = rewardInstances[card.id] || [];
+                          const instance = cardInstances.find((i: RewardInstance) => i.reward_id === r.id);
+                          const isClaimed = instance?.status === "claimed";
+                          const isClaimable = instance?.status === "claimable_now";
+                          const isPending = instance?.status === "unlocked_pending_next_order";
+
+                          // Fallback: check history for old claims without instances
+                          const claimedInHistory = !instance && (clientHistory[selected.id] || []).some(
                             (h: any) => h.action === "reward_claim" && h.note?.includes(r.title)
                           );
+
+                          const statusLabel = isClaimable
+                            ? "🎁 À donner"
+                            : isPending
+                              ? "🔓 Prochaine commande"
+                              : isClaimed || claimedInHistory
+                                ? "✅ Récupérée"
+                                : null;
+
                           return (
-                            <div key={r.id} className={`p-3 rounded-xl border ${unlocked && !claimedInHistory ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                            <div key={r.id} className={`p-3 rounded-xl border ${
+                              isClaimable ? "border-accent/40 bg-accent/10" :
+                              isPending ? "border-amber-300/40 bg-amber-50/50 dark:bg-amber-900/10" :
+                              unlocked && !isClaimed && !claimedInHistory ? "border-accent/40 bg-accent/5" :
+                              "border-border/30 bg-muted/30"
+                            }`}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold truncate">{r.title}</p>
-                                  <p className="text-xs text-muted-foreground">{r.points_required} pts requis</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {r.points_required} pts requis
+                                    {statusLabel && ` • ${statusLabel}`}
+                                  </p>
                                 </div>
-                                {unlocked && !claimedInHistory ? (
+                                {isClaimable ? (
                                   <Button
                                     size="sm"
                                     className="rounded-xl gap-1.5 text-xs bg-accent text-accent-foreground shrink-0"
                                     disabled={claimingReward === r.id}
-                                    onClick={() => handleClaimReward(selected.id, card.id, r)}
+                                    onClick={() => handleClaimReward(selected.id, card.id, r, instance?.id)}
                                   >
                                     <Gift className="w-3.5 h-3.5" />
                                     {claimingReward === r.id ? "..." : "Récupérer"}
                                   </Button>
-                                ) : claimedInHistory ? (
+                                ) : isClaimed || claimedInHistory ? (
                                   <Badge variant="outline" className="text-[10px] shrink-0">✅ Récupérée</Badge>
+                                ) : isPending ? (
+                                  <Badge variant="outline" className="text-[10px] shrink-0 border-amber-300 text-amber-700 dark:text-amber-400">Prochaine visite</Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground shrink-0">{currentPts}/{r.points_required}</span>
                                 )}
