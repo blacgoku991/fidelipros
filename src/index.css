@@ -328,42 +328,67 @@ button, a, [role="button"] {
 }
 
 @media print {
-  * {
-    margin: 0 !important;
-    padding: 0 !important;
-  }
   html, body {
     height: auto !important;
     overflow: visible !important;
     background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   body > *:not(#pwa-print-overlay) {
     display: none !important;
   }
   #pwa-print-overlay {
-    position: static !important;
-    display: block !important;
+    all: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     width: 100% !important;
-    height: auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    padding: 15mm 10mm !important;
+    height: 100vh !important;
     background: #fff !important;
-    overflow: visible !important;
-  }
-  #pwa-print-overlay .qr-wrap {
-    max-width: 250px !important;
-    margin: 0 auto !important;
-    padding: 0 !important;
+    page-break-after: avoid !important;
     page-break-inside: avoid !important;
   }
+  #pwa-print-overlay .qr-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6mm !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: none !important;
+    width: auto !important;
+    background: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
   #pwa-print-overlay .qr-wrap img {
-    max-width: 60px !important;
-    max-height: 60px !important;
+    width: 20mm !important;
+    height: 20mm !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    border-radius: 4mm !important;
   }
   #pwa-print-overlay .qr-wrap svg {
-    max-width: 180px !important;
-    max-height: 180px !important;
+    width: 80mm !important;
+    height: 80mm !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+  #pwa-print-overlay .qr-wrap > div {
+    background: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+  #pwa-print-overlay .qr-wrap p {
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #000 !important;
   }
   #pwa-print-overlay .pwa-print-actions {
     display: none !important;
