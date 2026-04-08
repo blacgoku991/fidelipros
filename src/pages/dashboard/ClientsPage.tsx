@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveInstances, claimRewardInstance, type RewardInstance } from "@/hooks/useRewardInstances";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ const ClientsPage = () => {
   const [sortKey, setSortKey] = useState<SortKey>("full_name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [claimingReward, setClaimingReward] = useState<string | null>(null);
+  const [rewardInstances, setRewardInstances] = useState<Record<string, RewardInstance[]>>({});
 
   const fetchCustomers = async () => {
     if (!business) return;
@@ -127,9 +129,20 @@ const ClientsPage = () => {
     if (data) setRewards(data);
   };
 
-  const handleClaimReward = async (customerId: string, cardId: string, reward: any) => {
+  const fetchRewardInstances = async (cardId: string) => {
+    const instances = await getActiveInstances(cardId);
+    setRewardInstances(prev => ({ ...prev, [cardId]: instances }));
+  };
+
+  const handleClaimReward = async (customerId: string, cardId: string, reward: any, instanceId?: string) => {
     if (!business || !user) return;
     setClaimingReward(reward.id);
+
+    // If we have a reward_instance, use it
+    if (instanceId) {
+      await claimRewardInstance(instanceId);
+    }
+
     // Log the claim in points_history
     await supabase.from("points_history").insert({
       customer_id: customerId,
@@ -140,45 +153,29 @@ const ClientsPage = () => {
       note: `Récompense récupérée : ${reward.title} (${reward.points_required} pts)`,
       scanned_by: user.id,
     });
-    // Increment rewards_earned on card + reset points to 0 + update wallet change message
-    const changeMsg = `✅ Récompense récupérée : ${reward.title}`;
+
+    // Update card
     const { data: cardData } = await supabase
       .from("customer_cards")
-      .select("rewards_earned")
+      .select("rewards_earned, current_points")
       .eq("id", cardId)
       .single();
-    // Fetch current card points and check if another reward is still unlocked
-    const { data: currentCard } = await supabase
-      .from("customer_cards")
-      .select("current_points")
-      .eq("id", cardId)
-      .single();
-    const currentPts = currentCard?.current_points || 0;
 
-    // Check if another reward is still available after this one
-    const { data: allRewards } = await supabase
-      .from("rewards")
-      .select("title, points_required")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("points_required", { ascending: true });
+    // Check remaining active instances after claiming
+    const remainingInstances = await getActiveInstances(cardId);
+    const hasMore = remainingInstances.some(i => i.id !== instanceId && i.status !== "claimed");
 
-    const otherUnlocked = allRewards?.filter(
-      (r: any) => r.points_required <= currentPts && r.points_required !== reward.points_required
-    );
-    const hasAnotherReward = otherUnlocked && otherUnlocked.length > 0;
-
-    // Keep points as-is, only update wallet message
-    const walletMsg = hasAnotherReward
-      ? `🎁 ${otherUnlocked![otherUnlocked!.length - 1].title} à récupérer !`
-      : changeMsg;
+    const walletMsg = hasMore
+      ? `🎁 Récompense(s) en attente`
+      : `✅ Récompense récupérée : ${reward.title}`;
 
     await supabase.from("customer_cards").update({
       rewards_earned: (cardData?.rewards_earned || 0) + 1,
       wallet_change_message: walletMsg,
       updated_at: new Date().toISOString(),
     }).eq("id", cardId);
-    // Push notification to Apple Wallet
+
+    // Push wallet update
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token ?? "";
@@ -186,14 +183,15 @@ const ClientsPage = () => {
       await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "reward_claimed", change_message: changeMsg }),
+        body: JSON.stringify({ business_id: business.id, customer_id: customerId, action_type: "reward_claimed", change_message: walletMsg }),
       });
     } catch { /* non-blocking */ }
+
     toast.success(`✅ ${reward.title} marquée comme récupérée !`);
     setClaimingReward(null);
-    // Refresh history
     setClientHistory(prev => { const n = { ...prev }; delete n[customerId]; return n; });
     fetchHistory(customerId);
+    fetchRewardInstances(cardId);
     fetchCustomers();
   };
 
@@ -450,7 +448,13 @@ const ClientsPage = () => {
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
                   className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-                  onClick={() => { setSelected(customer); fetchHistory(customer.id); fetchNotifs(customer.id); }}
+                  onClick={() => {
+                    setSelected(customer);
+                    fetchHistory(customer.id);
+                    fetchNotifs(customer.id);
+                    const card = customer.customer_cards?.[0];
+                    if (card) fetchRewardInstances(card.id);
+                  }}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <Checkbox
@@ -618,28 +622,54 @@ const ClientsPage = () => {
                         {rewards.map((r: any) => {
                           const currentPts = card.current_points || 0;
                           const unlocked = currentPts >= r.points_required;
-                          const claimedInHistory = (clientHistory[selected.id] || []).some(
+                          const cardInstances = rewardInstances[card.id] || [];
+                          const instance = cardInstances.find((i: RewardInstance) => i.reward_id === r.id);
+                          const isClaimed = instance?.status === "claimed";
+                          const isClaimable = instance?.status === "claimable_now";
+                          const isPending = instance?.status === "unlocked_pending_next_order";
+
+                          // Fallback: check history for old claims without instances
+                          const claimedInHistory = !instance && (clientHistory[selected.id] || []).some(
                             (h: any) => h.action === "reward_claim" && h.note?.includes(r.title)
                           );
+
+                          const statusLabel = isClaimable
+                            ? "🎁 À donner"
+                            : isPending
+                              ? "🔓 Prochaine commande"
+                              : isClaimed || claimedInHistory
+                                ? "✅ Récupérée"
+                                : null;
+
                           return (
-                            <div key={r.id} className={`p-3 rounded-xl border ${unlocked && !claimedInHistory ? "border-accent/40 bg-accent/5" : "border-border/30 bg-muted/30"}`}>
+                            <div key={r.id} className={`p-3 rounded-xl border ${
+                              isClaimable ? "border-accent/40 bg-accent/10" :
+                              isPending ? "border-amber-300/40 bg-amber-50/50 dark:bg-amber-900/10" :
+                              unlocked && !isClaimed && !claimedInHistory ? "border-accent/40 bg-accent/5" :
+                              "border-border/30 bg-muted/30"
+                            }`}>
                               <div className="flex items-center justify-between gap-2">
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold truncate">{r.title}</p>
-                                  <p className="text-xs text-muted-foreground">{r.points_required} pts requis</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {r.points_required} pts requis
+                                    {statusLabel && ` • ${statusLabel}`}
+                                  </p>
                                 </div>
-                                {unlocked && !claimedInHistory ? (
+                                {isClaimable ? (
                                   <Button
                                     size="sm"
                                     className="rounded-xl gap-1.5 text-xs bg-accent text-accent-foreground shrink-0"
                                     disabled={claimingReward === r.id}
-                                    onClick={() => handleClaimReward(selected.id, card.id, r)}
+                                    onClick={() => handleClaimReward(selected.id, card.id, r, instance?.id)}
                                   >
                                     <Gift className="w-3.5 h-3.5" />
                                     {claimingReward === r.id ? "..." : "Récupérer"}
                                   </Button>
-                                ) : claimedInHistory ? (
+                                ) : isClaimed || claimedInHistory ? (
                                   <Badge variant="outline" className="text-[10px] shrink-0">✅ Récupérée</Badge>
+                                ) : isPending ? (
+                                  <Badge variant="outline" className="text-[10px] shrink-0 border-amber-300 text-amber-700 dark:text-amber-400">Prochaine visite</Badge>
                                 ) : (
                                   <span className="text-xs text-muted-foreground shrink-0">{currentPts}/{r.points_required}</span>
                                 )}

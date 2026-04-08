@@ -1276,6 +1276,87 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_instances: {
+        Row: {
+          business_id: string
+          card_id: string
+          claim_scan_id: string | null
+          claimed_at: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          points_at_unlock: number
+          reward_id: string
+          status: Database["public"]["Enums"]["reward_instance_status"]
+          unlocked_at: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          card_id: string
+          claim_scan_id?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          points_at_unlock?: number
+          reward_id: string
+          status?: Database["public"]["Enums"]["reward_instance_status"]
+          unlocked_at?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          card_id?: string
+          claim_scan_id?: string | null
+          claimed_at?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          points_at_unlock?: number
+          reward_id?: string
+          status?: Database["public"]["Enums"]["reward_instance_status"]
+          unlocked_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reward_instances_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_instances_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "customer_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_instances_claim_scan_id_fkey"
+            columns: ["claim_scan_id"]
+            isOneToOne: false
+            referencedRelation: "points_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_instances_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reward_instances_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "rewards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reward_templates: {
         Row: {
           created_at: string
@@ -1893,6 +1974,10 @@ export type Database = {
         | "win_back"
         | "reward_earned"
         | "custom"
+      reward_instance_status:
+        | "unlocked_pending_next_order"
+        | "claimable_now"
+        | "claimed"
       subscription_plan: "starter" | "pro" | "franchise"
       subscription_status:
         | "active"
@@ -2036,6 +2121,11 @@ export const Constants = {
         "win_back",
         "reward_earned",
         "custom",
+      ],
+      reward_instance_status: [
+        "unlocked_pending_next_order",
+        "claimable_now",
+        "claimed",
       ],
       subscription_plan: ["starter", "pro", "franchise"],
       subscription_status: [

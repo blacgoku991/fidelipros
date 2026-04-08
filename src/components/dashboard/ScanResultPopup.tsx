@@ -1,17 +1,28 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle, XCircle, Trophy, Clock, X } from "lucide-react";
+import { CheckCircle, XCircle, Trophy, Clock, X, Gift, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface RewardLine {
+  title: string;
+  status: "claimable_now" | "unlocked_pending_next_order" | "claimed";
+}
 
 interface ScanResultPopupProps {
   open: boolean;
   onClose: () => void;
-  type: "success" | "reward" | "error" | "pending";
+  type: "success" | "reward" | "error" | "pending" | "reward_claimable";
   title: string;
   message: string;
   details?: string;
+  rewardLines?: RewardLine[];
+  onClaimReward?: (index: number) => void;
+  claimingIndex?: number | null;
 }
 
-export function ScanResultPopup({ open, onClose, type, title, message, details }: ScanResultPopupProps) {
+export function ScanResultPopup({
+  open, onClose, type, title, message, details,
+  rewardLines, onClaimReward, claimingIndex,
+}: ScanResultPopupProps) {
   const config = {
     success: {
       icon: CheckCircle,
@@ -20,10 +31,16 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
       borderColor: "border-emerald-200 dark:border-emerald-500/30",
     },
     reward: {
-      icon: Trophy,
+      icon: PartyPopper,
       iconColor: "text-amber-500",
       bgGlow: "from-amber-500/20 to-amber-500/5",
       borderColor: "border-amber-200 dark:border-amber-500/30",
+    },
+    reward_claimable: {
+      icon: Gift,
+      iconColor: "text-accent",
+      bgGlow: "from-accent/20 to-accent/5",
+      borderColor: "border-accent/30",
     },
     pending: {
       icon: Clock,
@@ -51,10 +68,8 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
           className="fixed inset-0 z-50 flex items-center justify-center p-6"
           onClick={onClose}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
 
-          {/* Popup card */}
           <motion.div
             initial={{ opacity: 0, scale: 0.85, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -63,10 +78,8 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
             className={`relative w-full max-w-sm rounded-3xl bg-card border ${config.borderColor} shadow-2xl overflow-hidden`}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Glow background */}
             <div className={`absolute inset-0 bg-gradient-to-b ${config.bgGlow} pointer-events-none`} />
 
-            {/* Close button */}
             <button
               onClick={onClose}
               className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-secondary/80 flex items-center justify-center hover:bg-secondary transition-colors"
@@ -74,7 +87,6 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
               <X className="w-4 h-4 text-muted-foreground" />
             </button>
 
-            {/* Content */}
             <div className="relative z-10 flex flex-col items-center text-center px-8 py-10">
               <motion.div
                 initial={{ scale: 0, rotate: -180 }}
@@ -113,6 +125,46 @@ export function ScanResultPopup({ open, onClose, type, title, message, details }
                 >
                   {details}
                 </motion.p>
+              )}
+
+              {/* Reward lines */}
+              {rewardLines && rewardLines.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25 }}
+                  className="mt-4 w-full space-y-2"
+                >
+                  {rewardLines.map((line, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center justify-between gap-2 p-3 rounded-2xl border text-left ${
+                        line.status === "claimable_now"
+                          ? "border-accent/40 bg-accent/10"
+                          : "border-border/30 bg-secondary/30"
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{line.title}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {line.status === "claimable_now"
+                            ? "🎁 À donner maintenant"
+                            : "🔓 Prochaine commande"}
+                        </p>
+                      </div>
+                      {line.status === "claimable_now" && onClaimReward && (
+                        <Button
+                          size="sm"
+                          className="rounded-xl text-xs shrink-0 bg-accent text-accent-foreground"
+                          disabled={claimingIndex === idx}
+                          onClick={() => onClaimReward(idx)}
+                        >
+                          {claimingIndex === idx ? "..." : "Récupérer"}
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </motion.div>
               )}
 
               <motion.div
