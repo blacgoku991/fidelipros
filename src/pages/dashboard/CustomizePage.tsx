@@ -987,25 +987,27 @@ const CustomizePage = () => {
         {/* ─── LEFT: Nav + Content ─── */}
         <div className="space-y-4">
           {/* Navigation */}
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide snap-x snap-mandatory bg-accent/30 rounded-2xl p-1.5 border border-border/30">
-            {sections.map(s => {
-              const Icon = s.icon;
-              const active = activeSection === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setActiveSection(s.id)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 snap-start ${
-                    active
-                      ? "bg-card text-foreground shadow-md border border-border/50"
-                      : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-                  }`}
-                >
-                  <Icon className={`w-3.5 h-3.5 ${active ? "text-primary" : ""}`} />
-                  {s.label}
-                </button>
-              );
-            })}
+          <div className="overflow-x-auto -mx-1 px-1 pb-1 scrollbar-hide">
+            <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 min-w-max">
+              {sections.map(s => {
+                const Icon = s.icon;
+                const active = activeSection === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setActiveSection(s.id)}
+                    className={`relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl whitespace-nowrap transition-all text-xs font-medium shrink-0 ${
+                      active
+                        ? "bg-card text-foreground shadow-md border border-border/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${active ? "text-primary" : ""}`} />
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Active section */}
