@@ -126,6 +126,7 @@ export type Database = {
           feature_special_events: boolean | null
           feature_wallet: boolean | null
           foreground_color: string | null
+          geofence_cooldown_hours: number
           geofence_enabled: boolean | null
           geofence_message: string | null
           geofence_radius: number | null
@@ -220,6 +221,7 @@ export type Database = {
           feature_special_events?: boolean | null
           feature_wallet?: boolean | null
           foreground_color?: string | null
+          geofence_cooldown_hours?: number
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
@@ -314,6 +316,7 @@ export type Database = {
           feature_special_events?: boolean | null
           feature_wallet?: boolean | null
           foreground_color?: string | null
+          geofence_cooldown_hours?: number
           geofence_enabled?: boolean | null
           geofence_message?: string | null
           geofence_radius?: number | null
