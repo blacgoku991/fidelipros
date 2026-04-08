@@ -77,9 +77,9 @@ export async function processRewardsAfterScan({
 
   if (!rewards || rewards.length === 0) return { newlyUnlocked: [], nowClaimable: [], alreadyClaimable: [] };
 
-  // 2. Fetch existing active instances for this card
-  const existingInstances = await getActiveInstances(cardId);
-  const instanceByRewardId = new Map(existingInstances.map((i) => [i.reward_id, i]));
+  // 2. Fetch ALL instances (including claimed) to avoid re-creating claimed rewards
+  const allInstances = await getAllInstances(cardId);
+  const instanceByRewardId = new Map(allInstances.map((i) => [i.reward_id, i]));
 
   const newlyUnlocked: Array<{ reward: typeof rewards[0]; instance: RewardInstance }> = [];
   const nowClaimable: Array<{ reward: typeof rewards[0]; instance: RewardInstance }> = [];
