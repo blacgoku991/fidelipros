@@ -227,7 +227,7 @@ const ScannerPage = () => {
     // Update card
     await supabase.from("customer_cards").update({
       current_points: newPoints,
-      wallet_change_message: walletMsg,
+      ...(walletMsg ? { wallet_change_message: walletMsg } : {}),
       updated_at: new Date().toISOString(),
     }).eq("id", card.id);
 
