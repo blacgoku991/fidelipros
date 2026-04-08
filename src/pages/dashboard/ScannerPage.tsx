@@ -247,6 +247,12 @@ const ScannerPage = () => {
       toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
         description: `${customer.full_name} a gagné sa récompense !`,
       });
+    } else if (rewardPending) {
+      toast.info(`🎁 Récompense en attente`, {
+        description: minPurchase > 0 && purchaseAmountForCheck < minPurchase
+          ? `Minimum d'achat requis : ${minPurchase}€`
+          : `Disponible au prochain passage de ${customer.full_name}`,
+      });
     } else {
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {
         description: `${newPoints}/${highestRewardThreshold} ${labels.unitPlural}`,
