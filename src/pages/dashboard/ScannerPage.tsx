@@ -219,34 +219,51 @@ const ScannerPage = () => {
       ...newlyUnlocked.map(r => ({ reward: r.reward, status: "unlocked_pending_next_order" as const })),
     ];
 
-    // Wallet message: only reward info goes to latest_offer (triggers its own notif)
-    // Points notification is handled separately by the points header field changeMessage
+    // Build reward message for second notification (if applicable)
     const rewardMsg = buildWalletMessage(allActive);
-    const walletMsg = rewardMsg || null; // null = no latest_offer update, only points change
+    const hasRewardNotif = !!rewardMsg;
 
-    // Update card
+    // ── STEP 1: Update card points ONLY (no wallet_change_message yet) ──
     await supabase.from("customer_cards").update({
       current_points: newPoints,
-      ...(walletMsg ? { wallet_change_message: walletMsg } : {}),
       updated_at: new Date().toISOString(),
     }).eq("id", card.id);
 
-    // Wallet push
+    // ── STEP 2: First wallet push — triggers points changeMessage notification ──
+    let walletToken = "";
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token ?? "";
+      walletToken = session?.access_token ?? "";
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${walletToken}` },
         body: JSON.stringify({
           business_id: business.id,
           customer_id: customer.id,
-          action_type: nowClaimable.length > 0 ? "reward_claimable" : newlyUnlocked.length > 0 ? "reward_unlocked" : "points_increment",
-          change_message: walletMsg,
+          action_type: "points_increment",
         }),
       });
     } catch { /* non-blocking */ }
+
+    // ── STEP 3: If reward unlocked, wait 3s then send second notification ──
+    if (hasRewardNotif) {
+      setTimeout(async () => {
+        try {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${walletToken}` },
+            body: JSON.stringify({
+              business_id: business.id,
+              customer_id: customer.id,
+              action_type: "reward_notification",
+              change_message: rewardMsg,
+            }),
+          });
+        } catch { /* non-blocking */ }
+      }, 3000);
+    }
 
     // Update customer stats
     const newStreak = customer.current_streak + 1;
