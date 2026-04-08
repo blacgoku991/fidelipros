@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
       let newPts = oldPts;
       let fieldValueActuallyChanged = false;
 
-      if (act === "points_increment" || act === "full_test" || act === "send_test_notification") {
+      if (act === "points_increment" || act === "reward_notification" || act === "full_test" || act === "send_test_notification") {
         // DO NOT increment points here — the scanner already updated current_points.
         // Just flag that the field value changed so APNs push fires.
         newPts = cardData?.current_points || 0;
@@ -161,11 +161,11 @@ Deno.serve(async (req) => {
         console.log(`[Wallet Push] Points=${newPts} for card ${sn} (scanner already updated, no re-increment)`);
       }
 
-      // Only set wallet_change_message for campaigns (user-facing notifications)
-      // For other actions (points_increment, geofence, etc.), update the card silently
-      const isCampaign = act === "campaign";
+      // Set wallet_change_message for campaigns AND reward notifications
+      // This triggers the changeMessage on the latest_offer backField
+      const shouldSetMessage = act === "campaign" || act === "reward_notification";
 
-      if (isCampaign && change_message) {
+      if (shouldSetMessage && change_message) {
         effectiveMessage = change_message;
         // If message is identical to previous, append timestamp to force unique value
         if (effectiveMessage === oldChangeMessage) {
