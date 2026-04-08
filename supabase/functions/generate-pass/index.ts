@@ -141,21 +141,18 @@ Deno.serve(async (req) => {
     // Fetch active rewards for this business
     const { data: rewards } = await supabase
       .from("rewards")
-      .select("title, description, points_required")
+      .select("id, title, description, points_required")
       .eq("business_id", card.business_id)
       .eq("is_active", true)
       .order("points_required", { ascending: true });
 
-    // Fetch claimed reward titles for this card
-    const { data: claimsData } = await supabase
-      .from("points_history")
-      .select("note")
+    // Fetch claimed reward IDs for this card from reward_instances
+    const { data: claimedInstances } = await supabase
+      .from("reward_instances")
+      .select("reward_id")
       .eq("card_id", card.id)
-      .eq("action", "reward_claim");
-    const claimedTitles = (claimsData || []).map((c: any) => {
-      const match = c.note?.match(/Récompense récupérée : (.+?) \(/);
-      return match ? match[1] : "";
-    }).filter(Boolean);
+      .eq("status", "claimed");
+    const claimedRewardIds = new Set((claimedInstances || []).map((c: any) => c.reward_id));
 
     // Generate or retrieve auth token for this card
     let authToken = card.wallet_auth_token;
@@ -167,7 +164,7 @@ Deno.serve(async (req) => {
         .eq("id", card.id);
     }
 
-    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedTitles);
+    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedRewardIds);
     console.log("[generate-pass] pkpass généré — taille:", pkpassBuffer.byteLength, "bytes");
 
     return new Response(pkpassBuffer as unknown as BodyInit, {
@@ -198,7 +195,7 @@ export async function buildPkpass(
   customer: any,
   authToken: string,
   rewards: any[] = [],
-  claimedTitles: string[] = []
+  claimedRewardIds: Set<string> = new Set()
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
   const p12Base64 = requireEnv("APPLE_PASS_CERTIFICATE");
@@ -281,7 +278,7 @@ export async function buildPkpass(
       ],
       auxiliaryFields: [
         ...(rewards.length > 0 ? (() => {
-          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedTitles.includes(r.title));
+          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedRewardIds.has(r.id));
           const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
           const fields: any[] = [];
           if (unclaimedUnlocked) {
