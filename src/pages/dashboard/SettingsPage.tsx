@@ -483,7 +483,7 @@ const SettingsPage = () => {
       <div className="max-w-5xl">
 
         {/* Mobile tabs */}
-        <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x scrollbar-hide">
+        <div className="flex lg:hidden gap-2 overflow-x-auto pb-3 mb-5 -mx-1 px-1 snap-x" style={{ WebkitOverflowScrolling: 'touch' }}>
           {visibleSections.map((s) => {
             const isLocked = !isFranchise && FRANCHISE_ONLY_SECTIONS.includes(s.key);
             return (
@@ -682,7 +682,7 @@ const SettingsPage = () => {
                     className="rounded-xl gap-1.5 text-xs"
                     onClick={() => {
                       const svg = document.querySelector(".vitrine-qr svg") as SVGElement;
-                      if (!svg) { window.print(); return; }
+                      if (!svg) { toast.error("QR code non trouvé"); return; }
                       const blob = new Blob([svg.outerHTML], { type: "image/svg+xml" });
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");

@@ -359,7 +359,7 @@ const ClientsPage = () => {
       )}
 
       <div className="rounded-2xl border border-border/50 bg-card overflow-hidden overflow-x-auto">
-        <Table className="min-w-[600px]">
+        <Table className="min-w-[480px] sm:min-w-[600px]">
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">

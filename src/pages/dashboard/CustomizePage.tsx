@@ -879,8 +879,10 @@ const CustomizePage = () => {
                 if (!el) return;
                 const printOverlay = document.createElement("div");
                 printOverlay.id = "pwa-print-overlay";
-                printOverlay.innerHTML = `<style>#pwa-print-overlay{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:auto}#pwa-print-overlay .qr-wrap{background:#fff;border-radius:16px;padding:32px;text-align:center;max-width:300px;width:100%}#pwa-print-overlay .qr-wrap img{max-width:80px;max-height:80px;border-radius:12px;margin:0 auto 12px}#pwa-print-overlay .qr-wrap svg{max-width:200px;max-height:200px;margin:0 auto}#pwa-print-overlay .pwa-print-actions{margin-top:24px;display:flex;gap:12px;justify-content:center}#pwa-print-overlay .pwa-print-actions button{padding:12px 28px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}@media print{#pwa-print-overlay .pwa-print-actions{display:none!important}#pwa-print-overlay{padding:0}}</style><div class="qr-wrap">${el.innerHTML}</div><div class="pwa-print-actions"><button style="background:#333;color:#fff" onclick="window.print()">🖨️ Imprimer</button><button style="background:#e5e5e5;color:#333" onclick="document.getElementById('pwa-print-overlay')?.remove()">← Retour</button></div>`;
+                printOverlay.innerHTML = `<style>#pwa-print-overlay{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:auto}#pwa-print-overlay .qr-wrap{background:#fff;border-radius:16px;padding:24px;text-align:center;max-width:280px;width:90vw}#pwa-print-overlay .qr-wrap img{max-width:70px;max-height:70px;border-radius:12px;margin:0 auto 10px}#pwa-print-overlay .qr-wrap svg{max-width:180px;max-height:180px;margin:0 auto}#pwa-print-overlay .pwa-print-actions{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}#pwa-print-overlay .pwa-print-actions button{padding:10px 24px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}@media print{#pwa-print-overlay .pwa-print-actions{display:none!important}#pwa-print-overlay{padding:10mm}#pwa-print-overlay .qr-wrap{max-width:100%;padding:0}}</style><div class="qr-wrap">${el.innerHTML}</div><div class="pwa-print-actions"><button style="background:#333;color:#fff" onclick="window.print()">Imprimer</button><button style="background:#e5e5e5;color:#333" onclick="document.getElementById('pwa-print-overlay')?.remove()">Retour</button></div>`;
                 document.body.appendChild(printOverlay);
+                const cleanup = () => { document.getElementById('pwa-print-overlay')?.remove(); window.removeEventListener('afterprint', cleanup); };
+                window.addEventListener('afterprint', cleanup);
               }}
               variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9"
             >
@@ -941,7 +943,7 @@ const CustomizePage = () => {
       <div className="grid lg:grid-cols-[minmax(0,1fr),340px] gap-6 min-w-0">
         {/* ─── MOBILE PREVIEW ─── */}
         <div className="lg:hidden min-w-0">
-          <details className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
+          <details open className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
             <summary className="p-4 cursor-pointer flex items-center justify-between text-sm font-medium">
               <span className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-primary" />
@@ -987,8 +989,8 @@ const CustomizePage = () => {
         {/* ─── LEFT: Nav + Content ─── */}
         <div className="space-y-4">
           {/* Navigation */}
-          <div className="overflow-x-auto -mx-1 px-1 pb-1 scrollbar-hide">
-            <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 min-w-max">
+          <div className="overflow-x-auto -mx-1 px-1 pb-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <div className="flex gap-1 bg-accent/30 rounded-2xl p-1.5 border border-border/30 w-max">
               {sections.map(s => {
                 const Icon = s.icon;
                 const active = activeSection === s.id;

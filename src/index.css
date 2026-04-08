@@ -333,6 +333,15 @@ button, a, [role="button"] {
   }
   #pwa-print-overlay {
     position: static !important;
-    padding: 0 !important;
+    padding: 10mm !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+  #pwa-print-overlay .qr-wrap {
+    max-width: 100% !important;
+    margin: 0 auto !important;
+  }
+  #pwa-print-overlay .pwa-print-actions {
+    display: none !important;
   }
 }
