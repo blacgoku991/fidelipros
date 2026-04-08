@@ -875,12 +875,12 @@ const CustomizePage = () => {
             </Button>
             <Button
               onClick={() => {
-                const printContent = document.getElementById("qr-printable");
-                if (!printContent) return;
-                const w = window.open("", "_blank");
-                if (!w) return;
-                w.document.write(`<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>QR - ${form.name}</title><style>*{box-sizing:border-box}body{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;margin:0;padding:env(safe-area-inset-top,20px) 20px env(safe-area-inset-bottom,20px);font-family:system-ui,sans-serif;background:#f5f5f5}.qr-wrap{background:#fff;border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center;max-width:90vw}.back-btn{margin-top:24px;padding:12px 32px;border:none;background:#6B46C1;color:#fff;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;-webkit-tap-highlight-color:transparent}.back-btn:active{opacity:.8}@media print{.back-btn,.print-btn{display:none!important}body{background:#fff;padding:0}.qr-wrap{box-shadow:none}}</style></head><body><div class="qr-wrap">${printContent.outerHTML}</div><button class="print-btn back-btn" style="background:#333;margin-top:16px" onclick="window.print()">🖨️ Imprimer</button><button class="back-btn" onclick="window.close();history.back()">← Retour</button></body></html>`);
-                w.document.close();
+                const el = document.getElementById("qr-printable");
+                if (!el) return;
+                const printOverlay = document.createElement("div");
+                printOverlay.id = "pwa-print-overlay";
+                printOverlay.innerHTML = `<style>#pwa-print-overlay{position:fixed;inset:0;z-index:99999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;overflow:auto}#pwa-print-overlay .qr-wrap{background:#fff;border-radius:16px;padding:32px;text-align:center;max-width:300px;width:100%}#pwa-print-overlay .qr-wrap img{max-width:80px;max-height:80px;border-radius:12px;margin:0 auto 12px}#pwa-print-overlay .qr-wrap svg{max-width:200px;max-height:200px;margin:0 auto}#pwa-print-overlay .pwa-print-actions{margin-top:24px;display:flex;gap:12px;justify-content:center}#pwa-print-overlay .pwa-print-actions button{padding:12px 28px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer}@media print{#pwa-print-overlay .pwa-print-actions{display:none!important}#pwa-print-overlay{padding:0}}</style><div class="qr-wrap">${el.innerHTML}</div><div class="pwa-print-actions"><button style="background:#333;color:#fff" onclick="window.print()">🖨️ Imprimer</button><button style="background:#e5e5e5;color:#333" onclick="document.getElementById('pwa-print-overlay')?.remove()">← Retour</button></div>`;
+                document.body.appendChild(printOverlay);
               }}
               variant="outline" size="sm" className="rounded-xl gap-1.5 text-xs h-9"
             >
