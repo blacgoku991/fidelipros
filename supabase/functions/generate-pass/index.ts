@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
         .eq("id", card.id);
     }
 
-    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedTitles);
+    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedRewardIds);
     console.log("[generate-pass] pkpass généré — taille:", pkpassBuffer.byteLength, "bytes");
 
     return new Response(pkpassBuffer as unknown as BodyInit, {
