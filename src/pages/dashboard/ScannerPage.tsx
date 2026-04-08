@@ -121,24 +121,55 @@ const ScannerPage = () => {
     const highestRewardThreshold = rewards && rewards.length > 0
       ? Math.max(...rewards.map((r: any) => r.points_required))
       : card.max_points;
-    const rewardEarned = newPoints >= highestRewardThreshold;
+
+    // ── Reward redemption logic with configurable conditions ──
+    const bReward = business as any;
+    const nextVisitOnly = bReward.reward_next_visit_only === true;
+    const minPurchase = parseFloat(bReward.reward_min_purchase) || 0;
+    const purchaseAmountForCheck = needsAmount ? (parseFloat(amount) || 0) : Infinity;
+
+    const currentPts = card.current_points;
+    const wasAlreadyReady = currentPts >= highestRewardThreshold;
+    const reachesThresholdNow = newPoints >= highestRewardThreshold;
+
+    let rewardEarned = false;
+    let rewardPending = false;
+
+    if (wasAlreadyReady) {
+      if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
+        rewardPending = true;
+      } else {
+        rewardEarned = true;
+      }
+    } else if (reachesThresholdNow) {
+      if (nextVisitOnly) {
+        rewardPending = true;
+      } else if (minPurchase > 0 && purchaseAmountForCheck < minPurchase) {
+        rewardPending = true;
+      } else {
+        rewardEarned = true;
+      }
+    }
 
     if (rewards && rewards.length > 0) {
       earnedReward = rewards.filter((r: any) => r.points_required <= newPoints)
         .sort((a: any, b: any) => b.points_required - a.points_required)[0];
     }
 
+    const effectivePoints = rewardEarned ? 0 : newPoints;
     const unitLabel = increment > 1 ? labels.unitPlural : labels.unit;
     const changeMsg = rewardEarned
       ? `🎁 ${earnedReward?.title || "Récompense"} débloquée chez ${business.name} !`
-      : isCashback
-        ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
-        : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
+      : rewardPending
+        ? `🎁 Récompense en attente${minPurchase > 0 ? ` (min. ${minPurchase}€)` : ""} chez ${business.name}`
+        : isCashback
+          ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
+          : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
 
     await supabase
       .from("customer_cards")
       .update({
-        current_points: rewardEarned ? 0 : newPoints,
+        current_points: effectivePoints,
         rewards_earned: rewardEarned ? card.rewards_earned + 1 : card.rewards_earned,
         wallet_change_message: changeMsg,
         updated_at: new Date().toISOString(),
@@ -198,7 +229,7 @@ const ScannerPage = () => {
 
     setLastScan({
       customerName: customer.full_name,
-      points: rewardEarned ? 0 : newPoints,
+      points: effectivePoints,
       maxPoints: card.max_points,
       rewardEarned,
       rewardTitle: earnedReward?.title,
@@ -215,6 +246,12 @@ const ScannerPage = () => {
     if (rewardEarned) {
       toast.success(`🎉 ${earnedReward?.title || "Récompense"} débloquée !`, {
         description: `${customer.full_name} a gagné sa récompense !`,
+      });
+    } else if (rewardPending) {
+      toast.info(`🎁 Récompense en attente`, {
+        description: minPurchase > 0 && purchaseAmountForCheck < minPurchase
+          ? `Minimum d'achat requis : ${minPurchase}€`
+          : `Disponible au prochain passage de ${customer.full_name}`,
       });
     } else {
       toast.success(`+${increment} ${unitLabel} pour ${customer.full_name}`, {

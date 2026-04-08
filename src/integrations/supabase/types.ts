@@ -162,6 +162,8 @@ export type Database = {
           promo_text: string | null
           reward_alert_threshold: number | null
           reward_description: string | null
+          reward_min_purchase: number | null
+          reward_next_visit_only: boolean | null
           score_at_risk_threshold: number | null
           score_loyal_threshold: number | null
           score_regular_threshold: number | null
@@ -254,6 +256,8 @@ export type Database = {
           promo_text?: string | null
           reward_alert_threshold?: number | null
           reward_description?: string | null
+          reward_min_purchase?: number | null
+          reward_next_visit_only?: boolean | null
           score_at_risk_threshold?: number | null
           score_loyal_threshold?: number | null
           score_regular_threshold?: number | null
@@ -346,6 +350,8 @@ export type Database = {
           promo_text?: string | null
           reward_alert_threshold?: number | null
           reward_description?: string | null
+          reward_min_purchase?: number | null
+          reward_next_visit_only?: boolean | null
           score_at_risk_threshold?: number | null
           score_loyal_threshold?: number | null
           score_regular_threshold?: number | null

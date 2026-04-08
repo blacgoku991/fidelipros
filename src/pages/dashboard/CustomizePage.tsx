@@ -266,6 +266,8 @@ const CustomizePage = () => {
       points_per_visit: business.points_per_visit || 1,
       points_per_euro: business.points_per_euro || 0,
       reward_description: business.reward_description || "Récompense offerte !",
+      reward_next_visit_only: (business as any).reward_next_visit_only ?? false,
+      reward_min_purchase: (business as any).reward_min_purchase ?? 0,
       primary_color: business.primary_color || "#6B46C1",
       secondary_color: business.secondary_color || "#F6AD55",
       card_style: business.card_style || "classic",
@@ -610,6 +612,57 @@ const CustomizePage = () => {
             </div>
           </Panel>
         )}
+
+        {/* Reward redemption conditions */}
+        <Panel title="Conditions de récompense" subtitle="Protégez-vous des passages sans achat" icon={Shield}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/20">
+              <div className="flex-1">
+                <p className="text-xs font-semibold">Récompense au prochain passage</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Le client doit revenir pour récupérer sa récompense</p>
+              </div>
+              <Switch
+                checked={form.reward_next_visit_only}
+                onCheckedChange={(v) => update("reward_next_visit_only", v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/20">
+              <div className="flex-1">
+                <p className="text-xs font-semibold">Minimum d'achat requis</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Montant minimum pour réclamer la récompense</p>
+              </div>
+              <Switch
+                checked={form.reward_min_purchase > 0}
+                onCheckedChange={(v) => update("reward_min_purchase", v ? 15 : 0)}
+              />
+            </div>
+
+            {form.reward_min_purchase > 0 && (
+              <div className="pl-3">
+                <SmartSlider
+                  label="Montant minimum"
+                  icon={Coins}
+                  value={form.reward_min_purchase}
+                  onChange={(v) => update("reward_min_purchase", v)}
+                  min={1} max={100}
+                  suffix="€" pluralSuffix="€"
+                  hint={`Le client devra acheter pour au moins ${form.reward_min_purchase}€`}
+                />
+              </div>
+            )}
+
+            <div className="flex items-start gap-2.5 text-[11px] text-muted-foreground bg-primary/5 rounded-xl p-3 border border-primary/10">
+              <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <span>
+                <strong>Exemple :</strong> Le client cumule 90 pts → seuil atteint.
+                {form.reward_next_visit_only && " Il devra revenir une prochaine fois."}
+                {form.reward_min_purchase > 0 && ` Son achat devra être d'au moins ${form.reward_min_purchase}€.`}
+                {!form.reward_next_visit_only && form.reward_min_purchase === 0 && " La récompense est immédiate."}
+              </span>
+            </div>
+          </div>
+        </Panel>
 
         {/* Rewards are managed in the dedicated Récompenses page */}
 
