@@ -35,6 +35,18 @@ export async function getActiveInstances(cardId: string) {
 }
 
 /**
+ * Fetch ALL instances (including claimed) for a card — used to prevent re-creation
+ */
+export async function getAllInstances(cardId: string) {
+  const { data } = await supabase
+    .from("reward_instances")
+    .select("*")
+    .eq("card_id", cardId)
+    .order("points_at_unlock", { ascending: true });
+  return (data || []) as RewardInstance[];
+}
+
+/**
  * After a scan, process reward unlocking logic:
  * 1. Move existing unlocked_pending_next_order → claimable_now (if min purchase met)
  * 2. Create new instances for newly unlocked rewards as unlocked_pending_next_order
