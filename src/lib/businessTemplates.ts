@@ -57,6 +57,8 @@ export const defaultConfig: BusinessConfig = {
   points_per_visit: 1,
   points_per_euro: 0,
   reward_description: "Récompense offerte !",
+  reward_next_visit_only: false,
+  reward_min_purchase: 0,
   primary_color: "#6B46C1",
   secondary_color: "#F6AD55",
   card_style: "classic",
