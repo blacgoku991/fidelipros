@@ -219,10 +219,11 @@ const ScannerPage = () => {
       ...newlyUnlocked.map(r => ({ reward: r.reward, status: "unlocked_pending_next_order" as const })),
     ];
 
-    const walletMsg = buildWalletMessage(allActive) ||
-      (isCashback
-        ? `+${increment}${labels.unit} de cagnotte chez ${business.name} ! Total : ${newPoints}${labels.unit}`
-        : `+${increment} ${unitLabel} chez ${business.name} ! Vous avez ${newPoints} ${labels.unitPlural}.`);
+    const pointsMsg = isCashback
+      ? `+${increment}${labels.unit} de cagnotte ! Total : ${newPoints}${labels.unit}`
+      : `+${increment} ${unitLabel} ! Vous avez ${newPoints} ${labels.unitPlural}.`;
+    const rewardMsg = buildWalletMessage(allActive);
+    const walletMsg = rewardMsg ? `${pointsMsg}\n${rewardMsg}` : pointsMsg;
 
     // Update card
     await supabase.from("customer_cards").update({
