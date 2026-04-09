@@ -91,7 +91,7 @@ export default function DemoPage() {
       } else {
         const { data: newSession } = await supabase
           .from("demo_sessions")
-          .insert({ business_id: biz.id, card_id: cards?.[0]?.id || null, slug })
+          .insert({ business_id: biz.id, card_id: card?.id || null, slug })
           .select("id")
           .single();
         if (newSession) setSessionId(newSession.id);

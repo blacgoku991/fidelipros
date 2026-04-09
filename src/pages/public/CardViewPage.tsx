@@ -129,15 +129,26 @@ const CardViewPage = () => {
       }
 
       // Check if customer can leave a review (visited in last 24h and no review today)
-      if (cardData.customers) {
-        const lastVisit = cardData.customers.last_visit_at;
+      const customerObj = {
+        id: row.customer_id, full_name: row.customer_full_name,
+        last_visit_at: null as string | null, // not available from rpc but we can check via points_history
+      };
+      // Use last scan as proxy for last visit
+      const { data: lastScanData } = await supabase
+        .from("points_history")
+        .select("created_at")
+        .eq("card_id", row.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (lastScanData) {
         const now = new Date();
-        const visitedRecently = lastVisit && (now.getTime() - new Date(lastVisit).getTime()) < 24 * 60 * 60 * 1000;
+        const visitedRecently = (now.getTime() - new Date(lastScanData.created_at).getTime()) < 24 * 60 * 60 * 1000;
         if (visitedRecently) {
           const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
           const { count } = await supabase.from("customer_reviews").select("*", { count: "exact", head: true })
-            .eq("customer_id", cardData.customers.id)
-            .eq("business_id", cardData.business_id)
+            .eq("customer_id", row.customer_id)
+            .eq("business_id", row.business_id)
             .gte("created_at", todayStart);
           if ((count || 0) === 0) setCanReview(true);
         }
