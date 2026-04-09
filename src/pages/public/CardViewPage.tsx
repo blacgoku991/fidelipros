@@ -75,15 +75,25 @@ const CardViewPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!cardCode) return;
-      const { data: cardData } = await supabase
-        .from("customer_cards")
-        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed, customers(*)")
-        .eq("card_code", cardCode)
-        .maybeSingle();
+      const { data: rpcData } = await supabase
+        .rpc("lookup_card_with_customer", { p_card_code: cardCode });
 
-      if (!cardData) { setLoading(false); return; }
-      setCard(cardData);
-      setCustomer(cardData.customers);
+      const row = rpcData?.[0];
+      if (!row) { setLoading(false); return; }
+      const cardData = {
+        id: row.id, business_id: row.business_id, customer_id: row.customer_id,
+        card_code: row.card_code, current_points: row.current_points,
+        max_points: row.max_points, rewards_earned: row.rewards_earned,
+        is_active: row.is_active, last_visit: row.last_visit,
+        created_at: row.created_at, wallet_pass_installed: row.wallet_pass_installed,
+      };
+      setCard(cardData as any);
+      setCustomer({
+        id: row.customer_id, full_name: row.customer_full_name,
+        email: row.customer_email, phone: row.customer_phone,
+        total_points: row.customer_total_points, total_visits: row.customer_total_visits,
+        level: row.customer_level, birthday: row.customer_birthday,
+      } as any);
 
       const { data: biz } = await supabase
         .from("businesses")

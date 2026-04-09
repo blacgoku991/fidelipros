@@ -60,12 +60,9 @@ export default function DemoPage() {
         .order("points_required");
       setRewards(rw ?? []);
 
-      const { data: cards } = await supabase
-        .from("customer_cards")
-        .select("id, business_id, customer_id, card_code, current_points, max_points, rewards_earned, is_active, last_visit, created_at, wallet_pass_installed")
-        .eq("business_id", biz.id)
-        .limit(1);
-      if (cards?.[0]) setCard(cards[0]);
+      const { data: demoCards } = await supabase
+        .rpc("get_demo_card", { p_business_id: biz.id });
+      if (demoCards?.[0]) setCard(demoCards[0] as any);
 
       // Create or resume session
       const { data: existing } = await supabase
