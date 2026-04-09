@@ -121,11 +121,7 @@ const BusinessPublicPage = () => {
   useEffect(() => {
     if (!business?.id) return;
     supabase
-      .from("rewards")
-      .select("id, title, description, points_required")
-      .eq("business_id", business.id)
-      .eq("is_active", true)
-      .order("points_required", { ascending: true })
+      .rpc("get_public_rewards", { p_business_id: business.id })
       .then(({ data }) => {
         if (data) setRewards(data);
       });

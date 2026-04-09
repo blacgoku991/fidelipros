@@ -51,11 +51,7 @@ export default function DemoPage() {
       setBusiness(biz);
 
       const { data: rw } = await supabase
-        .from("rewards")
-        .select("*")
-        .eq("business_id", biz.id)
-        .eq("is_active", true)
-        .order("points_required");
+        .rpc("get_public_rewards", { p_business_id: biz.id });
       setRewards(rw ?? []);
 
       const { data: demoCards } = await supabase
