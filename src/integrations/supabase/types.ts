@@ -1987,6 +1987,15 @@ export type Database = {
           website: string
         }[]
       }
+      get_public_rewards: {
+        Args: { p_business_id: string }
+        Returns: {
+          description: string
+          id: string
+          points_required: number
+          title: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
