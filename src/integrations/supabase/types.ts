@@ -2003,6 +2003,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_business_owner: {
+        Args: { _business_id: string; _user_id: string }
+        Returns: boolean
+      }
       lookup_card_by_code: {
         Args: { p_card_code: string }
         Returns: {
