@@ -42,12 +42,10 @@ export default function DemoPage() {
   useEffect(() => {
     if (!slug) return;
     (async () => {
-      const { data: biz } = await supabase
-        .from("businesses")
-        .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,slug,is_demo")
-        .eq("slug", slug)
-        .eq("is_demo", true)
-        .maybeSingle();
+      const { data: bizArr } = await supabase
+        .rpc("get_public_business", { p_slug: slug });
+      const biz = bizArr?.[0] ?? null;
+      if (biz && !biz.is_demo) return;
 
       if (!biz) { setNotFound(true); setLoading(false); return; }
       setBusiness(biz);

@@ -94,9 +94,7 @@ const BusinessPublicPage = () => {
 
     try {
       const { data, error: fetchErr } = await supabase
-        .from("businesses")
-        .select("id,name,description,primary_color,secondary_color,accent_color,card_style,card_bg_type,card_bg_image_url,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,birthday_notif_enabled")
-        .eq("id", businessId);
+        .rpc("get_public_business_by_id", { p_id: businessId });
 
       if (fetchErr) {
         setFetchError(`Erreur serveur. Réessayez.`);
