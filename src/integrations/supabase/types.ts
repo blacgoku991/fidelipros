@@ -1858,6 +1858,22 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_demo_card: {
+        Args: { p_business_id: string }
+        Returns: {
+          business_id: string
+          card_code: string
+          created_at: string
+          current_points: number
+          customer_id: string
+          id: string
+          is_active: boolean
+          last_visit: string
+          max_points: number
+          rewards_earned: number
+          wallet_pass_installed: boolean
+        }[]
+      }
       get_demo_customers: {
         Args: { p_business_id: string }
         Returns: {
@@ -1931,6 +1947,29 @@ export type Database = {
           created_at: string
           current_points: number
           customer_id: string
+          id: string
+          is_active: boolean
+          last_visit: string
+          max_points: number
+          rewards_earned: number
+          wallet_pass_installed: boolean
+        }[]
+      }
+      lookup_card_with_customer: {
+        Args: { p_card_code: string }
+        Returns: {
+          business_id: string
+          card_code: string
+          created_at: string
+          current_points: number
+          customer_birthday: string
+          customer_email: string
+          customer_full_name: string
+          customer_id: string
+          customer_level: string
+          customer_phone: string
+          customer_total_points: number
+          customer_total_visits: number
           id: string
           is_active: boolean
           last_visit: string
