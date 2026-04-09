@@ -1874,6 +1874,18 @@ export type Database = {
           wallet_pass_installed: boolean
         }[]
       }
+      get_demo_customer_info: {
+        Args: { p_customer_id: string }
+        Returns: {
+          current_streak: number
+          full_name: string
+          id: string
+          level: string
+          longest_streak: number
+          total_points: number
+          total_visits: number
+        }[]
+      }
       get_demo_customers: {
         Args: { p_business_id: string }
         Returns: {
