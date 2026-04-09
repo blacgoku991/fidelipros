@@ -51,7 +51,7 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
     // Fetch last 5 point scans
     const { data: scans } = await supabase
       .from("points_history")
-      .select("id, created_at, customer_id, points, customers(name)")
+      .select("id, created_at, customer_id, points, customers(full_name)")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -59,7 +59,7 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
     // Fetch last 3 new customers
     const { data: newClients } = await supabase
       .from("customers")
-      .select("id, name, created_at")
+      .select("id, full_name, created_at")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false })
       .limit(3);
@@ -67,7 +67,7 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
     const result: ActivityEvent[] = [];
 
     (scans || []).forEach((s: any) => {
-      const customerName = s.customers?.name || "Client";
+      const customerName = s.customers?.full_name || "Client";
       const isReward = (s.points || 0) < 0;
       result.push({
         id: `scan-${s.id}`,
@@ -84,7 +84,7 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
       result.push({
         id: `client-${c.id}`,
         type: "new_client",
-        label: `Nouveau client : ${c.name}`,
+        label: `Nouveau client : ${c.full_name}`,
         sub: "Carte créée",
         time: c.created_at,
       });
