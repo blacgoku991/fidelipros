@@ -102,11 +102,7 @@ const CardViewPage = () => {
         setBusiness(biz);
         // Fetch active rewards for the business
         const { data: rewardsData } = await supabase
-          .from("rewards")
-          .select("id, title, description, points_required")
-          .eq("business_id", biz.id)
-          .eq("is_active", true)
-          .order("points_required", { ascending: true });
+          .rpc("get_public_rewards", { p_business_id: biz.id });
         if (rewardsData) setRewards(rewardsData);
 
         // Fetch claimed rewards from points_history
