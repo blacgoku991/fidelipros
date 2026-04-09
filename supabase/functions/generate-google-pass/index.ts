@@ -165,6 +165,7 @@ Deno.serve(async (req) => {
         : undefined,
       hexBackgroundColor: business.primary_color || "#7c3aed",
       localizedIssuerName: { defaultValue: { language: "fr", value: business.name } },
+      reviewStatus: "UNDER_REVIEW",
       secondaryLoyaltyPoints: remaining > 0
         ? { balance: { int: remaining }, label: `${pointsLabel} restants` }
         : undefined,
