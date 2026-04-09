@@ -1874,6 +1874,18 @@ export type Database = {
           wallet_pass_installed: boolean
         }[]
       }
+      get_demo_customer_info: {
+        Args: { p_customer_id: string }
+        Returns: {
+          current_streak: number
+          full_name: string
+          id: string
+          level: string
+          longest_streak: number
+          total_points: number
+          total_visits: number
+        }[]
+      }
       get_demo_customers: {
         Args: { p_business_id: string }
         Returns: {
@@ -1930,6 +1942,58 @@ export type Database = {
           show_rewards_preview: boolean
           slug: string
           website: string
+        }[]
+      }
+      get_public_business_by_id: {
+        Args: { p_id: string }
+        Returns: {
+          accent_color: string
+          address: string
+          birthday_notif_enabled: boolean
+          card_animation_intensity: string
+          card_bg_image_url: string
+          card_bg_type: string
+          card_style: string
+          category: string
+          city: string
+          description: string
+          foreground_color: string
+          google_place_id: string
+          google_review_enabled: boolean
+          google_review_message: string
+          google_review_threshold: number
+          id: string
+          is_demo: boolean
+          label_color: string
+          latitude: number
+          logo_url: string
+          longitude: number
+          loyalty_type: string
+          max_points_per_card: number
+          name: string
+          phone: string
+          points_per_euro: number
+          points_per_visit: number
+          primary_color: string
+          promo_text: string
+          reward_description: string
+          secondary_color: string
+          show_customer_name: boolean
+          show_expiration: boolean
+          show_points: boolean
+          show_qr_code: boolean
+          show_rewards_preview: boolean
+          slug: string
+          website: string
+        }[]
+      }
+      get_public_rewards: {
+        Args: { p_business_id: string }
+        Returns: {
+          description: string
+          id: string
+          points_required: number
+          title: string
         }[]
       }
       has_role: {

@@ -65,24 +65,18 @@ const VitrinePage = () => {
       try {
         // 1. Try fetching by slug (requires migration applied)
         let biz: any = null;
-        const { data: bySlug, error: slugError } = await supabase
-          .from("businesses")
-          .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,google_review_enabled,google_place_id,google_review_message,google_review_threshold,slug,is_demo,latitude,longitude")
-          .eq("slug", slug)
-          .maybeSingle();
+        const { data: bySlugArr } = await supabase
+          .rpc("get_public_business", { p_slug: slug });
 
-        if (!slugError && bySlug) {
-          biz = bySlug;
+        if (bySlugArr?.[0]) {
+          biz = bySlugArr[0];
         } else {
-          // 2. Fallback: try fetching by business ID (UUID format)
+          // Fallback: try fetching by business ID (UUID format)
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           if (uuidRegex.test(slug)) {
-            const { data: byId } = await supabase
-              .from("businesses")
-              .select("id,name,description,primary_color,secondary_color,accent_color,foreground_color,label_color,card_style,card_bg_type,card_bg_image_url,card_animation_intensity,max_points_per_card,reward_description,address,city,phone,website,category,logo_url,loyalty_type,points_per_visit,points_per_euro,show_customer_name,show_qr_code,show_points,show_expiration,show_rewards_preview,promo_text,google_review_enabled,google_place_id,google_review_message,google_review_threshold,slug,is_demo,latitude,longitude")
-              .eq("id", slug)
-              .maybeSingle();
-            if (byId) biz = byId;
+            const { data: byIdArr } = await supabase
+              .rpc("get_public_business_by_id", { p_id: slug });
+            if (byIdArr?.[0]) biz = byIdArr[0];
           }
         }
 
@@ -105,12 +99,7 @@ const VitrinePage = () => {
         } catch { /* non-blocking */ }
 
         const { data: rw } = await supabase
-          .from("rewards")
-          .select("*")
-          .eq("business_id", biz.id)
-          .eq("is_active", true)
-          .order("points_required", { ascending: true });
-
+          .rpc("get_public_rewards", { p_business_id: biz.id });
         setRewards(rw || []);
       } catch {
         setNotFound(true);
