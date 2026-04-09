@@ -51,7 +51,7 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
     // Fetch last 5 point scans
     const { data: scans } = await supabase
       .from("points_history")
-      .select("id, created_at, customer_id, points, customers(full_name)")
+      .select("id, created_at, customer_id, points_added, customers(full_name)")
       .eq("business_id", businessId)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -68,14 +68,14 @@ export function RecentActivityWidget({ businessId }: RecentActivityWidgetProps) 
 
     (scans || []).forEach((s: any) => {
       const customerName = s.customers?.full_name || "Client";
-      const isReward = (s.points || 0) < 0;
+      const isReward = (s.points_added || 0) < 0;
       result.push({
         id: `scan-${s.id}`,
         type: isReward ? "reward" : "scan",
         label: isReward
           ? `Récompense utilisée par ${customerName}`
           : `Scan de ${customerName}`,
-        sub: isReward ? `${Math.abs(s.points)} pts déduits` : `+${s.points} pt`,
+        sub: isReward ? `${Math.abs(s.points_added)} pts déduits` : `+${s.points_added} pt`,
         time: s.created_at,
       });
     });
