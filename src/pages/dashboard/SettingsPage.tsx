@@ -337,19 +337,19 @@ const SettingsPage = () => {
             await supabase.from("wallet_pass_updates").upsert({
               serial_number: sn,
               pass_type_id: "pass.app.fidelispro",
-              change_message: "📍 Zone de proximité mise à jour",
+              change_message: "",
               last_updated: new Date().toISOString(),
             }, { onConflict: "serial_number,pass_type_id" });
           }
 
-          // Send APNs push to all devices
+          // Send silent APNs push to refresh pass data (no visible notification)
           const { data: { session: geoSession } } = await supabase.auth.getSession();
           const geoToken = geoSession?.access_token ?? "";
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
           await fetch(`${supabaseUrl}/functions/v1/wallet-push`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${geoToken}` },
-            body: JSON.stringify({ business_id: business.id, change_message: "📍 Zone mise à jour" }),
+            body: JSON.stringify({ business_id: business.id }),
           });
 
           toast.success(`${registrations.length} carte(s) mise(s) à jour !`);
@@ -943,7 +943,7 @@ const SettingsPage = () => {
                   <Clock className="w-3 h-3" /> Fréquence max par client
                 </Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Chaque client ne recevra la notification de proximité qu'une seule fois par période choisie.
+                  Limite les notifications push automatiques (rappels, campagnes) par client. La notification Apple Wallet sur l'écran de verrouillage est gérée par iOS et s'affiche quand le client est dans la zone.
                 </p>
                 <select
                   value={geoCooldownHours}
