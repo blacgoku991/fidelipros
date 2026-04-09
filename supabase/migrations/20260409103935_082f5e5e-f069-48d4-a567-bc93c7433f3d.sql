@@ -1,0 +1,12 @@
+
+-- Fix 3: Remove reward_instances from Realtime (correct syntax)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' 
+    AND tablename = 'reward_instances'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime DROP TABLE public.reward_instances;
+  END IF;
+END $$;
