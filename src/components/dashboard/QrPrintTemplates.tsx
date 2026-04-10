@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, ChevronDown } from "lucide-react";
@@ -183,51 +183,39 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
   const [format, setFormat] = useState<Format>("a4-portrait");
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => {
+  const handlePrint = useCallback(() => {
     const el = previewRef.current;
     if (!el) return;
-    // Clone the template into a print overlay
-    const overlay = document.createElement("div");
-    overlay.id = "qr-print-overlay";
-    overlay.innerHTML = `<style>
-      @media print {
-        body > *:not(#qr-print-overlay) { display: none !important; }
-        #qr-print-overlay { position: static !important; }
-        #qr-print-overlay .qr-print-actions { display: none !important; }
-        @page { margin: 0; }
-      }
-      #qr-print-overlay {
-        position: fixed; inset: 0; z-index: 99999;
-        background: #f5f5f5;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        overflow: auto;
-      }
-      #qr-print-overlay .qr-print-content { box-shadow: 0 4px 30px rgba(0,0,0,0.15); }
-      #qr-print-overlay .qr-print-actions {
-        position: fixed; bottom: 20px; left: 0; right: 0;
-        display: flex; gap: 10px; justify-content: center; z-index: 100000;
-      }
-      #qr-print-overlay .qr-print-actions button {
-        padding: 14px 32px; border: none; border-radius: 14px;
-        font-size: 15px; font-weight: 600; cursor: pointer;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      }
-    </style>`;
-    const content = document.createElement("div");
-    content.className = "qr-print-content";
-    content.innerHTML = el.innerHTML;
-    overlay.appendChild(content);
-    const actions = document.createElement("div");
-    actions.className = "qr-print-actions";
-    actions.innerHTML = `
-      <button style="background:#333;color:#fff" onclick="window.print()">🖨️ Imprimer</button>
-      <button style="background:#e5e5e5;color:#333" onclick="document.getElementById('qr-print-overlay')?.remove()">← Retour</button>
-    `;
-    overlay.appendChild(actions);
-    document.body.appendChild(overlay);
-    const cleanup = () => { document.getElementById("qr-print-overlay")?.remove(); window.removeEventListener("afterprint", cleanup); };
-    window.addEventListener("afterprint", cleanup);
-  };
+
+    // Serialize SVGs to inline data for print compatibility
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll("svg").forEach((svg) => {
+      const svgData = new XMLSerializer().serializeToString(svg);
+      const img = document.createElement("img");
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+      img.style.width = svg.getAttribute("width") ? svg.getAttribute("width") + "px" : "100%";
+      img.style.height = svg.getAttribute("height") ? svg.getAttribute("height") + "px" : "auto";
+      svg.replaceWith(img);
+    });
+
+    const dims = FORMAT_DIMS[format];
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Impression QR</title><style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: ${dims.w}; height: ${dims.h}; }
+      @media print { @page { size: ${dims.w} ${dims.h}; margin: 0; } }
+      img { display: inline-block; }
+    </style></head><body>${clone.innerHTML}</body></html>`);
+    printWindow.document.close();
+
+    // Wait for images (QR as data-uri) to load then print
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 600);
+  }, [format]);
 
   // Scale for preview: show scaled-down version
   const dims = FORMAT_DIMS[format];
