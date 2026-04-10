@@ -187,34 +187,105 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
     const el = previewRef.current;
     if (!el) return;
 
-    // Serialize SVGs to inline data for print compatibility
+    // Clone the rendered template and replace QR SVGs with data-URI <img> so
+    // print engines don't have to re-render React SVG components.
     const clone = el.cloneNode(true) as HTMLElement;
     clone.querySelectorAll("svg").forEach((svg) => {
       const svgData = new XMLSerializer().serializeToString(svg);
       const img = document.createElement("img");
       img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
-      img.style.width = svg.getAttribute("width") ? svg.getAttribute("width") + "px" : "100%";
-      img.style.height = svg.getAttribute("height") ? svg.getAttribute("height") + "px" : "auto";
+      const w = svg.getAttribute("width");
+      const h = svg.getAttribute("height");
+      if (w) img.style.width = w + "px";
+      if (h) img.style.height = h + "px";
+      img.style.display = "block";
       svg.replaceWith(img);
     });
+    // Wipe any leftover transform from the preview scaling
+    clone.style.transform = "none";
 
     const dims = FORMAT_DIMS[format];
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
 
-    printWindow.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Impression QR</title><style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: ${dims.w}; height: ${dims.h}; }
-      @media print { @page { size: ${dims.w} ${dims.h}; margin: 0; } }
-      img { display: inline-block; }
-    </style></head><body>${clone.innerHTML}</body></html>`);
-    printWindow.document.close();
+    // In-document overlay approach: works reliably on iOS Safari / PWA where
+    // `window.open` is blocked or limited. We hide everything except our
+    // overlay in print CSS and size the page to the chosen format.
+    const OVERLAY_ID = "qr-poster-print-overlay";
+    const ACTIONS_ID = "qr-poster-print-actions";
+    const STYLE_ID = "qr-poster-print-style";
 
-    // Wait for images (QR as data-uri) to load then print
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 600);
+    // Clean any previous overlay
+    document.getElementById(OVERLAY_ID)?.remove();
+    document.getElementById(ACTIONS_ID)?.remove();
+    document.getElementById(STYLE_ID)?.remove();
+
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = `
+      #${OVERLAY_ID} { position: fixed; inset: 0; z-index: 99998; background: #fff; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 16px; }
+      #${OVERLAY_ID} > div { transform-origin: center center; }
+      #${ACTIONS_ID} { position: fixed; bottom: 24px; left: 0; right: 0; display: flex; gap: 10px; justify-content: center; z-index: 99999; }
+      #${ACTIONS_ID} button { padding: 12px 28px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; }
+      @media print {
+        @page { size: ${dims.w} ${dims.h}; margin: 0; }
+        html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; width: ${dims.w} !important; height: ${dims.h} !important; overflow: hidden !important; }
+        body > *:not(#${OVERLAY_ID}) { display: none !important; }
+        #${OVERLAY_ID} { position: fixed !important; top: 0 !important; left: 0 !important; width: ${dims.w} !important; height: ${dims.h} !important; padding: 0 !important; background: #fff !important; overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important; }
+        #${OVERLAY_ID} > div { transform: none !important; width: ${dims.w} !important; height: ${dims.h} !important; }
+        #${ACTIONS_ID} { display: none !important; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    const overlay = document.createElement("div");
+    overlay.id = OVERLAY_ID;
+    // Scale down the preview on screen so the full poster is visible
+    // inside the overlay (it's full A4 size). 100% on print.
+    const viewportH = Math.max(window.innerHeight - 140, 200);
+    const viewportW = Math.max(window.innerWidth - 40, 200);
+    // dims are mm strings ("210mm"); convert to px via a temp element
+    const mmToPx = (mm: string) => {
+      const probe = document.createElement("div");
+      probe.style.cssText = `position:absolute;visibility:hidden;width:${mm};`;
+      document.body.appendChild(probe);
+      const px = probe.getBoundingClientRect().width;
+      probe.remove();
+      return px;
+    };
+    const pxW = mmToPx(dims.w);
+    const pxH = mmToPx(dims.h);
+    const screenScale = Math.min(viewportW / pxW, viewportH / pxH, 1);
+    clone.style.transform = `scale(${screenScale})`;
+    clone.style.transformOrigin = "center center";
+    overlay.appendChild(clone);
+    document.body.appendChild(overlay);
+
+    const actions = document.createElement("div");
+    actions.id = ACTIONS_ID;
+    const printBtn = document.createElement("button");
+    printBtn.textContent = "🖨 Imprimer";
+    printBtn.style.cssText = "background:#6B46C1;color:#fff";
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "← Retour";
+    closeBtn.style.cssText = "background:#e5e5e5;color:#333";
+    actions.appendChild(printBtn);
+    actions.appendChild(closeBtn);
+    document.body.appendChild(actions);
+
+    const cleanup = () => {
+      overlay.remove();
+      actions.remove();
+      style.remove();
+      window.removeEventListener("afterprint", cleanup);
+    };
+    printBtn.addEventListener("click", () => {
+      // Strip screen scale just before printing; print CSS also resets it
+      clone.style.transform = "none";
+      window.print();
+      // After print: re-apply the screen scale so the preview still fits
+      clone.style.transform = `scale(${screenScale})`;
+    });
+    closeBtn.addEventListener("click", cleanup);
+    window.addEventListener("afterprint", cleanup);
   }, [format]);
 
   // Scale for preview: show scaled-down version
@@ -256,11 +327,29 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
         </div>
       </div>
 
-      {/* Preview */}
+      {/* Preview — explicit scaled wrapper so transform:scale does not leave
+          a huge empty area below the poster. */}
       <div className="rounded-2xl bg-muted/50 border border-border/30 p-4 overflow-hidden flex justify-center">
-        <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}>
-          <div ref={previewRef}>
-            <TemplateContent variant={variant} format={format} {...props} />
+        <div
+          style={{
+            width: `calc(${dims.w} * ${previewScale})`,
+            height: `calc(${dims.h} * ${previewScale})`,
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              transform: `scale(${previewScale})`,
+              transformOrigin: "top left",
+              position: "absolute",
+              top: 0,
+              left: 0,
+            }}
+          >
+            <div ref={previewRef}>
+              <TemplateContent variant={variant} format={format} {...props} />
+            </div>
           </div>
         </div>
       </div>
