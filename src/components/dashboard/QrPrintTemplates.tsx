@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
-import { Printer, Download, ChevronDown } from "lucide-react";
+import { Printer } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -32,7 +32,6 @@ const VARIANT_LABELS: Record<Variant, { label: string; desc: string }> = {
   luxe: { label: "💎 Luxe Épuré", desc: "Très haut de gamme, sobre" },
 };
 
-/* ── Contrast helper ── */
 function getContrastColor(hex: string): string {
   const c = hex.replace("#", "");
   const r = parseInt(c.substring(0, 2), 16);
@@ -42,24 +41,16 @@ function getContrastColor(hex: string): string {
   return lum > 0.55 ? "#000000" : "#ffffff";
 }
 
-function lighten(hex: string, pct: number): string {
-  const c = hex.replace("#", "");
-  const r = Math.min(255, parseInt(c.substring(0, 2), 16) + Math.round(255 * pct));
-  const g = Math.min(255, parseInt(c.substring(2, 4), 16) + Math.round(255 * pct));
-  const b = Math.min(255, parseInt(c.substring(4, 6), 16) + Math.round(255 * pct));
-  return `rgb(${r},${g},${b})`;
-}
-
-/* ── Format dimensions (mm → we use CSS mm units in print) ── */
-const FORMAT_DIMS: Record<Format, { w: string; h: string; qrSize: number; isLandscape: boolean }> = {
-  "a4-portrait": { w: "210mm", h: "297mm", qrSize: 460, isLandscape: false },
-  "a4-landscape": { w: "297mm", h: "210mm", qrSize: 380, isLandscape: true },
-  "a3-portrait": { w: "297mm", h: "420mm", qrSize: 680, isLandscape: false },
-  "a3-landscape": { w: "420mm", h: "297mm", qrSize: 540, isLandscape: true },
-  counter: { w: "150mm", h: "200mm", qrSize: 320, isLandscape: false },
+/* ── Format dimensions ── */
+const FORMAT_DIMS: Record<Format, { w: string; h: string; wPx: number; hPx: number; qrSize: number; isLandscape: boolean }> = {
+  "a4-portrait":  { w: "210mm", h: "297mm", wPx: 794, hPx: 1123, qrSize: 460, isLandscape: false },
+  "a4-landscape": { w: "297mm", h: "210mm", wPx: 1123, hPx: 794, qrSize: 380, isLandscape: true },
+  "a3-portrait":  { w: "297mm", h: "420mm", wPx: 1123, hPx: 1587, qrSize: 680, isLandscape: false },
+  "a3-landscape": { w: "420mm", h: "297mm", wPx: 1587, hPx: 1123, qrSize: 540, isLandscape: true },
+  counter:        { w: "150mm", h: "200mm", wPx: 567, hPx: 756, qrSize: 320, isLandscape: false },
 };
 
-/* ── Render a single template ── */
+/* ── Template content (inline styles only — no Tailwind, for print fidelity) ── */
 function TemplateContent({ variant, format, businessName, logoUrl, primaryColor, secondaryColor, publicUrl, promoText }: QrPrintTemplatesProps & { variant: Variant; format: Format }) {
   const dims = FORMAT_DIMS[format];
   const fg = getContrastColor(primaryColor);
@@ -69,28 +60,17 @@ function TemplateContent({ variant, format, businessName, logoUrl, primaryColor,
   if (variant === "minimal") {
     return (
       <div style={{ width: dims.w, height: dims.h, background: "#ffffff", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "8mm", boxSizing: "border-box", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-        {/* Header */}
         <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: "12px", padding: "6mm 4mm", borderRadius: "6mm", background: primaryColor }}>
           {logoUrl && <img src={logoUrl} alt="" style={{ width: "48px", height: "48px", borderRadius: "12px", objectFit: "cover" }} />}
           <span style={{ fontSize: "24px", fontWeight: 700, color: fg, letterSpacing: "-0.5px" }}>{businessName}</span>
         </div>
-
-        {/* CTA */}
         <div style={{ textAlign: "center", padding: "4mm 0" }}>
-          <p style={{ fontSize: "22px", fontWeight: 700, color: "#1a1a1a", margin: 0, lineHeight: 1.3 }}>
-            Rejoignez notre programme fidélité
-          </p>
-          <p style={{ fontSize: "14px", color: "#666", marginTop: "6px" }}>
-            Simple, rapide, gratuit
-          </p>
+          <p style={{ fontSize: "22px", fontWeight: 700, color: "#1a1a1a", margin: 0, lineHeight: 1.3 }}>Rejoignez notre programme fidélité</p>
+          <p style={{ fontSize: "14px", color: "#666", marginTop: "6px" }}>Simple, rapide, gratuit</p>
         </div>
-
-        {/* QR */}
         <div style={{ padding: "6mm", background: "#ffffff", border: `3px solid ${primaryColor}20`, borderRadius: "6mm" }}>
           <QRCodeSVG value={publicUrl} size={qrSize} level="H" includeMargin fgColor="#000000" />
         </div>
-
-        {/* Footer */}
         <div style={{ textAlign: "center", opacity: 0.5, fontSize: "11px", color: "#333" }}>
           <p style={{ margin: 0 }}>Compatible Apple Wallet & Google Wallet</p>
         </div>
@@ -101,38 +81,21 @@ function TemplateContent({ variant, format, businessName, logoUrl, primaryColor,
   if (variant === "impact") {
     return (
       <div style={{ width: dims.w, height: dims.h, background: `linear-gradient(180deg, ${primaryColor} 0%, ${secondaryColor || primaryColor} 100%)`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "10mm", boxSizing: "border-box", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-        {/* Header */}
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
           {logoUrl && <img src={logoUrl} alt="" style={{ width: "64px", height: "64px", borderRadius: "16px", objectFit: "cover", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }} />}
           <span style={{ fontSize: "28px", fontWeight: 800, color: fg, letterSpacing: "-0.5px" }}>{businessName}</span>
         </div>
-
-        {/* CTA */}
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: dims.isLandscape ? "26px" : "30px", fontWeight: 800, color: fg, margin: 0, lineHeight: 1.2 }}>
-            🎁 Scannez pour rejoindre<br />notre programme fidélité
-          </p>
-          <p style={{ fontSize: "16px", color: fgSub, marginTop: "8px" }}>
-            {promoText || "Cumulez vos récompenses dès maintenant"}
-          </p>
+          <p style={{ fontSize: dims.isLandscape ? "26px" : "30px", fontWeight: 800, color: fg, margin: 0, lineHeight: 1.2 }}>🎁 Scannez pour rejoindre<br />notre programme fidélité</p>
+          <p style={{ fontSize: "16px", color: fgSub, marginTop: "8px" }}>{promoText || "Cumulez vos récompenses dès maintenant"}</p>
         </div>
-
-        {/* QR — white card */}
         <div style={{ padding: "8mm", background: "#ffffff", borderRadius: "8mm", boxShadow: "0 8px 40px rgba(0,0,0,0.25)" }}>
           <QRCodeSVG value={publicUrl} size={qrSize} level="H" includeMargin fgColor={primaryColor} />
         </div>
-
-        {/* Sub-text */}
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: "14px", color: fgSub, margin: 0 }}>
-            Ajoutez votre carte fidélité en quelques secondes
-          </p>
-          <p style={{ fontSize: "12px", color: fgSub, marginTop: "4px" }}>
-            Offres, récompenses et avantages exclusifs
-          </p>
+          <p style={{ fontSize: "14px", color: fgSub, margin: 0 }}>Ajoutez votre carte fidélité en quelques secondes</p>
+          <p style={{ fontSize: "12px", color: fgSub, marginTop: "4px" }}>Offres, récompenses et avantages exclusifs</p>
         </div>
-
-        {/* Footer */}
         <div style={{ textAlign: "center", fontSize: "11px", color: fgSub }}>
           <p style={{ margin: 0 }}>Compatible Apple Wallet & Google Wallet</p>
         </div>
@@ -140,36 +103,22 @@ function TemplateContent({ variant, format, businessName, logoUrl, primaryColor,
     );
   }
 
-  // variant === "luxe"
   return (
     <div style={{ width: dims.w, height: dims.h, background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", padding: "12mm", boxSizing: "border-box", fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-      {/* Header */}
       <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
         {logoUrl && <img src={logoUrl} alt="" style={{ width: "56px", height: "56px", borderRadius: "14px", objectFit: "cover" }} />}
         <span style={{ fontSize: "22px", fontWeight: 300, color: "#ffffff", letterSpacing: "4px", textTransform: "uppercase" }}>{businessName}</span>
         <div style={{ width: "60px", height: "1px", background: `linear-gradient(90deg, transparent, ${primaryColor}, transparent)` }} />
       </div>
-
-      {/* CTA */}
       <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: "18px", fontWeight: 300, color: "#cccccc", margin: 0, letterSpacing: "2px", textTransform: "uppercase" }}>
-          Programme Fidélité
-        </p>
+        <p style={{ fontSize: "18px", fontWeight: 300, color: "#cccccc", margin: 0, letterSpacing: "2px", textTransform: "uppercase" }}>Programme Fidélité</p>
       </div>
-
-      {/* QR */}
       <div style={{ padding: "6mm", background: "#ffffff", borderRadius: "4mm" }}>
         <QRCodeSVG value={publicUrl} size={qrSize} level="H" includeMargin fgColor="#0a0a0a" />
       </div>
-
-      {/* Sub-text */}
       <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: "14px", color: "#999", margin: 0, fontWeight: 300, letterSpacing: "1px" }}>
-          Scannez pour rejoindre
-        </p>
+        <p style={{ fontSize: "14px", color: "#999", margin: 0, fontWeight: 300, letterSpacing: "1px" }}>Scannez pour rejoindre</p>
       </div>
-
-      {/* Footer */}
       <div style={{ textAlign: "center", fontSize: "10px", color: "#555", letterSpacing: "1px" }}>
         <p style={{ margin: 0 }}>Apple Wallet & Google Wallet</p>
       </div>
@@ -177,120 +126,120 @@ function TemplateContent({ variant, format, businessName, logoUrl, primaryColor,
   );
 }
 
+/* ── Serialize a DOM element's SVGs to <img> data URIs for print reliability ── */
+function serializeSvgsToImages(container: HTMLElement) {
+  container.querySelectorAll("svg").forEach((svg) => {
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const img = document.createElement("img");
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
+    const w = svg.getAttribute("width");
+    const h = svg.getAttribute("height");
+    if (w) img.style.width = w + "px";
+    if (h) img.style.height = h + "px";
+    img.style.display = "block";
+    svg.replaceWith(img);
+  });
+}
+
+/* ── Wait for all images + fonts before printing ── */
+async function waitForRender(container: HTMLElement): Promise<void> {
+  await document.fonts.ready;
+  const imgs = Array.from(container.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete) return resolve();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        })
+    )
+  );
+  await new Promise((r) => requestAnimationFrame(r));
+}
+
 /* ── Main exported component ── */
 export function QrPrintTemplates(props: QrPrintTemplatesProps) {
   const [variant, setVariant] = useState<Variant>("impact");
   const [format, setFormat] = useState<Format>("a4-portrait");
   const previewRef = useRef<HTMLDivElement>(null);
+  const printAreaRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = useCallback(() => {
+  const handlePrint = useCallback(async () => {
     const el = previewRef.current;
-    if (!el) return;
-
-    // Clone the rendered template and replace QR SVGs with data-URI <img> so
-    // print engines don't have to re-render React SVG components.
-    const clone = el.cloneNode(true) as HTMLElement;
-    clone.querySelectorAll("svg").forEach((svg) => {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const img = document.createElement("img");
-      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgData);
-      const w = svg.getAttribute("width");
-      const h = svg.getAttribute("height");
-      if (w) img.style.width = w + "px";
-      if (h) img.style.height = h + "px";
-      img.style.display = "block";
-      svg.replaceWith(img);
-    });
-    // Wipe any leftover transform from the preview scaling
-    clone.style.transform = "none";
+    const printArea = printAreaRef.current;
+    if (!el || !printArea) return;
 
     const dims = FORMAT_DIMS[format];
 
-    // In-document overlay approach: works reliably on iOS Safari / PWA where
-    // `window.open` is blocked or limited. We hide everything except our
-    // overlay in print CSS and size the page to the chosen format.
-    const OVERLAY_ID = "qr-poster-print-overlay";
-    const ACTIONS_ID = "qr-poster-print-actions";
+    // Clone the poster content into the hidden #print-area
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.transform = "none";
+    clone.style.width = dims.w;
+    clone.style.height = dims.h;
+    serializeSvgsToImages(clone);
+
+    printArea.innerHTML = "";
+    printArea.appendChild(clone);
+
+    // Inject print-only styles
     const STYLE_ID = "qr-poster-print-style";
-
-    // Clean any previous overlay
-    document.getElementById(OVERLAY_ID)?.remove();
-    document.getElementById(ACTIONS_ID)?.remove();
     document.getElementById(STYLE_ID)?.remove();
-
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      #${OVERLAY_ID} { position: fixed; inset: 0; z-index: 99998; background: #fff; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 16px; }
-      #${OVERLAY_ID} > div { transform-origin: center center; }
-      #${ACTIONS_ID} { position: fixed; bottom: 24px; left: 0; right: 0; display: flex; gap: 10px; justify-content: center; z-index: 99999; }
-      #${ACTIONS_ID} button { padding: 12px 28px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; }
       @media print {
         @page { size: ${dims.w} ${dims.h}; margin: 0; }
-        html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; width: ${dims.w} !important; height: ${dims.h} !important; overflow: hidden !important; }
-        body > *:not(#${OVERLAY_ID}) { display: none !important; }
-        #${OVERLAY_ID} { position: fixed !important; top: 0 !important; left: 0 !important; width: ${dims.w} !important; height: ${dims.h} !important; padding: 0 !important; background: #fff !important; overflow: hidden !important; page-break-after: avoid !important; page-break-inside: avoid !important; }
-        #${OVERLAY_ID} > div { transform: none !important; width: ${dims.w} !important; height: ${dims.h} !important; }
-        #${ACTIONS_ID} { display: none !important; }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          width: ${dims.w} !important;
+          height: ${dims.h} !important;
+          overflow: hidden !important;
+          background: #fff !important;
+        }
+        body * { visibility: hidden !important; }
+        #qr-poster-print-area,
+        #qr-poster-print-area * {
+          visibility: visible !important;
+        }
+        #qr-poster-print-area {
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: ${dims.w} !important;
+          height: ${dims.h} !important;
+          transform: none !important;
+          overflow: hidden !important;
+          z-index: 999999 !important;
+          background: #fff !important;
+        }
       }
     `;
     document.head.appendChild(style);
 
-    const overlay = document.createElement("div");
-    overlay.id = OVERLAY_ID;
-    // Scale down the preview on screen so the full poster is visible
-    // inside the overlay (it's full A4 size). 100% on print.
-    const viewportH = Math.max(window.innerHeight - 140, 200);
-    const viewportW = Math.max(window.innerWidth - 40, 200);
-    // dims are mm strings ("210mm"); convert to px via a temp element
-    const mmToPx = (mm: string) => {
-      const probe = document.createElement("div");
-      probe.style.cssText = `position:absolute;visibility:hidden;width:${mm};`;
-      document.body.appendChild(probe);
-      const px = probe.getBoundingClientRect().width;
-      probe.remove();
-      return px;
-    };
-    const pxW = mmToPx(dims.w);
-    const pxH = mmToPx(dims.h);
-    const screenScale = Math.min(viewportW / pxW, viewportH / pxH, 1);
-    clone.style.transform = `scale(${screenScale})`;
-    clone.style.transformOrigin = "center center";
-    overlay.appendChild(clone);
-    document.body.appendChild(overlay);
+    await waitForRender(printArea);
 
-    const actions = document.createElement("div");
-    actions.id = ACTIONS_ID;
-    const printBtn = document.createElement("button");
-    printBtn.textContent = "🖨 Imprimer";
-    printBtn.style.cssText = "background:#6B46C1;color:#fff";
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "← Retour";
-    closeBtn.style.cssText = "background:#e5e5e5;color:#333";
-    actions.appendChild(printBtn);
-    actions.appendChild(closeBtn);
-    document.body.appendChild(actions);
+    window.print();
 
+    // Cleanup after print
     const cleanup = () => {
-      overlay.remove();
-      actions.remove();
       style.remove();
+      printArea.innerHTML = "";
       window.removeEventListener("afterprint", cleanup);
     };
-    printBtn.addEventListener("click", () => {
-      // Strip screen scale just before printing; print CSS also resets it
-      clone.style.transform = "none";
-      window.print();
-      // After print: re-apply the screen scale so the preview still fits
-      clone.style.transform = `scale(${screenScale})`;
-    });
-    closeBtn.addEventListener("click", cleanup);
     window.addEventListener("afterprint", cleanup);
+    // Fallback cleanup after 10s (iOS doesn't always fire afterprint)
+    setTimeout(cleanup, 10000);
   }, [format]);
 
-  // Scale for preview: show scaled-down version
+  // Preview: scale the full-size poster down to fit within the card.
+  // Use pre-computed pixel values so calc() works correctly (no mm × unitless).
   const dims = FORMAT_DIMS[format];
-  const previewScale = format === "counter" ? 0.45 : format.includes("a3") ? 0.25 : 0.32;
+  const maxPreviewWidth = 360;
+  const previewScale = Math.min(maxPreviewWidth / dims.wPx, 1);
+  const previewW = Math.round(dims.wPx * previewScale);
+  const previewH = Math.round(dims.hPx * previewScale);
 
   return (
     <div className="space-y-4">
@@ -327,13 +276,12 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
         </div>
       </div>
 
-      {/* Preview — explicit scaled wrapper so transform:scale does not leave
-          a huge empty area below the poster. */}
+      {/* Preview — fixed pixel dimensions, no calc(mm * unitless) */}
       <div className="rounded-2xl bg-muted/50 border border-border/30 p-4 overflow-hidden flex justify-center">
         <div
           style={{
-            width: `calc(${dims.w} * ${previewScale})`,
-            height: `calc(${dims.h} * ${previewScale})`,
+            width: previewW,
+            height: previewH,
             position: "relative",
             flexShrink: 0,
           }}
@@ -354,12 +302,27 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
         </div>
       </div>
 
-      {/* Actions */}
+      {/* Print button */}
       <div className="flex gap-2 justify-center">
         <Button onClick={handlePrint} className="rounded-xl gap-2 bg-gradient-primary text-primary-foreground">
           <Printer className="w-4 h-4" /> Imprimer l'affiche
         </Button>
       </div>
+
+      {/* Hidden print area — only visible via @media print */}
+      <div
+        id="qr-poster-print-area"
+        ref={printAreaRef}
+        style={{
+          position: "fixed",
+          top: "-99999px",
+          left: "-99999px",
+          width: 0,
+          height: 0,
+          overflow: "hidden",
+          pointerEvents: "none",
+        }}
+      />
     </div>
   );
 }
