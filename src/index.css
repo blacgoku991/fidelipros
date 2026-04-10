@@ -338,6 +338,9 @@ button, a, [role="button"] {
   body > *:not(#pwa-print-overlay):not(#qr-poster-print-root) {
     display: none !important;
   }
+  body > #qr-poster-print-root {
+    display: block !important;
+  }
   #pwa-print-overlay {
     all: unset !important;
     display: flex !important;

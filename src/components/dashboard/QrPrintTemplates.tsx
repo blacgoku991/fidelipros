@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Printer } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -60,6 +61,7 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
   const [isPrintMode, setIsPrintMode] = useState(false);
   const printRootRef = useRef<HTMLDivElement>(null);
 
+  /* Inject global print styles once */
   useEffect(() => {
     document.getElementById(PRINT_STYLE_ID)?.remove();
     const style = document.createElement("style");
@@ -78,14 +80,14 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
           overflow: hidden !important;
           background: #fff !important;
         }
-        body * {
-          visibility: hidden !important;
+        /* Hide everything */
+        body > * {
+          display: none !important;
         }
-        #qr-poster-print-root,
-        #qr-poster-print-root * {
+        /* Show only the print root (portal renders it as direct child of body) */
+        body > #qr-poster-print-root {
+          display: block !important;
           visibility: visible !important;
-        }
-        #qr-poster-print-root {
           position: fixed !important;
           inset: 0 !important;
           width: 210mm !important;
@@ -93,10 +95,12 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
           margin: 0 !important;
           padding: 0 !important;
           overflow: hidden !important;
-          display: block !important;
           background: #fff !important;
           z-index: 2147483647 !important;
           transform: none !important;
+        }
+        #qr-poster-print-root * {
+          visibility: visible !important;
         }
         #qr-poster-print-area {
           width: 210mm !important;
@@ -112,10 +116,7 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
       }
     `;
     document.head.appendChild(style);
-
-    return () => {
-      style.remove();
-    };
+    return () => { style.remove(); };
   }, []);
 
   const handlePrint = useCallback(async () => {
@@ -155,6 +156,31 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
   const previewW = Math.round(A4_WIDTH_PX * previewScale);
   const previewH = Math.round(A4_HEIGHT_PX * previewScale);
 
+  /* Portal: render print root as direct child of document.body */
+  const printPortal = isPrintMode
+    ? createPortal(
+        <div
+          id="qr-poster-print-root"
+          ref={printRootRef}
+          style={{
+            position: "fixed",
+            left: "-99999px",
+            top: "-99999px",
+            width: "210mm",
+            height: "297mm",
+            overflow: "hidden",
+            pointerEvents: "none",
+          }}
+          aria-hidden
+        >
+          <div id="qr-poster-print-area">
+            <PrintPosterA4 variant={variant} {...props} />
+          </div>
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -175,23 +201,8 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
       </div>
 
       <div className="rounded-2xl bg-muted/50 border border-border/30 p-4 overflow-hidden flex justify-center">
-        <div
-          style={{
-            width: previewW,
-            height: previewH,
-            position: "relative",
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              transform: `scale(${previewScale})`,
-              transformOrigin: "top left",
-              position: "absolute",
-              top: 0,
-              left: 0,
-            }}
-          >
+        <div style={{ width: previewW, height: previewH, position: "relative", flexShrink: 0 }}>
+          <div style={{ transform: `scale(${previewScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0 }}>
             <PrintPosterA4 variant={variant} {...props} />
           </div>
         </div>
@@ -203,26 +214,7 @@ export function QrPrintTemplates(props: QrPrintTemplatesProps) {
         </Button>
       </div>
 
-      <div
-        id="qr-poster-print-root"
-        ref={printRootRef}
-        style={{
-          position: "fixed",
-          left: "-99999px",
-          top: "-99999px",
-          width: 0,
-          height: 0,
-          overflow: "hidden",
-          pointerEvents: "none",
-        }}
-        aria-hidden
-      >
-        {isPrintMode ? (
-          <div id="qr-poster-print-area">
-            <PrintPosterA4 variant={variant} {...props} />
-          </div>
-        ) : null}
-      </div>
+      {printPortal}
     </div>
   );
 }
