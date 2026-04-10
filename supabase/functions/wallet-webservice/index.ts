@@ -390,7 +390,18 @@ async function handleGetLatestPass(
     .eq("is_active", true)
     .order("points_required", { ascending: true });
 
-  // Fetch claimed reward IDs for this card from reward_instances
+  // Fetch active (non-claimed) reward instances for this card.
+  // Rewards with status "claimable_now" are what we show as "À RÉCUPÉRER".
+  // "unlocked_pending_next_order" is shown as pending on next order.
+  const { data: activeInstances } = await supabase
+    .from("reward_instances")
+    .select("reward_id, status")
+    .eq("card_id", card.id)
+    .neq("status", "claimed");
+  const claimableRewardIds = new Set(
+    (activeInstances || []).filter((i: any) => i.status === "claimable_now").map((i: any) => i.reward_id)
+  );
+  // Back-compat: some legacy flows may not have instances — keep claimed set so we don't double-offer
   const { data: claimedInstances } = await supabase
     .from("reward_instances")
     .select("reward_id")
@@ -407,7 +418,7 @@ async function handleGetLatestPass(
     .eq("id", card.id);
 
   try {
-    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || [], claimedRewardIds);
+    const pkpass = await buildPkpassForUpdate(card, business, card.customers, card.wallet_auth_token, rewards || [], claimedRewardIds, claimableRewardIds);
     return new Response(pkpass as unknown as BodyInit, {
       status: 200,
       headers: {
@@ -430,7 +441,8 @@ async function buildPkpassForUpdate(
   customer: any,
   authToken: string,
   rewards: any[] = [],
-  claimedRewardIds: Set<string> = new Set()
+  claimedRewardIds: Set<string> = new Set(),
+  claimableRewardIds: Set<string> = new Set()
 ): Promise<Uint8Array> {
   const teamId = (Deno.env.get("APPLE_TEAM_ID") || "").trim();
   if (!teamId) throw new Error("APPLE_TEAM_ID is not configured");
@@ -489,7 +501,16 @@ async function buildPkpassForUpdate(
       ],
       auxiliaryFields: [
         ...(rewards.length > 0 ? (() => {
-          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedRewardIds.has(r.id));
+          // Prefer the new instance-based model: show "À RÉCUPÉRER" only when there's a
+          // reward_instance with status = claimable_now. Fall back to legacy
+          // "enough points && never claimed" for cards without any instance yet.
+          let unclaimedUnlocked: any = null;
+          if (claimableRewardIds.size > 0) {
+            unclaimedUnlocked = [...rewards].reverse().find((r: any) => claimableRewardIds.has(r.id));
+          } else if (claimedRewardIds.size === 0) {
+            // Legacy fallback only when card has no instances at all
+            unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent);
+          }
           const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
           const fields: any[] = [];
           if (unclaimedUnlocked) {

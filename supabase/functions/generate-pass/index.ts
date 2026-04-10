@@ -146,7 +146,17 @@ Deno.serve(async (req) => {
       .eq("is_active", true)
       .order("points_required", { ascending: true });
 
-    // Fetch claimed reward IDs for this card from reward_instances
+    // Fetch reward instances for this card.
+    // "claimable_now" → show as "À RÉCUPÉRER" on pass.
+    // Legacy fallback (no instances): treat enough-points rewards as unlocked.
+    const { data: activeInstances } = await supabase
+      .from("reward_instances")
+      .select("reward_id, status")
+      .eq("card_id", card.id)
+      .neq("status", "claimed");
+    const claimableRewardIds = new Set(
+      (activeInstances || []).filter((i: any) => i.status === "claimable_now").map((i: any) => i.reward_id)
+    );
     const { data: claimedInstances } = await supabase
       .from("reward_instances")
       .select("reward_id")
@@ -164,7 +174,7 @@ Deno.serve(async (req) => {
         .eq("id", card.id);
     }
 
-    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedRewardIds);
+    const pkpassBuffer = await buildPkpass(card, business, card.customers, authToken, rewards || [], claimedRewardIds, claimableRewardIds);
     console.log("[generate-pass] pkpass généré — taille:", pkpassBuffer.byteLength, "bytes");
 
     return new Response(pkpassBuffer as unknown as BodyInit, {
@@ -195,7 +205,8 @@ export async function buildPkpass(
   customer: any,
   authToken: string,
   rewards: any[] = [],
-  claimedRewardIds: Set<string> = new Set()
+  claimedRewardIds: Set<string> = new Set(),
+  claimableRewardIds: Set<string> = new Set()
 ): Promise<Uint8Array> {
   const teamId = requireEnv("APPLE_TEAM_ID").trim();
   const p12Base64 = requireEnv("APPLE_PASS_CERTIFICATE");
@@ -278,7 +289,14 @@ export async function buildPkpass(
       ],
       auxiliaryFields: [
         ...(rewards.length > 0 ? (() => {
-          const unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent && !claimedRewardIds.has(r.id));
+          // Prefer claimable_now instances; fallback to legacy logic only when
+          // the card has no instance history at all.
+          let unclaimedUnlocked: any = null;
+          if (claimableRewardIds.size > 0) {
+            unclaimedUnlocked = [...rewards].reverse().find((r: any) => claimableRewardIds.has(r.id));
+          } else if (claimedRewardIds.size === 0) {
+            unclaimedUnlocked = [...rewards].reverse().find((r: any) => r.points_required <= pointsCurrent);
+          }
           const nextReward = rewards.find((r: any) => r.points_required > pointsCurrent);
           const fields: any[] = [];
           if (unclaimedUnlocked) {
