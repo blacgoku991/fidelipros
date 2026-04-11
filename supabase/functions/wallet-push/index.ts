@@ -167,10 +167,14 @@ Deno.serve(async (req) => {
 
       if (shouldSetMessage && change_message) {
         effectiveMessage = change_message;
-        // If message is identical to previous, append timestamp to force unique value
+        // Always append a unique timestamp to guarantee the pass content changes
+        // This prevents iOS from ignoring the update as "unchanged"
+        const ts = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        effectiveMessage = `${effectiveMessage} (${ts})`;
         if (effectiveMessage === oldChangeMessage) {
-          effectiveMessage = `${effectiveMessage} (${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })})`;
-          console.log(`[Wallet Push] ⚠ Message identical — appended timestamp`);
+          // Extra safety: add random suffix if timestamp still matches
+          effectiveMessage = `${effectiveMessage}.${Math.random().toString(36).slice(2, 5)}`;
+          console.log(`[Wallet Push] ⚠ Message still identical after timestamp — added random suffix`);
         }
         cardUpdate.wallet_change_message = effectiveMessage;
         fieldValueActuallyChanged = true;
