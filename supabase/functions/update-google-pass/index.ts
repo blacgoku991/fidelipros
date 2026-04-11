@@ -222,11 +222,11 @@ Deno.serve(async (req) => {
         },
       };
 
-      // Add campaign message if provided
+      // Add campaign/review message if provided
       if (message) {
         updateBody.messages = [{
           header: business.name,
-          body: message.replace(/\n\n⭐ Laisser un avis :.*$/, "").trim(),
+          body: message.replace(/\n👉\s*https?:\/\/\S+$/m, "").trim(),
           id: `msg_${Date.now()}`,
           messageType: "TEXT",
         }];
