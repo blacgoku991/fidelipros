@@ -426,6 +426,40 @@ const SettingsPage = () => {
     else toast.success("Paramètres Google Avis sauvegardés !");
   };
 
+  const handleSendGoogleReviewNotif = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    if (!googlePlaceId) { toast.error("Veuillez d'abord renseigner votre Google Place ID"); return; }
+    setSendingGoogleNotif(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Non authentifié"); setSendingGoogleNotif(false); return; }
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          business_id: business.id,
+          message: googleReviewMessage,
+          change_message: googleReviewMessage,
+          segment: googleNotifSegment === "all" ? "all" : googleNotifSegment,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { toast.error(result.error || "Erreur d'envoi"); }
+      else {
+        const total = (result.wallet || 0) + (result.google || 0);
+        toast.success(`Notification Google Avis envoyée ! (${total} wallet${total > 1 ? "s" : ""} notifié${total > 1 ? "s" : ""})`);
+      }
+    } catch (e) {
+      toast.error("Erreur lors de l'envoi");
+      console.error(e);
+    }
+    setSendingGoogleNotif(false);
+  };
+
   // --- POS / Integrations handler ---
   const generateApiKey = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
