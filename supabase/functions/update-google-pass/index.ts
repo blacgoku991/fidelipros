@@ -352,6 +352,10 @@ Deno.serve(async (req) => {
             console.log(`[update-google-pass] addMessage notified ${objectId}`);
           } else {
             console.error(`[update-google-pass] addMessage failed ${objectId}: ${addMessageRes.status} ${addMessageBody.substring(0, 300)}`);
+            if (addMessageRes.status !== 429) {
+              errors.push(`${objectId}: addMessage ${addMessageRes.status}`);
+              failed++;
+            }
           }
         }
       } catch (err: any) {
