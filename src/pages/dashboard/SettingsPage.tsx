@@ -103,6 +103,11 @@ const SettingsPage = () => {
   const [savingGoogle, setSavingGoogle] = useState(false);
   const [sendingGoogleNotif, setSendingGoogleNotif] = useState(false);
   const [googleNotifSegment, setGoogleNotifSegment] = useState<"all" | "gold" | "silver" | "bronze">("all");
+  const [googleNotifMode, setGoogleNotifMode] = useState<"segment" | "clients">("segment");
+  const [googleNotifSearch, setGoogleNotifSearch] = useState("");
+  const [googleNotifCustomers, setGoogleNotifCustomers] = useState<any[]>([]);
+  const [googleNotifSelectedIds, setGoogleNotifSelectedIds] = useState<string[]>([]);
+  const [loadingGoogleCustomers, setLoadingGoogleCustomers] = useState(false);
 
   // POS / Integrations
   const [posEnabled, setPosEnabled] = useState(false);
