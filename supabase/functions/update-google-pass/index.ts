@@ -210,6 +210,16 @@ Deno.serve(async (req) => {
         }
       }
 
+      const sanitizedMessage = message?.replace(/\n👉\s*https?:\/\/\S+$/m, "").trim();
+      const messagePayload = sanitizedMessage
+        ? {
+            header: business.name,
+            body: sanitizedMessage,
+            id: `msg_${Date.now()}_${card.id.slice(0, 8)}`,
+            messageType: "TEXT_AND_NOTIFY",
+          }
+        : null;
+
       const updateBody: any = {
         loyaltyPoints: {
           balance: { int: pointsCurrent },
@@ -220,19 +230,9 @@ Deno.serve(async (req) => {
           labelValueRows: infoModuleRows,
           showLastUpdateTime: true,
         },
+        notifyPreference: "notifyOnUpdate",
       };
 
-      // Add campaign/review message if provided
-      if (message) {
-        updateBody.messages = [{
-          header: business.name,
-          body: message.replace(/\n👉\s*https?:\/\/\S+$/m, "").trim(),
-          id: `msg_${Date.now()}`,
-          messageType: "TEXT",
-        }];
-      }
-
-      // Add Google review link if provided
       if (google_review_url) {
         updateBody.linksModuleData = {
           uris: [{
@@ -244,7 +244,8 @@ Deno.serve(async (req) => {
       }
 
       try {
-        // First, try to GET the object to verify it exists
+        let objectReady = false;
+
         const getRes = await fetch(
           `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
           {
@@ -256,10 +257,8 @@ Deno.serve(async (req) => {
         console.log(`[update-google-pass] GET ${objectId}: status=${getRes.status} body=${getBody.substring(0, 300)}`);
 
         if (getRes.status === 404) {
-          // Object doesn't exist — try to CREATE it instead of just skipping
           console.log(`[update-google-pass] Object ${objectId} not found, attempting to CREATE it`);
 
-          // Build full object for creation
           const classId = `${issuerId}.loyalty_${business.id}`;
           const createBody: any = {
             id: objectId,
@@ -273,7 +272,6 @@ Deno.serve(async (req) => {
               value: card.card_code || card.id,
               alternateText: card.card_code || card.id,
             },
-            ...(updateBody.messages ? { messages: updateBody.messages } : {}),
             ...(updateBody.linksModuleData ? { linksModuleData: updateBody.linksModuleData } : {}),
             ...(updateBody.infoModuleData ? { infoModuleData: updateBody.infoModuleData } : {}),
           };
@@ -294,57 +292,67 @@ Deno.serve(async (req) => {
           console.log(`[update-google-pass] CREATE ${objectId}: status=${createRes.status} body=${createResBody.substring(0, 300)}`);
 
           if (createRes.ok || createRes.status === 409) {
-            // 409 = already exists (race condition), also OK
-            updated++;
-
-            // Now try to PATCH with the message/update
-            const patchRes2 = await fetch(
-              `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
-              {
-                method: "PATCH",
-                headers: {
-                  "Authorization": `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(updateBody),
-              }
-            );
-            const patchBody2 = await patchRes2.text();
-            console.log(`[update-google-pass] PATCH after CREATE ${objectId}: status=${patchRes2.status}`);
+            objectReady = true;
           } else {
             console.error(`[update-google-pass] Failed to create ${objectId}: ${createRes.status} ${createResBody.substring(0, 300)}`);
             errors.push(`${objectId}: create failed ${createRes.status}`);
             failed++;
           }
         } else if (getRes.ok) {
-          // Object exists, proceed with PATCH
-          const patchRes = await fetch(
-            `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
+          objectReady = true;
+        } else {
+          console.error(`[update-google-pass] GET error for ${objectId}: ${getRes.status} ${getBody.substring(0, 300)}`);
+          errors.push(`${objectId}: GET ${getRes.status}`);
+          failed++;
+        }
+
+        if (!objectReady) {
+          continue;
+        }
+
+        const patchRes = await fetch(
+          `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updateBody),
+          }
+        );
+
+        if (patchRes.ok) {
+          updated++;
+          console.log(`[update-google-pass] Updated ${objectId}`);
+          await patchRes.text();
+        } else {
+          const errBody = await patchRes.text();
+          console.error(`[update-google-pass] Failed to update ${objectId}: ${patchRes.status} ${errBody.substring(0, 300)}`);
+          errors.push(`${objectId}: patch ${patchRes.status}`);
+          failed++;
+          continue;
+        }
+
+        if (messagePayload) {
+          const addMessageRes = await fetch(
+            `https://walletobjects.googleapis.com/walletobjects/v1/loyaltyObject/${objectId}/addMessage`,
             {
-              method: "PATCH",
+              method: "POST",
               headers: {
                 "Authorization": `Bearer ${accessToken}`,
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify(updateBody),
+              body: JSON.stringify({ message: messagePayload }),
             }
           );
 
-          if (patchRes.ok) {
-            updated++;
-            console.log(`[update-google-pass] Updated ${objectId}`);
-            await patchRes.text();
+          const addMessageBody = await addMessageRes.text();
+          if (addMessageRes.ok) {
+            console.log(`[update-google-pass] addMessage notified ${objectId}`);
           } else {
-            const errBody = await patchRes.text();
-            console.error(`[update-google-pass] Failed to update ${objectId}: ${patchRes.status} ${errBody.substring(0, 300)}`);
-            errors.push(`${objectId}: ${patchRes.status}`);
-            failed++;
+            console.error(`[update-google-pass] addMessage failed ${objectId}: ${addMessageRes.status} ${addMessageBody.substring(0, 300)}`);
           }
-        } else {
-          const errText = getBody;
-          console.error(`[update-google-pass] GET error for ${objectId}: ${getRes.status} ${errText.substring(0, 300)}`);
-          errors.push(`${objectId}: GET ${getRes.status}`);
-          failed++;
         }
       } catch (err: any) {
         console.error(`[update-google-pass] Error updating ${objectId}:`, err.message);
