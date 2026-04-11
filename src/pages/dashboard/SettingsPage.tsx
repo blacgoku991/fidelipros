@@ -1310,6 +1310,45 @@ const SettingsPage = () => {
           >
             {savingGoogle ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder</>}
           </Button>
+
+          {/* --- Envoi manuel notification Google Avis --- */}
+          {googleReviewEnabled && googlePlaceId && (
+            <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border/30 space-y-3">
+              <h3 className="font-semibold text-xs flex items-center gap-2">
+                <Send className="w-3.5 h-3.5 text-primary" />
+                Envoyer une notification Google Avis maintenant
+              </h3>
+              <p className="text-[10px] text-muted-foreground">
+                Envoyez manuellement la demande d'avis Google sur les Wallets de vos clients.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label className="text-xs">Envoyer à :</Label>
+                <select
+                  value={googleNotifSegment}
+                  onChange={(e) => setGoogleNotifSegment(e.target.value as any)}
+                  className="rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">Tous les clients</option>
+                  <option value="gold">Gold / VIP uniquement</option>
+                  <option value="silver">Silver uniquement</option>
+                  <option value="bronze">Bronze uniquement</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleSendGoogleReviewNotif}
+                disabled={sendingGoogleNotif}
+                size="sm"
+                variant="default"
+                className="rounded-xl gap-2"
+              >
+                {sendingGoogleNotif ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />Envoi en cours...</>
+                ) : (
+                  <><Send className="w-3.5 h-3.5" />Envoyer la notification</>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
         )}
 
