@@ -431,9 +431,28 @@ const SettingsPage = () => {
     else toast.success("Paramètres Google Avis sauvegardés !");
   };
 
+  // Load customers for manual selection
+  useEffect(() => {
+    if (googleNotifMode !== "clients" || !business) return;
+    setLoadingGoogleCustomers(true);
+    supabase
+      .from("customers")
+      .select("id, full_name, email, phone, level")
+      .eq("business_id", business.id)
+      .order("full_name")
+      .limit(500)
+      .then(({ data }) => {
+        setGoogleNotifCustomers(data || []);
+        setLoadingGoogleCustomers(false);
+      });
+  }, [googleNotifMode, business?.id]);
+
   const handleSendGoogleReviewNotif = async () => {
     if (!business) { toast.error("Commerce non chargé"); return; }
     if (!googlePlaceId) { toast.error("Veuillez d'abord renseigner votre Google Place ID"); return; }
+    if (googleNotifMode === "clients" && googleNotifSelectedIds.length === 0) {
+      toast.error("Sélectionnez au moins un client"); return;
+    }
     setSendingGoogleNotif(true);
     const reviewUrl = `https://search.google.com/local/writereview?placeid=${googlePlaceId}`;
     const messageWithLink = `${googleReviewMessage}\n\n⭐ Laisser un avis : ${reviewUrl}`;
@@ -441,6 +460,23 @@ const SettingsPage = () => {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { toast.error("Non authentifié"); setSendingGoogleNotif(false); return; }
+
+      // If sending to specific clients, resolve their card_ids
+      let cardIds: string[] | undefined;
+      if (googleNotifMode === "clients") {
+        const { data: cards } = await supabase
+          .from("customer_cards")
+          .select("id")
+          .eq("business_id", business.id)
+          .in("customer_id", googleNotifSelectedIds);
+        cardIds = cards?.map(c => c.id) || [];
+        if (cardIds.length === 0) {
+          toast.error("Aucune carte trouvée pour ces clients");
+          setSendingGoogleNotif(false);
+          return;
+        }
+      }
+
       const res = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
         method: "POST",
         headers: {
@@ -452,7 +488,9 @@ const SettingsPage = () => {
           message: messageWithLink,
           change_message: messageWithLink,
           google_review_url: reviewUrl,
-          segment: googleNotifSegment === "all" ? "all" : googleNotifSegment,
+          ...(googleNotifMode === "clients"
+            ? { card_ids: cardIds }
+            : { segment: googleNotifSegment === "all" ? "all" : googleNotifSegment }),
         }),
       });
       const result = await res.json();
