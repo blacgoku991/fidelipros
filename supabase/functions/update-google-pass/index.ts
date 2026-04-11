@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
     const body = await req.json();
-    const { business_id, card_ids, message } = body;
+    const { business_id, card_ids, message, google_review_url } = body;
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
