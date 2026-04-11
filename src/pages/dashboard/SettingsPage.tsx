@@ -455,7 +455,7 @@ const SettingsPage = () => {
     }
     setSendingGoogleNotif(true);
     const reviewUrl = `https://search.google.com/local/writereview?placeid=${googlePlaceId}`;
-    const cleanMessage = googleReviewMessage || "Votre avis compte ! Donnez-nous votre avis ⭐";
+    const cleanMessage = `${googleReviewMessage || "Votre avis compte ⭐"}\n👉 ${reviewUrl}`;
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
