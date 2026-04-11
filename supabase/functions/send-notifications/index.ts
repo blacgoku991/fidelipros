@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     let verifiedBusinessId: string | null = null;
 
     const body = await req.json();
-    const { business_id, message, change_message, segment, google_review_url } = body;
+    const { business_id, message, change_message, segment, google_review_url, card_ids: directCardIds } = body;
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
