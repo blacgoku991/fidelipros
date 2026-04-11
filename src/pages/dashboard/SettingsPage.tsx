@@ -1369,22 +1369,86 @@ const SettingsPage = () => {
               <p className="text-xs text-muted-foreground">
                 Envoyez manuellement la demande d'avis Google sur les Wallets (Apple + Google) de vos clients.
               </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <Label className="text-xs font-medium">Envoyer à :</Label>
-                <select
-                  value={googleNotifSegment}
-                  onChange={(e) => setGoogleNotifSegment(e.target.value as any)}
-                  className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+
+              {/* Mode toggle */}
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={googleNotifMode === "segment" ? "default" : "outline"}
+                  onClick={() => setGoogleNotifMode("segment")}
+                  className="rounded-xl text-xs h-8"
                 >
-                  <option value="all">Tous les clients</option>
-                  <option value="gold">Gold / VIP uniquement</option>
-                  <option value="silver">Silver uniquement</option>
-                  <option value="bronze">Bronze uniquement</option>
-                </select>
+                  Par segment
+                </Button>
+                <Button
+                  size="sm"
+                  variant={googleNotifMode === "clients" ? "default" : "outline"}
+                  onClick={() => setGoogleNotifMode("clients")}
+                  className="rounded-xl text-xs h-8"
+                >
+                  Par client
+                </Button>
               </div>
+
+              {googleNotifMode === "segment" && (
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Label className="text-xs font-medium">Envoyer à :</Label>
+                  <select
+                    value={googleNotifSegment}
+                    onChange={(e) => setGoogleNotifSegment(e.target.value as any)}
+                    className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="all">Tous les clients</option>
+                    <option value="gold">Gold / VIP uniquement</option>
+                    <option value="silver">Silver uniquement</option>
+                    <option value="bronze">Bronze uniquement</option>
+                  </select>
+                </div>
+              )}
+
+              {googleNotifMode === "clients" && (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="Rechercher un client..."
+                    value={googleNotifSearch}
+                    onChange={(e) => setGoogleNotifSearch(e.target.value)}
+                    className="text-sm h-9 rounded-xl"
+                  />
+                  <div className="max-h-48 overflow-y-auto border border-border/30 rounded-xl divide-y divide-border/20">
+                    {loadingGoogleCustomers ? (
+                      <div className="p-3 text-center text-xs text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin inline mr-1" />Chargement...</div>
+                    ) : googleNotifCustomers
+                        .filter(c => {
+                          if (!googleNotifSearch) return true;
+                          const s = googleNotifSearch.toLowerCase();
+                          return (c.full_name || "").toLowerCase().includes(s) || (c.email || "").toLowerCase().includes(s) || (c.phone || "").includes(s);
+                        })
+                        .map(c => (
+                          <label key={c.id} className="flex items-center gap-2 px-3 py-2 hover:bg-muted/50 cursor-pointer text-xs">
+                            <input
+                              type="checkbox"
+                              checked={googleNotifSelectedIds.includes(c.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) setGoogleNotifSelectedIds(prev => [...prev, c.id]);
+                                else setGoogleNotifSelectedIds(prev => prev.filter(id => id !== c.id));
+                              }}
+                              className="rounded"
+                            />
+                            <span className="font-medium">{c.full_name || "Sans nom"}</span>
+                            <Badge variant="outline" className="text-[10px] ml-auto">{c.level || "bronze"}</Badge>
+                          </label>
+                        ))
+                    }
+                  </div>
+                  {googleNotifSelectedIds.length > 0 && (
+                    <p className="text-[10px] text-muted-foreground">{googleNotifSelectedIds.length} client(s) sélectionné(s)</p>
+                  )}
+                </div>
+              )}
+
               <Button
                 onClick={handleSendGoogleReviewNotif}
-                disabled={sendingGoogleNotif || !googlePlaceId}
+                disabled={sendingGoogleNotif || !googlePlaceId || (googleNotifMode === "clients" && googleNotifSelectedIds.length === 0)}
                 size="sm"
                 variant="default"
                 className="rounded-xl gap-2"
