@@ -321,6 +321,12 @@ export async function buildPkpass(
         }] : []),
       ],
       backFields: [
+        ...(business.google_review_enabled && business.google_place_id ? [{
+          key: "google_review",
+          label: "⭐ Laisser un avis Google",
+          value: "Votre avis compte ! Cliquez ici pour nous laisser un avis.",
+          attributedValue: `<a href="https://search.google.com/local/writereview?placeid=${business.google_place_id}">Cliquez ici pour laisser un avis ⭐</a>`,
+        }] : []),
         {
           key: "reward_info",
           label: "🎁 Récompense",
