@@ -101,6 +101,8 @@ const SettingsPage = () => {
   const [googleReviewThreshold, setGoogleReviewThreshold] = useState(5);
   const [googleReviewMessage, setGoogleReviewMessage] = useState("Merci pour votre fidélité ! Votre avis Google nous aiderait beaucoup");
   const [savingGoogle, setSavingGoogle] = useState(false);
+  const [sendingGoogleNotif, setSendingGoogleNotif] = useState(false);
+  const [googleNotifSegment, setGoogleNotifSegment] = useState<"all" | "gold" | "silver" | "bronze">("all");
 
   // POS / Integrations
   const [posEnabled, setPosEnabled] = useState(false);
