@@ -74,9 +74,13 @@ Deno.serve(async (req) => {
       verifiedBusinessId = biz.id;
     }
 
-    // ── Resolve targeted card_ids if segment is specified ───────────────
+    // ── Resolve targeted card_ids ─────────────────────────────────────────
     let targetCardIds: string[] | undefined;
-    if (segment && segment !== "all") {
+
+    // Direct card_ids from client (e.g. per-client selection)
+    if (directCardIds && Array.isArray(directCardIds) && directCardIds.length > 0) {
+      targetCardIds = directCardIds;
+    } else if (segment && segment !== "all") {
       const VALID_SEGMENTS = ["bronze", "silver", "gold", "vip", "inactive"];
       const segments = segment.split(",").map((s: string) => s.trim()).filter((s: string) => VALID_SEGMENTS.includes(s));
       if (segments.length > 0) {
