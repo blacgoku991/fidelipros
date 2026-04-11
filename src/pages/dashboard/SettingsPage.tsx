@@ -430,6 +430,8 @@ const SettingsPage = () => {
     if (!business) { toast.error("Commerce non chargé"); return; }
     if (!googlePlaceId) { toast.error("Veuillez d'abord renseigner votre Google Place ID"); return; }
     setSendingGoogleNotif(true);
+    const reviewUrl = `https://search.google.com/local/writereview?placeid=${googlePlaceId}`;
+    const messageWithLink = `${googleReviewMessage}\n\n⭐ Laisser un avis : ${reviewUrl}`;
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const { data: { session } } = await supabase.auth.getSession();
@@ -442,8 +444,9 @@ const SettingsPage = () => {
         },
         body: JSON.stringify({
           business_id: business.id,
-          message: googleReviewMessage,
-          change_message: googleReviewMessage,
+          message: messageWithLink,
+          change_message: messageWithLink,
+          google_review_url: reviewUrl,
           segment: googleNotifSegment === "all" ? "all" : googleNotifSegment,
         }),
       });

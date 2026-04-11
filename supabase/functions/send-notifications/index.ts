@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     let verifiedBusinessId: string | null = null;
 
     const body = await req.json();
-    const { business_id, message, change_message, segment } = body;
+    const { business_id, message, change_message, segment, google_review_url } = body;
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
@@ -153,6 +153,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           business_id: verifiedBusinessId,
           message: change_message || message,
+          ...(google_review_url ? { google_review_url } : {}),
           ...(targetCardIds ? { card_ids: targetCardIds } : {}),
         }),
       });

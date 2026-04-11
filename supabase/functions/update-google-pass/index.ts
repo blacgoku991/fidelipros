@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
 
     const body = await req.json();
-    const { business_id, card_ids, message } = body;
+    const { business_id, card_ids, message, google_review_url } = body;
 
     if (!business_id) return json({ error: "business_id required" }, 400);
 
@@ -226,10 +226,21 @@ Deno.serve(async (req) => {
       if (message) {
         updateBody.messages = [{
           header: business.name,
-          body: message,
+          body: message.replace(/\n\n⭐ Laisser un avis :.*$/, "").trim(),
           id: `msg_${Date.now()}`,
           messageType: "TEXT",
         }];
+      }
+
+      // Add Google review link if provided
+      if (google_review_url) {
+        updateBody.linksModuleData = {
+          uris: [{
+            uri: google_review_url,
+            description: "⭐ Laisser un avis Google",
+            id: "google_review_link",
+          }],
+        };
       }
 
       try {
