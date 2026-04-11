@@ -413,7 +413,8 @@ async function handleGetLatestPass(
     .from("customer_cards")
     .update({
       wallet_last_fetched_at: new Date().toISOString(),
-      wallet_change_message: null, // Clear campaign message after iOS fetches the pass
+      // Keep wallet_change_message so wallet-push can detect duplicates
+      // and append a timestamp to force a different pass on next push
     })
     .eq("id", card.id);
 
