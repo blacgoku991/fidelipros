@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
 
     // ── Mise à jour Google Wallet passes ─────────────────────────────────
     let googleUpdated = 0;
+    let googleError: string | null = null;
     try {
       const gr = await fetch(`${sbUrl}/functions/v1/update-google-pass`, {
         method: "POST",
@@ -165,17 +166,22 @@ Deno.serve(async (req) => {
       try {
         const googleResult = JSON.parse(grText);
         googleUpdated = googleResult.updated || 0;
+        if (!googleResult.success && googleResult.error) {
+          googleError = googleResult.error;
+        }
         if (googleResult.skipped) {
           console.log("Google Wallet update skipped (not configured)");
         }
       } catch {
+        googleError = "Google Wallet update returned non-JSON response";
         console.error("Google Wallet update returned non-JSON:", grText.substring(0, 200));
       }
     } catch (e) {
+      googleError = String(e);
       console.error("Google Wallet update error:", e);
     }
 
-    return json({ wallet: walletSent, google: googleUpdated, webpush: 0, ...(walletError ? { wallet_error: walletError } : {}) });
+    return json({ wallet: walletSent, google: googleUpdated, webpush: 0, ...(walletError ? { wallet_error: walletError } : {}), ...(googleError ? { google_error: googleError } : {}) });
   } catch (err) {
     console.error("send-notifications error:", err);
     return json({ error: "Internal server error" }, 500);
