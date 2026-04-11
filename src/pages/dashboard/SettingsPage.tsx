@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook, Lock } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook, Lock, Send } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
@@ -101,6 +101,8 @@ const SettingsPage = () => {
   const [googleReviewThreshold, setGoogleReviewThreshold] = useState(5);
   const [googleReviewMessage, setGoogleReviewMessage] = useState("Merci pour votre fidélité ! Votre avis Google nous aiderait beaucoup");
   const [savingGoogle, setSavingGoogle] = useState(false);
+  const [sendingGoogleNotif, setSendingGoogleNotif] = useState(false);
+  const [googleNotifSegment, setGoogleNotifSegment] = useState<"all" | "gold" | "silver" | "bronze">("all");
 
   // POS / Integrations
   const [posEnabled, setPosEnabled] = useState(false);
@@ -422,6 +424,40 @@ const SettingsPage = () => {
     setSavingGoogle(false);
     if (error) toast.error("Erreur de sauvegarde");
     else toast.success("Paramètres Google Avis sauvegardés !");
+  };
+
+  const handleSendGoogleReviewNotif = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    if (!googlePlaceId) { toast.error("Veuillez d'abord renseigner votre Google Place ID"); return; }
+    setSendingGoogleNotif(true);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Non authentifié"); setSendingGoogleNotif(false); return; }
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          business_id: business.id,
+          message: googleReviewMessage,
+          change_message: googleReviewMessage,
+          segment: googleNotifSegment === "all" ? "all" : googleNotifSegment,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { toast.error(result.error || "Erreur d'envoi"); }
+      else {
+        const total = (result.wallet || 0) + (result.google || 0);
+        toast.success(`Notification Google Avis envoyée ! (${total} wallet${total > 1 ? "s" : ""} notifié${total > 1 ? "s" : ""})`);
+      }
+    } catch (e) {
+      toast.error("Erreur lors de l'envoi");
+      console.error(e);
+    }
+    setSendingGoogleNotif(false);
   };
 
   // --- POS / Integrations handler ---
@@ -1274,6 +1310,45 @@ const SettingsPage = () => {
           >
             {savingGoogle ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />Sauvegarde...</> : <><Check className="w-3.5 h-3.5 mr-2" />Sauvegarder</>}
           </Button>
+
+          {/* --- Envoi manuel notification Google Avis --- */}
+          {googleReviewEnabled && googlePlaceId && (
+            <div className="mt-4 p-4 rounded-xl bg-muted/40 border border-border/30 space-y-3">
+              <h3 className="font-semibold text-xs flex items-center gap-2">
+                <Send className="w-3.5 h-3.5 text-primary" />
+                Envoyer une notification Google Avis maintenant
+              </h3>
+              <p className="text-[10px] text-muted-foreground">
+                Envoyez manuellement la demande d'avis Google sur les Wallets de vos clients.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label className="text-xs">Envoyer à :</Label>
+                <select
+                  value={googleNotifSegment}
+                  onChange={(e) => setGoogleNotifSegment(e.target.value as any)}
+                  className="rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="all">Tous les clients</option>
+                  <option value="gold">Gold / VIP uniquement</option>
+                  <option value="silver">Silver uniquement</option>
+                  <option value="bronze">Bronze uniquement</option>
+                </select>
+              </div>
+              <Button
+                onClick={handleSendGoogleReviewNotif}
+                disabled={sendingGoogleNotif}
+                size="sm"
+                variant="default"
+                className="rounded-xl gap-2"
+              >
+                {sendingGoogleNotif ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />Envoi en cours...</>
+                ) : (
+                  <><Send className="w-3.5 h-3.5" />Envoyer la notification</>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
         )}
 
