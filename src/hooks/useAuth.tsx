@@ -119,13 +119,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const [rolesRes, bizRes] = await Promise.all([
-        supabase.from("user_roles").select("role").eq("user_id", user.id).limit(1),
+        supabase.from("user_roles").select("role").eq("user_id", user.id),
         supabase.from("businesses").select("*").eq("owner_id", user.id).maybeSingle(),
       ]);
 
       if (!active) return;
 
-      const userRole = rolesRes.data?.[0]?.role ?? null;
+      const userRoles = rolesRes.data?.map((item) => item.role) ?? [];
+      const userRole = userRoles.includes("super_admin")
+        ? "super_admin"
+        : userRoles[0] ?? null;
       setRole(userRole);
 
       let resolvedBusiness = bizRes.data ?? null;
