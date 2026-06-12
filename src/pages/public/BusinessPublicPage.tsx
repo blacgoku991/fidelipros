@@ -293,6 +293,28 @@ const BusinessPublicPage = () => {
   }
 
   const showBirthday = business.birthday_notif_enabled;
+  const isVtc = business.business_template === "vtc";
+
+  const useMyPosition = () => {
+    if (!("geolocation" in navigator)) {
+      toast.error("Géolocalisation non supportée");
+      return;
+    }
+    setGeocoding(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setHomeCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (!homeAddress) setHomeAddress(`📍 Position GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        toast.success("Position enregistrée");
+        setGeocoding(false);
+      },
+      () => {
+        toast.error("Impossible d'accéder à votre position");
+        setGeocoding(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   return (
     <div
