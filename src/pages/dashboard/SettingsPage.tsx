@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook, Lock, Send } from "lucide-react";
+import { Shield, Crown, MapPin, Radar, Bell, Clock, Navigation, CreditCard, Check, Loader2, Sparkles, Gift, PartyPopper, Zap, Store, QrCode, ExternalLink, Copy, Printer, Building2, Star, Plug, Plus, Trash2, ToggleLeft, RefreshCw, Key, Webhook, Lock, Send, Car } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import GeofenceMap from "@/components/dashboard/GeofenceMap";
 import { toast } from "sonner";
@@ -20,12 +20,13 @@ const planLabels: Record<string, string> = {
   pro: "Pro — 59€/mois",
 };
 
-type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "integrations" | "webhooks" | "abonnement" | "compte";
+type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "vtc" | "integrations" | "webhooks" | "abonnement" | "compte";
 
-const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
+const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType; vtcOnly?: boolean }[] = [
   { key: "vitrine",         label: "Vitrine",          Icon: Store },
   { key: "widget",          label: "Widget",           Icon: QrCode },
   { key: "geofencing",      label: "Proximité",        Icon: Radar },
+  { key: "vtc",             label: "Mode chauffeur",   Icon: Car, vtcOnly: true },
   { key: "automatisations", label: "Automatisations",  Icon: Zap },
   { key: "etablissements",  label: "Établissements",   Icon: Building2 },
   { key: "google-avis",     label: "Google Avis",      Icon: Star },
@@ -86,6 +87,13 @@ const SettingsPage = () => {
   const [savingGeo, setSavingGeo] = useState(false);
   const [satellitePoints, setSatellitePoints] = useState<{ lat: number; lng: number }[]>([]);
   const [geoCooldownHours, setGeoCooldownHours] = useState(24);
+
+  // VTC / driver mode
+  const [vtcRadiusKm, setVtcRadiusKm] = useState<number>(2);
+  const [vtcCooldownHours, setVtcCooldownHours] = useState<number>(6);
+  const [vtcMessage, setVtcMessage] = useState<string>("Votre chauffeur préféré est dans les parages ! -10% sur votre prochaine course 🚗");
+  const [vtcDiscount, setVtcDiscount] = useState<number>(10);
+  const [savingVtc, setSavingVtc] = useState(false);
 
   // Multi-locations
   const [locations, setLocations] = useState<any[]>([]);
@@ -217,6 +225,12 @@ const SettingsPage = () => {
       setGeoTimeEnd(business.geofence_time_end || "20:00");
       setSatellitePoints(Array.isArray(business.geofence_satellite_points) ? (business.geofence_satellite_points as { lat: number; lng: number }[]) : []);
       setGeoCooldownHours((business as any).geofence_cooldown_hours ?? 24);
+
+      // VTC mode
+      setVtcRadiusKm(Number((business as any).driver_proximity_radius_km ?? 2));
+      setVtcCooldownHours(Number((business as any).driver_proximity_cooldown_hours ?? 6));
+      setVtcMessage((business as any).driver_proximity_message ?? "Votre chauffeur préféré est dans les parages ! -10% sur votre prochaine course 🚗");
+      setVtcDiscount(Number((business as any).driver_discount_percent ?? 10));
     }
   }, [business]);
 
@@ -367,6 +381,21 @@ const SettingsPage = () => {
     }
     setSavingGeo(false);
   };
+
+  const handleSaveVtc = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    setSavingVtc(true);
+    const { error } = await supabase.from("businesses").update({
+      driver_proximity_radius_km: vtcRadiusKm,
+      driver_proximity_cooldown_hours: vtcCooldownHours,
+      driver_proximity_message: vtcMessage,
+      driver_discount_percent: vtcDiscount,
+    } as any).eq("id", business.id);
+    if (error) toast.error("Erreur de sauvegarde");
+    else { toast.success("Paramètres chauffeur sauvegardés ✅"); await refreshBusiness(); }
+    setSavingVtc(false);
+  };
+
 
   const handleSaveAutomation = async () => {
     if (!business) { toast.error("Commerce non chargé"); return; }
@@ -561,7 +590,9 @@ const SettingsPage = () => {
   const ADMIN_ONLY_SECTIONS: SectionKey[] = ["integrations", "webhooks"];
   const FRANCHISE_ONLY_SECTIONS: SectionKey[] = ["etablissements"];
   const isFranchise = business?.is_franchise === true;
-  const visibleSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
+  const isVtc = (business as any)?.business_template === "vtc";
+  const baseSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
+  const visibleSections = baseSections.filter(s => !s.vtcOnly || isVtc);
 
   return (
     <DashboardLayout title="Paramètres" subtitle="Gérez votre compte, géolocalisation et abonnement">
@@ -1075,7 +1106,84 @@ const SettingsPage = () => {
         </div>
         )}
 
-        {/* Automatisations & Engagement */}
+        {/* VTC / Mode chauffeur */}
+        {activeSection === "vtc" && (
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Car className="w-4 h-4 text-primary" /> Mode chauffeur — Notifs de proximité
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Quand tu es en course et que tu passes près de l'adresse d'un client, il reçoit une push automatique sur son wallet.
+            La page <a className="underline" href="/dashboard/driver">Mode chauffeur</a> sert à activer ton statut « en ligne ».
+          </p>
+
+          {/* Rayon */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Rayon de détection : <strong>{vtcRadiusKm} km</strong></Label>
+            <input
+              type="range" min={0.5} max={10} step={0.5}
+              value={vtcRadiusKm}
+              onChange={(e) => setVtcRadiusKm(parseFloat(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <p className="text-[10px] text-muted-foreground">Distance autour du domicile / position du client.</p>
+          </div>
+
+          {/* Cooldown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cooldown entre 2 notifs pour le même client</Label>
+            <select
+              value={vtcCooldownHours}
+              onChange={(e) => setVtcCooldownHours(parseInt(e.target.value))}
+              className="w-full h-10 rounded-xl border border-border/50 bg-background px-3 text-sm"
+            >
+              <option value={1}>1 heure</option>
+              <option value={3}>3 heures</option>
+              <option value={6}>6 heures</option>
+              <option value={12}>12 heures</option>
+              <option value={24}>1 jour</option>
+              <option value={48}>2 jours</option>
+              <option value={72}>3 jours</option>
+              <option value={168}>1 semaine</option>
+            </select>
+          </div>
+
+          {/* Réduction */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Pourcentage de réduction proposé : <strong>-{vtcDiscount}%</strong></Label>
+            <input
+              type="range" min={5} max={50} step={5}
+              value={vtcDiscount}
+              onChange={(e) => setVtcDiscount(parseInt(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          {/* Message */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Message envoyé au client</Label>
+            <textarea
+              value={vtcMessage}
+              onChange={(e) => setVtcMessage(e.target.value)}
+              rows={3}
+              maxLength={180}
+              className="w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">{vtcMessage.length}/180 caractères</p>
+          </div>
+
+          <Button
+            onClick={handleSaveVtc}
+            disabled={savingVtc}
+            size="sm"
+            className="rounded-xl bg-gradient-primary text-primary-foreground"
+          >
+            {savingVtc ? "Sauvegarde…" : "Sauvegarder"}
+          </Button>
+        </div>
+        )}
+
+
         {activeSection === "automatisations" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">

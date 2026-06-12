@@ -40,6 +40,9 @@ const BusinessPublicPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [homeAddress, setHomeAddress] = useState("");
+  const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -226,6 +229,9 @@ const BusinessPublicPage = () => {
         p_phone: phone.trim() || null,
         p_birthday: birthday || null,
         p_source: "vitrine",
+        p_home_address: homeAddress.trim() || null,
+        p_home_lat: homeCoords?.lat ?? null,
+        p_home_lng: homeCoords?.lng ?? null,
       } as any);
 
       if (rpcErr || !created || (created as any[]).length === 0) {
@@ -287,6 +293,28 @@ const BusinessPublicPage = () => {
   }
 
   const showBirthday = business.birthday_notif_enabled;
+  const isVtc = business.business_template === "vtc";
+
+  const useMyPosition = () => {
+    if (!("geolocation" in navigator)) {
+      toast.error("Géolocalisation non supportée");
+      return;
+    }
+    setGeocoding(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setHomeCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        if (!homeAddress) setHomeAddress(`📍 Position GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        toast.success("Position enregistrée");
+        setGeocoding(false);
+      },
+      () => {
+        toast.error("Impossible d'accéder à votre position");
+        setGeocoding(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   return (
     <div
@@ -444,6 +472,36 @@ const BusinessPublicPage = () => {
                   {!errors.birthday && <p className="text-[10px] text-muted-foreground">Pour recevoir un cadeau le jour J !</p>}
                 </div>
               )}
+
+              {/* VTC: adresse domicile pour notifs de proximité */}
+              {isVtc && (
+                <div className="space-y-1.5 rounded-xl border border-dashed border-primary/40 p-3 bg-primary/5">
+                  <Label className="flex items-center gap-1.5">
+                    🚗 Votre adresse / zone habituelle
+                  </Label>
+                  <Input
+                    value={homeAddress}
+                    onChange={(e) => setHomeAddress(e.target.value)}
+                    placeholder="Ex : 12 rue Victor Hugo, Asnières-sur-Seine"
+                    className="rounded-xl h-11"
+                    autoComplete="street-address"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={useMyPosition}
+                    disabled={geocoding}
+                    className="w-full text-xs"
+                  >
+                    {geocoding ? "Localisation…" : homeCoords ? "✓ Position enregistrée" : "📍 Utiliser ma position actuelle"}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground">
+                    Votre chauffeur vous enverra une notif quand il roule près de chez vous.
+                  </p>
+                </div>
+              )}
+
 
               <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
                 En créant votre carte, vous acceptez que vos données soient traitées par {business.name} via FidéliPro pour la gestion de votre programme de fidélité.{" "}
