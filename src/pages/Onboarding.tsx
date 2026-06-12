@@ -39,14 +39,13 @@ const Onboarding = () => {
 
     if (business) {
       const name = business.name;
-      const status = business.subscription_status;
+      const pending = (business as any).requires_admin_activation === true;
       if (!name || name === "Mon Commerce") {
         navigate("/onboarding-business", { replace: true });
-      } else if (status === "active" || status === "trialing") {
-        navigate("/dashboard", { replace: true });
+      } else if (pending) {
+        navigate("/pending-activation", { replace: true });
       } else {
-        // inactive, past_due, canceled, null, or any unexpected status → must pay
-        navigate("/dashboard/checkout", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
       return;
     }
@@ -111,8 +110,8 @@ const Onboarding = () => {
       email: user.email,
     });
 
-    toast.success("Commerce créé ! Finalisons votre abonnement…");
-    navigate("/dashboard/checkout");
+    toast.success("Commerce créé ! En attente d'activation par notre équipe.");
+    navigate("/pending-activation");
   };
 
   if (loading || authLoading) {
