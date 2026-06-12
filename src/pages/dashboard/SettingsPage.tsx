@@ -88,6 +88,13 @@ const SettingsPage = () => {
   const [satellitePoints, setSatellitePoints] = useState<{ lat: number; lng: number }[]>([]);
   const [geoCooldownHours, setGeoCooldownHours] = useState(24);
 
+  // VTC / driver mode
+  const [vtcRadiusKm, setVtcRadiusKm] = useState<number>(2);
+  const [vtcCooldownHours, setVtcCooldownHours] = useState<number>(6);
+  const [vtcMessage, setVtcMessage] = useState<string>("Votre chauffeur préféré est dans les parages ! -10% sur votre prochaine course 🚗");
+  const [vtcDiscount, setVtcDiscount] = useState<number>(10);
+  const [savingVtc, setSavingVtc] = useState(false);
+
   // Multi-locations
   const [locations, setLocations] = useState<any[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
