@@ -382,6 +382,21 @@ const SettingsPage = () => {
     setSavingGeo(false);
   };
 
+  const handleSaveVtc = async () => {
+    if (!business) { toast.error("Commerce non chargé"); return; }
+    setSavingVtc(true);
+    const { error } = await supabase.from("businesses").update({
+      driver_proximity_radius_km: vtcRadiusKm,
+      driver_proximity_cooldown_hours: vtcCooldownHours,
+      driver_proximity_message: vtcMessage,
+      driver_discount_percent: vtcDiscount,
+    } as any).eq("id", business.id);
+    if (error) toast.error("Erreur de sauvegarde");
+    else { toast.success("Paramètres chauffeur sauvegardés ✅"); await refreshBusiness(); }
+    setSavingVtc(false);
+  };
+
+
   const handleSaveAutomation = async () => {
     if (!business) { toast.error("Commerce non chargé"); return; }
     setSavingAuto(true);
