@@ -21,9 +21,8 @@ export const isRunningNative = isNative;
 
 export async function startDriverTracking(onPosition: PositionCallback): Promise<void> {
   if (isNative()) {
-    const { BackgroundGeolocation } = await import(
-      "@capacitor-community/background-geolocation"
-    );
+    const mod: any = await import("@capacitor-community/background-geolocation");
+    const BackgroundGeolocation = mod.BackgroundGeolocation ?? mod.default;
     nativeWatcherId = await BackgroundGeolocation.addWatcher(
       {
         backgroundMessage:
@@ -58,9 +57,8 @@ export async function startDriverTracking(onPosition: PositionCallback): Promise
 
 export async function stopDriverTracking(): Promise<void> {
   if (isNative() && nativeWatcherId) {
-    const { BackgroundGeolocation } = await import(
-      "@capacitor-community/background-geolocation"
-    );
+    const mod: any = await import("@capacitor-community/background-geolocation");
+    const BackgroundGeolocation = mod.BackgroundGeolocation ?? mod.default;
     await BackgroundGeolocation.removeWatcher({ id: nativeWatcherId });
     nativeWatcherId = null;
     return;

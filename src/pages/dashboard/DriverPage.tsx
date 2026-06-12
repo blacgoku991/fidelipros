@@ -79,42 +79,38 @@ export default function DriverPage() {
     }
   };
 
-  // Geolocation watcher
-  const startTracking = () => {
-    if (!("geolocation" in navigator)) {
-      toast.error("Géolocalisation non supportée sur cet appareil");
-      return;
-    }
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setLastPos({ lat: latitude, lng: longitude, at: new Date() });
-        // Throttle: 1 broadcast every 60s minimum
+  // Geolocation watcher — uses native background plugin when in Capacitor app,
+  // falls back to navigator.geolocation in browser (foreground only).
+  const startTracking = async () => {
+    try {
+      const { startDriverTracking } = await import("@/lib/nativeDriverTracking");
+      await startDriverTracking(({ lat, lng }) => {
+        setLastPos({ lat, lng, at: new Date() });
         const now = Date.now();
         if (now - lastTickRef.current > 60_000) {
           lastTickRef.current = now;
-          broadcast(latitude, longitude);
+          broadcast(lat, lng);
         }
-      },
-      (err) => {
-        console.error("[geo]", err);
-        toast.error("Impossible d'accéder à votre position GPS");
-        setOnline(false);
-      },
-      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 60_000 }
-    );
-    watchIdRef.current = watchId;
+      });
+    } catch (e: any) {
+      console.error("[geo] start failed", e);
+      toast.error("Impossible d'accéder à votre position GPS");
+      setOnline(false);
+      return;
+    }
 
-    // Safety: also tick every 90s using cached position to ensure broadcast continues
+    // Safety tick every 90s using cached position
     tickTimerRef.current = window.setInterval(() => {
       if (lastPos) broadcast(lastPos.lat, lastPos.lng);
     }, 90_000);
   };
 
   const stopTracking = async () => {
-    if (watchIdRef.current != null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
+    try {
+      const { stopDriverTracking } = await import("@/lib/nativeDriverTracking");
+      await stopDriverTracking();
+    } catch (e) {
+      console.error("[geo] stop failed", e);
     }
     if (tickTimerRef.current != null) {
       clearInterval(tickTimerRef.current);
