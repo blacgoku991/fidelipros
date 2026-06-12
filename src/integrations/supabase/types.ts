@@ -667,6 +667,7 @@ export type Database = {
           demo_started: boolean
           id: string
           pass_installed: boolean
+          session_token: string
           slug: string
           step1_at: string | null
           step2_at: string | null
@@ -685,6 +686,7 @@ export type Database = {
           demo_started?: boolean
           id?: string
           pass_installed?: boolean
+          session_token?: string
           slug: string
           step1_at?: string | null
           step2_at?: string | null
@@ -703,6 +705,7 @@ export type Database = {
           demo_started?: boolean
           id?: string
           pass_installed?: boolean
+          session_token?: string
           slug?: string
           step1_at?: string | null
           step2_at?: string | null
@@ -2046,6 +2049,21 @@ export type Database = {
           wallet_pass_installed: boolean
         }[]
       }
+      lookup_customer_for_registration: {
+        Args: { p_business_id: string; p_email?: string; p_phone?: string }
+        Returns: {
+          birthday: string
+          card_code: string
+          card_id: string
+          current_points: number
+          customer_id: string
+          email: string
+          full_name: string
+          max_points: number
+          phone: string
+          rewards_earned: number
+        }[]
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -2063,6 +2081,23 @@ export type Database = {
           read_ct: number
         }[]
       }
+      register_customer_and_card: {
+        Args: {
+          p_birthday?: string
+          p_business_id: string
+          p_email?: string
+          p_full_name: string
+          p_phone?: string
+          p_source?: string
+        }
+        Returns: {
+          card_code: string
+          card_id: string
+          current_points: number
+          customer_id: string
+          max_points: number
+        }[]
+      }
       update_card_wallet_status: {
         Args: {
           p_card_code: string
@@ -2070,6 +2105,22 @@ export type Database = {
           p_wallet_installed_at?: string
           p_wallet_last_fetched_at?: string
           p_wallet_pass_installed?: boolean
+        }
+        Returns: boolean
+      }
+      update_demo_session: {
+        Args: {
+          p_clicked_pricing?: boolean
+          p_clicked_signup?: boolean
+          p_cta_shown_at?: string
+          p_current_step?: number
+          p_demo_started?: boolean
+          p_id: string
+          p_pass_installed?: boolean
+          p_step1_at?: string
+          p_step2_at?: string
+          p_step3_at?: string
+          p_token: string
         }
         Returns: boolean
       }
