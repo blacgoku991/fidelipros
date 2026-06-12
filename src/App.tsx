@@ -106,6 +106,7 @@ const App = () => (
                 <Route path="/dashboard/locations" element={<PlanGate feature="multi_locations" title="Établissements" subtitle="Gérez vos points de vente"><LocationsPage /></PlanGate>} />
                 <Route path="/dashboard/locations/compare" element={<PlanGate feature="multi_locations" title="Comparaison" subtitle="Comparez vos établissements"><LocationsComparePage /></PlanGate>} />
                 <Route path="/dashboard/managers" element={<PlanGate feature="multi_locations" title="Managers" subtitle="Gérez les managers de vos établissements"><ManagersPage /></PlanGate>} />
+                <Route path="/dashboard/driver" element={<DriverPage />} />
                 <Route path="/payment" element={<CheckoutPage />} />
                 {/* Redirects for removed pages */}
                 <Route path="/dashboard/cards" element={<Navigate to="/dashboard/clients" replace />} />
