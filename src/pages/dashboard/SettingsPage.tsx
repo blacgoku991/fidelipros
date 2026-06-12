@@ -1106,7 +1106,84 @@ const SettingsPage = () => {
         </div>
         )}
 
-        {/* Automatisations & Engagement */}
+        {/* VTC / Mode chauffeur */}
+        {activeSection === "vtc" && (
+        <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
+          <h2 className="font-display font-semibold text-sm flex items-center gap-2">
+            <Car className="w-4 h-4 text-primary" /> Mode chauffeur — Notifs de proximité
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Quand tu es en course et que tu passes près de l'adresse d'un client, il reçoit une push automatique sur son wallet.
+            La page <a className="underline" href="/dashboard/driver">Mode chauffeur</a> sert à activer ton statut « en ligne ».
+          </p>
+
+          {/* Rayon */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Rayon de détection : <strong>{vtcRadiusKm} km</strong></Label>
+            <input
+              type="range" min={0.5} max={10} step={0.5}
+              value={vtcRadiusKm}
+              onChange={(e) => setVtcRadiusKm(parseFloat(e.target.value))}
+              className="w-full accent-primary"
+            />
+            <p className="text-[10px] text-muted-foreground">Distance autour du domicile / position du client.</p>
+          </div>
+
+          {/* Cooldown */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Cooldown entre 2 notifs pour le même client</Label>
+            <select
+              value={vtcCooldownHours}
+              onChange={(e) => setVtcCooldownHours(parseInt(e.target.value))}
+              className="w-full h-10 rounded-xl border border-border/50 bg-background px-3 text-sm"
+            >
+              <option value={1}>1 heure</option>
+              <option value={3}>3 heures</option>
+              <option value={6}>6 heures</option>
+              <option value={12}>12 heures</option>
+              <option value={24}>1 jour</option>
+              <option value={48}>2 jours</option>
+              <option value={72}>3 jours</option>
+              <option value={168}>1 semaine</option>
+            </select>
+          </div>
+
+          {/* Réduction */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Pourcentage de réduction proposé : <strong>-{vtcDiscount}%</strong></Label>
+            <input
+              type="range" min={5} max={50} step={5}
+              value={vtcDiscount}
+              onChange={(e) => setVtcDiscount(parseInt(e.target.value))}
+              className="w-full accent-primary"
+            />
+          </div>
+
+          {/* Message */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Message envoyé au client</Label>
+            <textarea
+              value={vtcMessage}
+              onChange={(e) => setVtcMessage(e.target.value)}
+              rows={3}
+              maxLength={180}
+              className="w-full rounded-xl border border-border/50 bg-background px-3 py-2 text-sm"
+            />
+            <p className="text-[10px] text-muted-foreground">{vtcMessage.length}/180 caractères</p>
+          </div>
+
+          <Button
+            onClick={handleSaveVtc}
+            disabled={savingVtc}
+            size="sm"
+            className="rounded-xl bg-gradient-primary text-primary-foreground"
+          >
+            {savingVtc ? "Sauvegarde…" : "Sauvegarder"}
+          </Button>
+        </div>
+        )}
+
+
         {activeSection === "automatisations" && (
         <div className="p-5 rounded-2xl bg-card border border-border/50 space-y-5">
           <h2 className="font-display font-semibold text-sm flex items-center gap-2">
