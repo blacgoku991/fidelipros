@@ -20,7 +20,7 @@ const planLabels: Record<string, string> = {
   pro: "Pro — 59€/mois",
 };
 
-type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "integrations" | "webhooks" | "abonnement" | "compte";
+type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "vtc" | "integrations" | "webhooks" | "abonnement" | "compte";
 
 const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
   { key: "vitrine",         label: "Vitrine",          Icon: Store },
