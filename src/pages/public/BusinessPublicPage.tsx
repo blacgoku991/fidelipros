@@ -184,94 +184,72 @@ const BusinessPublicPage = () => {
     setSubmitting(true);
 
     try {
-      // Check if customer already exists
-      let existingCustomer: any = null;
-      if (email.trim()) {
-        const { data } = await supabase
-          .from("customers")
-          .select("*, customer_cards(*)")
-          .eq("business_id", business.id)
-          .eq("email", email.trim());
-        if (data && data.length > 0) existingCustomer = data[0];
-      }
-      if (!existingCustomer && phone.trim()) {
-        const { data } = await supabase
-          .from("customers")
-          .select("*, customer_cards(*)")
-          .eq("business_id", business.id)
-          .eq("phone", phone.trim());
-        if (data && data.length > 0) existingCustomer = data[0];
-      }
+      // Check if customer already exists via secure RPC
+      const { data: existingRows } = await supabase.rpc("lookup_customer_for_registration", {
+        p_business_id: business.id,
+        p_email: email.trim() || null,
+        p_phone: phone.trim() || null,
+      } as any);
+      const existing = (existingRows as any[])?.[0];
 
-      if (existingCustomer) {
+      if (existing && existing.customer_id) {
+        const existingCustomer = {
+          id: existing.customer_id,
+          full_name: existing.full_name,
+          email: existing.email,
+          phone: existing.phone,
+          birthday: existing.birthday,
+        };
         setCustomer(existingCustomer);
-        const existingCard = existingCustomer.customer_cards?.[0];
-        if (existingCard) setCard(existingCard);
+        if (existing.card_id) {
+          setCard({
+            id: existing.card_id,
+            card_code: existing.card_code,
+            current_points: existing.current_points,
+            max_points: existing.max_points,
+            rewards_earned: existing.rewards_earned,
+            business_id: business.id,
+            customer_id: existing.customer_id,
+          });
+        }
         setStep("card");
         setSubmitting(false);
         toast.success("Bon retour parmi nous ! 🎉");
         return;
       }
 
-      // Check client limit based on plan
-      const { PLAN_LIMITS } = await import("@/lib/stripePlans");
-      const planKey = (business as any).subscription_plan || "starter";
-      const maxClients = PLAN_LIMITS[planKey]?.max_clients ?? 50;
-      if (maxClients !== Infinity) {
-        const { count } = await supabase
-          .from("customers")
-          .select("id", { count: "exact", head: true })
-          .eq("business_id", business.id);
-        if ((count ?? 0) >= maxClients) {
-          toast.error("Ce commerce a atteint sa limite de clients. Contactez le commerçant.");
-          setSubmitting(false);
-          return;
-        }
-      }
+      // Register via secure RPC
+      const { data: created, error: rpcErr } = await supabase.rpc("register_customer_and_card", {
+        p_business_id: business.id,
+        p_full_name: name.trim(),
+        p_email: email.trim() || null,
+        p_phone: phone.trim() || null,
+        p_birthday: birthday || null,
+        p_source: "vitrine",
+      } as any);
 
-      const customerId = crypto.randomUUID();
-
-      const { error: custErr } = await supabase
-        .from("customers")
-        .insert({
-          id: customerId,
-          business_id: business.id,
-          full_name: name.trim(),
-          email: email.trim() || null,
-          phone: phone.trim() || null,
-          birthday: birthday || null,
-        } as any);
-
-      if (custErr) {
+      if (rpcErr || !created || (created as any[]).length === 0) {
         toast.error("Erreur lors de l'inscription. Réessayez.");
         setSubmitting(false);
         return;
       }
 
+      const row: any = (created as any[])[0];
       const newCustomer = {
-        id: customerId,
+        id: row.customer_id,
         full_name: name.trim(),
         email: email.trim() || null,
         phone: phone.trim() || null,
         birthday: birthday || null,
       };
-
-      const { data: newCards, error: cardErr } = await supabase
-        .from("customer_cards")
-        .insert({
-          customer_id: customerId,
-          business_id: business.id,
-          max_points: business.max_points_per_card || 10,
-        } as any)
-        .select();
-
-      if (cardErr) {
-        toast.error("Erreur lors de la création de la carte. Réessayez.");
-        setSubmitting(false);
-        return;
-      }
-
-      const newCard = newCards?.[0];
+      const newCard = {
+        id: row.card_id,
+        card_code: row.card_code,
+        current_points: row.current_points,
+        max_points: row.max_points,
+        business_id: business.id,
+        customer_id: row.customer_id,
+      };
 
       setCustomer(newCustomer);
       setCard(newCard);

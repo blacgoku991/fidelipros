@@ -30,6 +30,7 @@ export default function DemoPage() {
   // Flow state
   const [phase, setPhase] = useState<DemoPhase>("add_pass");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [sentUpdates, setSentUpdates] = useState<SentUpdate[]>([]);
   const [sendingStep, setSendingStep] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
@@ -69,6 +70,7 @@ export default function DemoPage() {
 
       if (existing && !existing.converted) {
         setSessionId(existing.id);
+        setSessionToken((existing as any).session_token ?? null);
         if (existing.pass_installed) {
           if (existing.current_step >= 3) {
             setPhase("cta");
@@ -86,9 +88,12 @@ export default function DemoPage() {
         const { data: newSession } = await supabase
           .from("demo_sessions")
           .insert({ business_id: biz.id, card_id: card?.id || null, slug })
-          .select("id")
+          .select("id, session_token")
           .single();
-        if (newSession) setSessionId(newSession.id);
+        if (newSession) {
+          setSessionId(newSession.id);
+          setSessionToken((newSession as any).session_token ?? null);
+        }
       }
 
       setLoading(false);
@@ -100,8 +105,8 @@ export default function DemoPage() {
     if (!card?.card_code) return;
     setWalletLoading(true);
     // Mark pass as installed before redirect
-    if (sessionId) {
-      supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
     }
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     window.location.href = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(card.card_code)}`;
@@ -116,8 +121,8 @@ export default function DemoPage() {
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-google-pass?card_code=${encodeURIComponent(card.card_code)}`);
       const data = await res.json();
       if (data.saveUrl) {
-        if (sessionId) {
-          await supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+        if (sessionId && sessionToken) {
+          await supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
         }
         window.open(data.saveUrl, "_blank");
         setPhase("send_updates");
@@ -136,8 +141,8 @@ export default function DemoPage() {
 
   // ── Mark installed and go to step 2 (for returning from Wallet add) ──
   const handlePassAdded = async () => {
-    if (sessionId) {
-      await supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      await supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
     }
     setPhase("send_updates");
   };
@@ -180,11 +185,13 @@ export default function DemoPage() {
   }, [sessionId, sendingStep]);
 
   const trackClick = async (type: "signup" | "pricing") => {
-    if (sessionId) {
-      const update: Record<string, any> = { updated_at: new Date().toISOString() };
-      if (type === "signup") update.clicked_signup = true;
-      if (type === "pricing") update.clicked_pricing = true;
-      await supabase.from("demo_sessions").update(update).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      await supabase.rpc("update_demo_session", {
+        p_id: sessionId,
+        p_token: sessionToken,
+        p_clicked_signup: type === "signup" ? true : null,
+        p_clicked_pricing: type === "pricing" ? true : null,
+      } as any);
     }
   };
 

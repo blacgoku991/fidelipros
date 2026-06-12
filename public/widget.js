@@ -177,43 +177,39 @@
       "Content-Type": "application/json",
     };
 
-    // Check existing
-    fetch(SUPABASE_URL + "/rest/v1/customers?business_id=eq." + business.id + "&email=eq." + encodeURIComponent(emailVal) + "&select=id,full_name,customer_cards(card_code)", {
+    // Lookup existing customer via secure RPC
+    fetch(SUPABASE_URL + "/rest/v1/rpc/lookup_customer_for_registration", {
+      method: "POST",
       headers: headers,
+      body: JSON.stringify({
+        p_business_id: business.id,
+        p_email: emailVal || null,
+        p_phone: phoneVal || null,
+      }),
     }).then(function (r) { return r.json(); }).then(function (existing) {
-      if (existing && existing.length > 0) {
-        var cardCode = existing[0].customer_cards && existing[0].customer_cards[0] ? existing[0].customer_cards[0].card_code : null;
-        showSuccess(modal, business, cardCode, accentColor, secondaryColor, true);
+      if (existing && existing.length > 0 && existing[0].customer_id) {
+        showSuccess(modal, business, existing[0].card_code, accentColor, secondaryColor, true);
         return;
       }
 
-      var customerId = crypto.randomUUID();
-      // Create customer
-      fetch(SUPABASE_URL + "/rest/v1/customers", {
+      // Register via secure RPC (creates customer + card atomically)
+      fetch(SUPABASE_URL + "/rest/v1/rpc/register_customer_and_card", {
         method: "POST",
-        headers: Object.assign({}, headers, { "Prefer": "return=minimal" }),
+        headers: headers,
         body: JSON.stringify({
-          id: customerId,
-          business_id: business.id,
-          full_name: nameVal,
-          email: emailVal,
-          phone: phoneVal || null,
-          registration_source: "widget",
+          p_business_id: business.id,
+          p_full_name: nameVal,
+          p_email: emailVal || null,
+          p_phone: phoneVal || null,
+          p_source: "widget",
         }),
       }).then(function (r) {
-        if (!r.ok) throw new Error("Customer creation failed");
-        // Create card
-        return fetch(SUPABASE_URL + "/rest/v1/customer_cards", {
-          method: "POST",
-          headers: Object.assign({}, headers, { "Prefer": "return=representation" }),
-          body: JSON.stringify({
-            customer_id: customerId,
-            business_id: business.id,
-            max_points: business.max_points_per_card || 10,
-          }),
-        });
-      }).then(function (r) { return r.json(); }).then(function (cards) {
-        var cardCode = cards && cards[0] ? cards[0].card_code : null;
+        if (!r.ok) throw new Error("Registration failed");
+        return r.json();
+      }).then(function (rows) {
+        var row = rows && rows[0] ? rows[0] : null;
+        var cardCode = row ? row.card_code : null;
+        var customerId = row ? row.customer_id : null;
         showSuccess(modal, business, cardCode, accentColor, secondaryColor, false);
 
         // Dispatch webhook
