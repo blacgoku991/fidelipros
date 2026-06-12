@@ -40,6 +40,9 @@ const BusinessPublicPage = () => {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [birthday, setBirthday] = useState("");
+  const [homeAddress, setHomeAddress] = useState("");
+  const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
