@@ -70,6 +70,7 @@ export default function DemoPage() {
 
       if (existing && !existing.converted) {
         setSessionId(existing.id);
+        setSessionToken((existing as any).session_token ?? null);
         if (existing.pass_installed) {
           if (existing.current_step >= 3) {
             setPhase("cta");
@@ -87,9 +88,12 @@ export default function DemoPage() {
         const { data: newSession } = await supabase
           .from("demo_sessions")
           .insert({ business_id: biz.id, card_id: card?.id || null, slug })
-          .select("id")
+          .select("id, session_token")
           .single();
-        if (newSession) setSessionId(newSession.id);
+        if (newSession) {
+          setSessionId(newSession.id);
+          setSessionToken((newSession as any).session_token ?? null);
+        }
       }
 
       setLoading(false);
