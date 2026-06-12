@@ -2024,6 +2024,7 @@ export type Database = {
         Returns: {
           accent_color: string
           address: string
+          business_template: string
           card_animation_intensity: string
           card_bg_image_url: string
           card_bg_type: string
@@ -2067,6 +2068,7 @@ export type Database = {
           accent_color: string
           address: string
           birthday_notif_enabled: boolean
+          business_template: string
           card_animation_intensity: string
           card_bg_image_url: string
           card_bg_type: string
