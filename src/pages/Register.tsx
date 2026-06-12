@@ -203,7 +203,7 @@ const Register = () => {
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl font-display font-bold mb-1">Créer votre compte</h1>
-            <p className="text-sm text-muted-foreground mb-6">Choisissez votre pack après inscription, puis payez pour l’activer</p>
+            <p className="text-sm text-muted-foreground mb-6">Inscription rapide, activation par notre équipe en moins de 24h &mdash; ancien: l’activer</p>
 
             <Button
               type="button"

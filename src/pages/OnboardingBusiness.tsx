@@ -118,7 +118,7 @@ const OnboardingBusiness = () => {
           <div className="mt-8 p-4 rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10">
             <p className="text-sm text-primary-foreground/80 font-medium mb-2">✓ Compte Google connecté</p>
             <p className="text-xs text-primary-foreground/50">
-              Après cette étape, vous serez redirigé vers le paiement.
+              Après cette étape, votre compte sera en attente d'activation par notre équipe.
             </p>
           </div>
         </div>
@@ -194,7 +194,7 @@ const OnboardingBusiness = () => {
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>
+                <>Continuer <ArrowRight className="w-4 h-4" /></>
               )}
             </Button>
           </form>

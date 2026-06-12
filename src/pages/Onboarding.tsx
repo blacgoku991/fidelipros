@@ -225,7 +225,7 @@ const Onboarding = () => {
               disabled={saving}
               className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground hover:opacity-90 font-semibold gap-2 mt-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continuer <ArrowRight className="w-4 h-4" /></>}
             </Button>
           </form>
         </motion.div>
