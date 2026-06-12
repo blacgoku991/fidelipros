@@ -54,6 +54,22 @@ export const businessSidebarGroups: SidebarGroup[] = [
   },
 ];
 
+// Sidebar items for VTC/driver businesses (adds the Driver mode entry)
+export const driverModeSidebarItem: SidebarItem = {
+  icon: Car,
+  label: "Mode chauffeur",
+  path: "/dashboard/driver",
+};
+
+export function getBusinessSidebarGroups(businessTemplate?: string | null): SidebarGroup[] {
+  if (businessTemplate !== "vtc") return businessSidebarGroups;
+  // Insert "Mode chauffeur" right after Scanner
+  return businessSidebarGroups.map((group, idx) => {
+    if (idx !== 0) return group;
+    return { ...group, items: [...group.items, driverModeSidebarItem] };
+  });
+}
+
 // Flat list for backward compat
 export const businessSidebarItems: SidebarItem[] = businessSidebarGroups.flatMap(g => g.items);
 
