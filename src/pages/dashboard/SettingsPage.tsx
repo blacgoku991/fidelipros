@@ -562,7 +562,9 @@ const SettingsPage = () => {
   const ADMIN_ONLY_SECTIONS: SectionKey[] = ["integrations", "webhooks"];
   const FRANCHISE_ONLY_SECTIONS: SectionKey[] = ["etablissements"];
   const isFranchise = business?.is_franchise === true;
-  const visibleSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
+  const isVtc = (business as any)?.business_template === "vtc";
+  const baseSections = role === "super_admin" ? SECTIONS : SECTIONS.filter(s => !ADMIN_ONLY_SECTIONS.includes(s.key));
+  const visibleSections = baseSections.filter(s => !s.vtcOnly || isVtc);
 
   return (
     <DashboardLayout title="Paramètres" subtitle="Gérez votre compte, géolocalisation et abonnement">
