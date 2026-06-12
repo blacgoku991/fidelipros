@@ -134,7 +134,7 @@ const Register = () => {
               <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
                 <span className="text-emerald-600 font-bold text-xs">3</span>
               </div>
-              <p className="text-muted-foreground">Vous serez redirigé vers la configuration de votre commerce, puis vers la page de paiement</p>
+              <p className="text-muted-foreground">Vous serez redirigé vers la configuration de votre commerce, puis votre compte sera en attente d'activation par notre équipe.</p>
             </div>
           </div>
 
