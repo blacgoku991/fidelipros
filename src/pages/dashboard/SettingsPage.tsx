@@ -22,10 +22,11 @@ const planLabels: Record<string, string> = {
 
 type SectionKey = "vitrine" | "widget" | "geofencing" | "automatisations" | "etablissements" | "google-avis" | "vtc" | "integrations" | "webhooks" | "abonnement" | "compte";
 
-const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType }[] = [
+const SECTIONS: { key: SectionKey; label: string; Icon: React.ElementType; vtcOnly?: boolean }[] = [
   { key: "vitrine",         label: "Vitrine",          Icon: Store },
   { key: "widget",          label: "Widget",           Icon: QrCode },
   { key: "geofencing",      label: "Proximité",        Icon: Radar },
+  { key: "vtc",             label: "Mode chauffeur",   Icon: Car, vtcOnly: true },
   { key: "automatisations", label: "Automatisations",  Icon: Zap },
   { key: "etablissements",  label: "Établissements",   Icon: Building2 },
   { key: "google-avis",     label: "Google Avis",      Icon: Star },
