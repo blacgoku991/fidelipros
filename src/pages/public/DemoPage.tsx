@@ -105,8 +105,8 @@ export default function DemoPage() {
     if (!card?.card_code) return;
     setWalletLoading(true);
     // Mark pass as installed before redirect
-    if (sessionId) {
-      supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
     }
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     window.location.href = `${supabaseUrl}/functions/v1/generate-pass?card_code=${encodeURIComponent(card.card_code)}`;
