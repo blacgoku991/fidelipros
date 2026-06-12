@@ -18,9 +18,10 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download, LogIn, AlertTriangle, Trash2 } from "lucide-react";
+import { Search, Eye, Ban, CheckCircle, Clock, Users, QrCode, Gift, ExternalLink, Download, LogIn, AlertTriangle, Trash2, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { ActivateBusinessModal } from "@/components/admin/ActivateBusinessModal";
 
 const AdminBusinesses = () => {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ const AdminBusinesses = () => {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [activateTarget, setActivateTarget] = useState<any>(null);
 
   useEffect(() => { fetchAll(); }, []);
 
@@ -227,7 +229,10 @@ const AdminBusinesses = () => {
 
   const filtered = businesses.filter((b) => {
     const matchSearch = !search || b.name?.toLowerCase().includes(search.toLowerCase()) || b.city?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === "all" || b.subscription_status === statusFilter;
+    const matchStatus =
+      statusFilter === "all" ||
+      (statusFilter === "pending" && b.requires_admin_activation === true) ||
+      (statusFilter !== "pending" && b.subscription_status === statusFilter && b.requires_admin_activation !== true);
     const matchPlan = planFilter === "all" || b.subscription_plan === planFilter;
     return matchSearch && matchStatus && matchPlan;
   });
@@ -262,6 +267,7 @@ const AdminBusinesses = () => {
           <SelectTrigger className="w-36 rounded-xl"><SelectValue placeholder="Statut" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les statuts</SelectItem>
+            <SelectItem value="pending">En attente d'activation</SelectItem>
             <SelectItem value="active">Actif</SelectItem>
             <SelectItem value="inactive">Inactif</SelectItem>
             <SelectItem value="past_due">Impayé</SelectItem>
@@ -293,7 +299,8 @@ const AdminBusinesses = () => {
           </TableHeader>
           <TableBody>
             {filtered.map((biz) => {
-              const isActive = biz.subscription_status === "active";
+              const isActive = biz.subscription_status === "active" && biz.requires_admin_activation !== true;
+              const isPending = biz.requires_admin_activation === true;
               return (
                 <TableRow key={biz.id} className="group">
                   <TableCell>
@@ -307,31 +314,51 @@ const AdminBusinesses = () => {
                       )}
                       <div>
                         <p className="font-medium text-sm">{biz.name}</p>
-                        <p className="text-xs text-muted-foreground">{biz.city || "—"} • {biz.category}</p>
+                        <p className="text-xs text-muted-foreground">{biz.city || "—"} • {biz.category || "non défini"}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Select value={biz.subscription_plan} onValueChange={(v) => updatePlan(biz.id, v)}>
-                      <SelectTrigger className="w-28 rounded-lg h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="starter">Starter</SelectItem>
-                        <SelectItem value="pro">Pro</SelectItem>
-                                  </SelectContent>
-                    </Select>
+                    {biz.subscription_plan ? (
+                      <Select value={biz.subscription_plan} onValueChange={(v) => updatePlan(biz.id, v)}>
+                        <SelectTrigger className="w-28 rounded-lg h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="starter">Starter</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="franchise">Franchise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
-                    <Badge className={
-                      biz.subscription_status === "active" ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
-                      "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
-                    }>{biz.subscription_status}</Badge>
+                    {isPending ? (
+                      <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] gap-1">
+                        <Clock className="w-3 h-3" /> En attente
+                      </Badge>
+                    ) : (
+                      <Badge className={
+                        isActive ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 text-[10px]" :
+                        "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 text-[10px]"
+                      }>{biz.subscription_status}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-center font-medium text-sm">{customerCounts[biz.id] || 0}</TableCell>
                   <TableCell className="text-center font-medium text-sm">{scanCounts[biz.id] || 0}</TableCell>
-                  <TableCell>
-                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {isPending ? (
+                        <Button size="sm" className="rounded-lg h-8 text-xs gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-white"
+                          onClick={() => setActivateTarget(biz)}>
+                          <Sparkles className="w-3 h-3" /> Activer
+                        </Button>
+                      ) : (
+                        <Button size="icon" variant="ghost" className="h-8 w-8" title="Modifier plan & template"
+                          onClick={() => setActivateTarget(biz)}>
+                          <Zap className="w-4 h-4 text-primary" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" className="h-8 w-8" title="Aperçu rapide" onClick={() => viewBizDetails(biz)}>
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -451,6 +478,12 @@ const AdminBusinesses = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ActivateBusinessModal
+        business={activateTarget}
+        open={!!activateTarget}
+        onClose={() => setActivateTarget(null)}
+        onActivated={fetchAll}
+      />
     </AdminLayout>
   );
 };
