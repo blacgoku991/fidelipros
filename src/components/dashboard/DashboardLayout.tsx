@@ -3,7 +3,7 @@ import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
 import { SubscriptionGuard } from "@/components/dashboard/SubscriptionGuard";
 import { MobileHeader } from "@/components/dashboard/MobileHeader";
 import {
-  businessSidebarItems, businessSidebarGroups,
+  getBusinessSidebarGroups,
   franchiseSidebarGroups,
   locationManagerSidebarGroups,
 } from "@/lib/sidebarItems";
@@ -16,13 +16,13 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, title, subtitle, headerAction }: DashboardLayoutProps) {
-  const { contextLoaded, logout, isFranchiseOwner, locationId, locationName } = useAuth();
+  const { contextLoaded, logout, isFranchiseOwner, locationId, locationName, business } = useAuth();
 
   const groups = locationId
     ? locationManagerSidebarGroups
     : isFranchiseOwner
       ? franchiseSidebarGroups
-      : businessSidebarGroups;
+      : getBusinessSidebarGroups((business as any)?.business_template);
   const items = groups.flatMap(g => g.items);
 
   if (!contextLoaded) {
