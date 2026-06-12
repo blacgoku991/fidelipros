@@ -10,7 +10,7 @@ interface TemplatePickerProps {
 export function TemplatePicker({ currentTemplate, onSelect }: TemplatePickerProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-      {businessTemplates.map((t, i) => {
+      {businessTemplates.filter(t => !t.superAdminOnly || currentTemplate === t.id).map((t, i) => {
         const isActive = currentTemplate === t.id;
         return (
           <motion.button
