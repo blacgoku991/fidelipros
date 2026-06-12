@@ -225,6 +225,12 @@ const SettingsPage = () => {
       setGeoTimeEnd(business.geofence_time_end || "20:00");
       setSatellitePoints(Array.isArray(business.geofence_satellite_points) ? (business.geofence_satellite_points as { lat: number; lng: number }[]) : []);
       setGeoCooldownHours((business as any).geofence_cooldown_hours ?? 24);
+
+      // VTC mode
+      setVtcRadiusKm(Number((business as any).driver_proximity_radius_km ?? 2));
+      setVtcCooldownHours(Number((business as any).driver_proximity_cooldown_hours ?? 6));
+      setVtcMessage((business as any).driver_proximity_message ?? "Votre chauffeur préféré est dans les parages ! -10% sur votre prochaine course 🚗");
+      setVtcDiscount(Number((business as any).driver_discount_percent ?? 10));
     }
   }, [business]);
 
