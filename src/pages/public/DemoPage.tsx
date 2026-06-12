@@ -185,11 +185,13 @@ export default function DemoPage() {
   }, [sessionId, sendingStep]);
 
   const trackClick = async (type: "signup" | "pricing") => {
-    if (sessionId) {
-      const update: Record<string, any> = { updated_at: new Date().toISOString() };
-      if (type === "signup") update.clicked_signup = true;
-      if (type === "pricing") update.clicked_pricing = true;
-      await supabase.from("demo_sessions").update(update).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      await supabase.rpc("update_demo_session", {
+        p_id: sessionId,
+        p_token: sessionToken,
+        p_clicked_signup: type === "signup" ? true : null,
+        p_clicked_pricing: type === "pricing" ? true : null,
+      } as any);
     }
   };
 
