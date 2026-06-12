@@ -141,8 +141,8 @@ export default function DemoPage() {
 
   // ── Mark installed and go to step 2 (for returning from Wallet add) ──
   const handlePassAdded = async () => {
-    if (sessionId) {
-      await supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+    if (sessionId && sessionToken) {
+      await supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
     }
     setPhase("send_updates");
   };
