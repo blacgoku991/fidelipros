@@ -1,76 +1,81 @@
-## Objectif
-Ajouter un nouveau type de programme « VTC / Chauffeur » : le commerçant est mobile, ses clients reçoivent une notification de proximité quand il s'approche de leur zone.
+# Désactivation paiement + attribution manuelle + géocodage VTC
 
-## 1. Base de données (migration)
+## 1. Désactivation Stripe (sans supprimer le code)
 
-**Nouvelles colonnes sur `businesses`** (utilisées uniquement quand `business_template = 'vtc'`) :
-- `is_mobile_merchant` (bool) — inverse la logique geofence
-- `driver_current_lat`, `driver_current_lng` (double) — position live du chauffeur
-- `driver_last_position_at` (timestamptz)
-- `driver_is_online` (bool)
-- `driver_proximity_radius_km` (numeric, défaut 2) — rayon de détection autour du client
-- `driver_proximity_cooldown_hours` (int, défaut 6) — configurable
-- `driver_proximity_message` (text, défaut « Votre chauffeur préféré est dans les parages ! -10% sur votre prochaine course 🚗 »)
-- `driver_discount_percent` (int, défaut 10)
+- Ajout d'un flag global `payments_enabled` dans `site_settings` (défaut: `false`).
+- `SignupPage` : ne propose plus de choix de plan, l'utilisateur s'inscrit directement (email + mdp + nom commerce).
+- `handle_new_user` (trigger DB) : crée le business avec `subscription_status='pending_activation'`, `subscription_plan=NULL`, `business_template=NULL`.
+- Route `/dashboard/abonnement` : remplace l'UI Stripe par un écran "Votre compte est en attente d'activation — contactez fidelipro.com" (avec lien WhatsApp/email).
+- `useAuth` + `RequireActiveSubscription` : si `subscription_status === 'pending_activation'` → redirige vers `/pending-activation` (nouvel écran). Toutes les routes dashboard sont bloquées sauf cette page + `/dashboard/settings/compte` + déconnexion.
+- Le code Stripe (edge functions `create-checkout`, `stripe-webhook`, etc.) reste en place mais n'est plus appelé depuis l'UI. Aucune suppression.
 
-**Nouvelles colonnes sur `customers`** :
-- `home_address` (text)
-- `home_lat`, `home_lng` (double) — géocodés à l'inscription
-- `last_known_lat`, `last_known_lng` (double) — position GPS tel (optionnelle)
-- `last_position_at` (timestamptz)
+## 2. Panel super-admin — Attribution manuelle
 
-**Nouvelle table `driver_proximity_log`** : trace chaque notif envoyée pour respecter le cooldown.
-- `business_id`, `customer_id`, `sent_at`, `distance_km`
+Sur `/admin/businesses` (déjà existant), enrichissement :
 
-**Nouveau template métier** dans `src/lib/businessTemplates.ts` :
-- Clé `vtc`, libellés adaptés (« courses » au lieu de « visites », « -10% offert » au lieu de « café offert »), icône voiture.
+- Nouvelle colonne "Statut" : `pending_activation` / `active` / `suspended` avec badge couleur.
+- Bouton "Activer ce compte" → modal avec :
+  - Sélecteur **Plan** : Starter / Pro / Franchise
+  - Sélecteur **Template** : Restaurant / Coffee / Beauty / Barber / Bakery / Retail / **VTC** / Custom
+  - Date de fin d'abonnement (optionnelle, par défaut +1 an)
+  - Toggle "Franchise activée"
+- Au submit : RPC `admin_activate_business` (SECURITY DEFINER, vérifie role super_admin) qui set `subscription_status='active'`, `subscription_plan`, `business_template`, applique la config du template (couleurs, loyalty_type, etc.), log dans `admin_audit_logs`.
+- Bouton "Suspendre" → repasse à `pending_activation`.
+- Bouton "Changer plan/template" sur business actif → même modal.
 
-## 2. Page PWA chauffeur (`/dashboard/driver`)
+## 3. Template VTC réservé super-admin
 
-Accessible depuis la sidebar quand `business_template = 'vtc'` :
-- Toggle « En ligne / Hors ligne »
-- Demande la permission de géolocalisation
-- En arrière-plan : `navigator.geolocation.watchPosition` toutes les 60 secondes (configurable)
-- À chaque tick, appelle l'edge function `driver-broadcast-position`
-- Affiche : nb de clients dans la zone, dernière notif envoyée, courses du jour
-- Manifest PWA mis à jour pour permettre l'installation sur l'écran d'accueil
+- Retiré de la liste publique des templates (`TemplateSelector` dans onboarding) → masqué via filtre `if (template.id === 'vtc') return false`.
+- Disponible uniquement dans la modale d'activation super-admin.
+- Une fois attribué, l'entreprise voit "Mode chauffeur" dans sa sidebar et la section VTC dans Paramètres.
 
-## 3. Edge function `driver-broadcast-position`
+## 4. Géocodage automatique via Lovable AI
 
-Inputs : `business_id`, `lat`, `lng`
-Logique :
-1. Vérifier que le caller est bien le owner du business (JWT)
-2. Mettre à jour `driver_current_lat/lng` + `driver_last_position_at`
-3. Récupérer tous les clients du business avec `home_lat/lng` non null (ou `last_known_lat/lng` plus récent)
-4. Calcul Haversine côté serveur, filtrer ≤ `driver_proximity_radius_km`
-5. Pour chaque client éligible : vérifier qu'aucune entrée `driver_proximity_log` n'existe < `cooldown_hours`
-6. Appeler `send-notifications` avec le message personnalisé `driver_proximity_message`
-7. Insérer une ligne dans `driver_proximity_log`
+Nouvelle edge function `geocode-address` :
+- Input : `{ address: string }`
+- Appelle `google/gemini-2.5-flash` avec un prompt structuré : "Renvoie les coordonnées GPS au format JSON `{lat, lng, formatted_address, city, country}` pour cette adresse française : X. Si ambiguë, prends la plus probable. Si impossible, renvoie null."
+- Réponse JSON validée.
+- Cache léger en mémoire process (Map) sur l'adresse normalisée.
 
-## 4. Inscription client (vitrine)
+Intégration :
+- `BusinessPublicPage` (signup client VTC) : quand l'utilisateur tape une adresse et perd le focus (`onBlur`), appel auto à `geocode-address`. Petit indicateur "✓ Adresse localisée" ou "⚠ Adresse non reconnue".
+- Si géolocalisation manuelle déjà fournie (`📍 Position actuelle`), skip le géocodage.
+- `register_customer_and_card` reçoit `home_lat/lng` géocodés ou GPS direct.
 
-Page publique `BusinessPublicPage` quand template = vtc :
-- Champ « Adresse de votre domicile » (Google Places autocomplete via connecteur)
-- Géocodage stocké dans `home_lat/lng` à la création (RPC `register_customer_and_card` enrichie)
-- Option « Partager ma position en temps réel » qui demande la permission GPS et envoie périodiquement les coords via une nouvelle RPC `update_customer_position(customer_id, token, lat, lng)`
+## 5. Nouvelle page `/pending-activation`
 
-## 5. Réglages chauffeur
-
-Dans `SettingsPage.tsx`, nouvelle section « Mode VTC » visible si template = vtc :
-- Rayon de détection (slider 0.5–10 km)
-- Cooldown notif (1h à 7 jours)
-- Message personnalisé envoyé aux clients
-- % de réduction proposé
-
-## 6. Détails techniques
-- Géocodage adresses via le connecteur Google Maps déjà autorisé (gateway Lovable)
-- Cooldown stocké côté serveur (table dédiée) pour éviter spam
-- Position chauffeur jamais exposée aux clients (RLS stricte sur `driver_current_lat/lng`)
-- Aucun changement aux templates existants (resto, café, etc.) — fonctionnalité 100% additionnelle
-- Tracking dans `notifications_log` avec `notification_type = 'driver_proximity'`
+Écran simple, dark mode, branding FidelisPro :
+- Icône horloge animée
+- "Compte créé avec succès 🎉"
+- "Votre commerce est en attente d'activation. Contactez-nous pour activer votre programme de fidélité."
+- Boutons : WhatsApp (lien `wa.me`), Email (mailto), Déconnexion.
+- Affiche le nom du commerce et l'email du compte.
 
 ## Hors scope
-- Tracking historique des trajets / itinéraires
-- Système de réservation de course intégré (juste une notif, pas de booking)
-- Paiement / facturation des courses
-- Application native iOS/Android (PWA suffisante pour la géoloc en background côté chauffeur)
+
+- Suppression du code Stripe (gardé en backup réactivable).
+- Notification email automatique lors de l'activation par toi (faisable rapidement après si tu veux).
+- Édition du géocodage sur des adresses internationales complexes.
+
+## Détails techniques
+
+**Migration SQL** :
+- `ALTER TABLE businesses ADD COLUMN activated_at timestamptz, activated_by uuid REFERENCES auth.users(id), subscription_expires_at timestamptz`
+- Modifier l'enum `subscription_status` si besoin pour ajouter `pending_activation`
+- Modifier `handle_new_user` pour set `pending_activation`
+- Nouvelle RPC `admin_activate_business(business_id, plan, template, expires_at, is_franchise)`
+- `site_settings.payments_enabled boolean default false`
+
+**Fichiers modifiés** :
+- `src/pages/SignupPage.tsx` (retrait du choix de plan)
+- `src/pages/PendingActivationPage.tsx` (nouveau)
+- `src/App.tsx` (route + guard)
+- `src/hooks/useAuth.tsx` (expose `isPendingActivation`)
+- `src/pages/dashboard/SubscriptionPage.tsx` (UI bloquée)
+- `src/components/auth/RequireActiveSubscription.tsx` (guard renforcé)
+- `src/pages/admin/AdminBusinessesPage.tsx` (modale activation)
+- `src/components/admin/ActivateBusinessModal.tsx` (nouveau)
+- `src/lib/businessTemplates.ts` (flag `superAdminOnly: true` sur VTC)
+- `src/components/onboarding/TemplateSelector.tsx` (filtre VTC)
+- `src/pages/public/BusinessPublicPage.tsx` (géocodage onBlur)
+- `supabase/functions/geocode-address/index.ts` (nouveau)

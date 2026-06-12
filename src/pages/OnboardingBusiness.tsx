@@ -38,13 +38,13 @@ const OnboardingBusiness = () => {
     }
 
     const name = business.name;
-    const status = business.subscription_status;
+    const pending = (business as any).requires_admin_activation === true;
 
     if (name && name !== "Mon Commerce") {
-      if (status === "active" || status === "trialing") {
-        navigate("/dashboard", { replace: true });
+      if (pending) {
+        navigate("/pending-activation", { replace: true });
       } else {
-        navigate("/dashboard/checkout", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
       return;
     }
@@ -84,8 +84,8 @@ const OnboardingBusiness = () => {
       return;
     }
 
-    toast.success("Commerce configuré ! Finalisons votre abonnement…");
-    navigate("/dashboard/checkout");
+    toast.success("Commerce configuré ! Compte en attente d'activation.");
+    navigate("/pending-activation");
   };
 
   if (loading || authLoading) {
@@ -118,7 +118,7 @@ const OnboardingBusiness = () => {
           <div className="mt-8 p-4 rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10">
             <p className="text-sm text-primary-foreground/80 font-medium mb-2">✓ Compte Google connecté</p>
             <p className="text-xs text-primary-foreground/50">
-              Après cette étape, vous serez redirigé vers le paiement.
+              Après cette étape, votre compte sera en attente d'activation par notre équipe.
             </p>
           </div>
         </div>
@@ -194,7 +194,7 @@ const OnboardingBusiness = () => {
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>
+                <>Continuer <ArrowRight className="w-4 h-4" /></>
               )}
             </Button>
           </form>

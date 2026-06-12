@@ -50,6 +50,7 @@ const AdminAuditLogs = lazy(() => import("./pages/admin/AdminAuditLogs"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const OnboardingBusiness = lazy(() => import("./pages/OnboardingBusiness"));
 const SetupWizard = lazy(() => import("./pages/SetupWizard"));
+const PendingActivationPage = lazy(() => import("./pages/PendingActivationPage"));
 const Tarifs = lazy(() => import("./pages/Tarifs"));
 const FaqPage = lazy(() => import("./pages/FaqPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
@@ -92,6 +93,7 @@ const App = () => (
                 <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/onboarding-business" element={<OnboardingBusiness />} />
                 <Route path="/setup" element={<SetupWizard />} />
+                <Route path="/pending-activation" element={<PendingActivationPage />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/dashboard/clients" element={<ClientsPage />} />
                 <Route path="/dashboard/rewards" element={<RewardsPage />} />

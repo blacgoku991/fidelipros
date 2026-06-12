@@ -103,6 +103,8 @@ export type Database = {
       businesses: {
         Row: {
           accent_color: string | null
+          activated_at: string | null
+          activated_by: string | null
           address: string | null
           auto_notifications: boolean | null
           auto_reminder_days: number | null
@@ -170,6 +172,7 @@ export type Database = {
           points_per_visit: number | null
           primary_color: string | null
           promo_text: string | null
+          requires_admin_activation: boolean
           reward_alert_threshold: number | null
           reward_description: string | null
           reward_min_purchase: number | null
@@ -187,6 +190,7 @@ export type Database = {
           slug: string | null
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          subscription_expires_at: string | null
           subscription_plan:
             | Database["public"]["Enums"]["subscription_plan"]
             | null
@@ -207,6 +211,8 @@ export type Database = {
         }
         Insert: {
           accent_color?: string | null
+          activated_at?: string | null
+          activated_by?: string | null
           address?: string | null
           auto_notifications?: boolean | null
           auto_reminder_days?: number | null
@@ -274,6 +280,7 @@ export type Database = {
           points_per_visit?: number | null
           primary_color?: string | null
           promo_text?: string | null
+          requires_admin_activation?: boolean
           reward_alert_threshold?: number | null
           reward_description?: string | null
           reward_min_purchase?: number | null
@@ -291,6 +298,7 @@ export type Database = {
           slug?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_expires_at?: string | null
           subscription_plan?:
             | Database["public"]["Enums"]["subscription_plan"]
             | null
@@ -311,6 +319,8 @@ export type Database = {
         }
         Update: {
           accent_color?: string | null
+          activated_at?: string | null
+          activated_by?: string | null
           address?: string | null
           auto_notifications?: boolean | null
           auto_reminder_days?: number | null
@@ -378,6 +388,7 @@ export type Database = {
           points_per_visit?: number | null
           primary_color?: string | null
           promo_text?: string | null
+          requires_admin_activation?: boolean
           reward_alert_threshold?: number | null
           reward_description?: string | null
           reward_min_purchase?: number | null
@@ -395,6 +406,7 @@ export type Database = {
           slug?: string | null
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_expires_at?: string | null
           subscription_plan?:
             | Database["public"]["Enums"]["subscription_plan"]
             | null
@@ -1940,6 +1952,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_activate_business: {
+        Args: {
+          p_business_id: string
+          p_expires_at?: string
+          p_is_franchise?: boolean
+          p_max_locations?: number
+          p_plan: string
+          p_template: string
+        }
+        Returns: boolean
+      }
+      admin_suspend_business: {
+        Args: { p_business_id: string }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

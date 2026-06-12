@@ -182,25 +182,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       setContextLoaded(true);
 
-      const biz = resolvedBusiness;
+      const biz = resolvedBusiness as any;
       const path = window.location.pathname;
       const isExempt =
-        path.startsWith("/dashboard/checkout") ||
+        path.startsWith("/pending-activation") ||
         path.startsWith("/admin") ||
-        path.startsWith("/setup");
-      const isBlocked = !biz || (
-        biz.subscription_status !== "active" &&
-        biz.subscription_status !== "trialing"
-      );
+        path.startsWith("/setup") ||
+        path.startsWith("/onboarding");
+
+      // Manual activation flow: any business pending admin activation
+      // is locked to /pending-activation (admin/super_admin/location_manager exempt).
+      const isPending = !!biz && biz.requires_admin_activation === true;
 
       if (
-        isBlocked &&
-        path.startsWith("/dashboard") &&
+        isPending &&
         !isExempt &&
         userRole !== "location_manager" &&
         userRole !== "super_admin"
       ) {
-        navigate(`/dashboard/checkout`, { replace: true });
+        navigate(`/pending-activation`, { replace: true });
       }
     };
 

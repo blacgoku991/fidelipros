@@ -134,7 +134,7 @@ const Register = () => {
               <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 mt-0.5">
                 <span className="text-emerald-600 font-bold text-xs">3</span>
               </div>
-              <p className="text-muted-foreground">Vous serez redirigé vers la configuration de votre commerce, puis vers la page de paiement</p>
+              <p className="text-muted-foreground">Vous serez redirigé vers la configuration de votre commerce, puis votre compte sera en attente d'activation par notre équipe.</p>
             </div>
           </div>
 
@@ -203,7 +203,7 @@ const Register = () => {
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
             <h1 className="text-2xl font-display font-bold mb-1">Créer votre compte</h1>
-            <p className="text-sm text-muted-foreground mb-6">Choisissez votre pack après inscription, puis payez pour l’activer</p>
+            <p className="text-sm text-muted-foreground mb-6">Inscription rapide, activation par notre équipe en moins de 24h &mdash; ancien: l’activer</p>
 
             <Button
               type="button"

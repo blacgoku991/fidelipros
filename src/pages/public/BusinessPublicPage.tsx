@@ -316,6 +316,31 @@ const BusinessPublicPage = () => {
     );
   };
 
+  // Auto-geocode the typed address on blur via Lovable AI
+  const geocodeTypedAddress = async () => {
+    const addr = homeAddress.trim();
+    if (!addr || addr.startsWith("📍") || homeCoords || geocoding) return;
+    setGeocoding(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("geocode-address", {
+        body: { address: addr },
+      });
+      if (error) throw error;
+      if (data?.lat != null && data?.lng != null) {
+        setHomeCoords({ lat: data.lat, lng: data.lng });
+        if (data.formatted_address && data.formatted_address !== addr) {
+          setHomeAddress(data.formatted_address);
+        }
+      } else {
+        toast.warning("Adresse non reconnue — essaie d'utiliser ta position actuelle");
+      }
+    } catch (e) {
+      console.error("[geocode]", e);
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center p-6"
@@ -481,11 +506,15 @@ const BusinessPublicPage = () => {
                   </Label>
                   <Input
                     value={homeAddress}
-                    onChange={(e) => setHomeAddress(e.target.value)}
+                    onChange={(e) => { setHomeAddress(e.target.value); if (homeCoords) setHomeCoords(null); }}
+                    onBlur={geocodeTypedAddress}
                     placeholder="Ex : 12 rue Victor Hugo, Asnières-sur-Seine"
                     className="rounded-xl h-11"
                     autoComplete="street-address"
                   />
+                  {homeCoords && !homeAddress.startsWith("📍") && (
+                    <p className="text-[10px] text-emerald-600 flex items-center gap-1">✓ Adresse localisée ({homeCoords.lat.toFixed(3)}, {homeCoords.lng.toFixed(3)})</p>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

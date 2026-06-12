@@ -39,14 +39,13 @@ const Onboarding = () => {
 
     if (business) {
       const name = business.name;
-      const status = business.subscription_status;
+      const pending = (business as any).requires_admin_activation === true;
       if (!name || name === "Mon Commerce") {
         navigate("/onboarding-business", { replace: true });
-      } else if (status === "active" || status === "trialing") {
-        navigate("/dashboard", { replace: true });
+      } else if (pending) {
+        navigate("/pending-activation", { replace: true });
       } else {
-        // inactive, past_due, canceled, null, or any unexpected status → must pay
-        navigate("/dashboard/checkout", { replace: true });
+        navigate("/dashboard", { replace: true });
       }
       return;
     }
@@ -111,8 +110,8 @@ const Onboarding = () => {
       email: user.email,
     });
 
-    toast.success("Commerce créé ! Finalisons votre abonnement…");
-    navigate("/dashboard/checkout");
+    toast.success("Commerce créé ! En attente d'activation par notre équipe.");
+    navigate("/pending-activation");
   };
 
   if (loading || authLoading) {
@@ -226,7 +225,7 @@ const Onboarding = () => {
               disabled={saving}
               className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground hover:opacity-90 font-semibold gap-2 mt-2"
             >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continuer vers le paiement <ArrowRight className="w-4 h-4" /></>}
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <>Continuer <ArrowRight className="w-4 h-4" /></>}
             </Button>
           </form>
         </motion.div>
