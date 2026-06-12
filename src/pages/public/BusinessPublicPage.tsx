@@ -229,6 +229,9 @@ const BusinessPublicPage = () => {
         p_phone: phone.trim() || null,
         p_birthday: birthday || null,
         p_source: "vitrine",
+        p_home_address: homeAddress.trim() || null,
+        p_home_lat: homeCoords?.lat ?? null,
+        p_home_lng: homeCoords?.lng ?? null,
       } as any);
 
       if (rpcErr || !created || (created as any[]).length === 0) {
