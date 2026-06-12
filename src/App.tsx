@@ -32,6 +32,7 @@ const AnalyticsPage = lazy(() => import("./pages/dashboard/AnalyticsPage"));
 const LocationsPage = lazy(() => import("./pages/dashboard/LocationsPage"));
 const LocationsComparePage = lazy(() => import("./pages/dashboard/LocationsComparePage"));
 const ManagersPage = lazy(() => import("./pages/dashboard/ManagersPage"));
+const DriverPage = lazy(() => import("./pages/dashboard/DriverPage"));
 
 // Lazy-loaded: Admin pages
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
