@@ -4,6 +4,9 @@ export interface BusinessTemplate {
   label: string;
   emoji: string;
   description: string;
+  /** When true, the template is hidden from public/onboarding selection
+   *  and can only be assigned by a super-admin. */
+  superAdminOnly?: boolean;
   config: Partial<BusinessConfig>;
 }
 
@@ -210,6 +213,7 @@ export const businessTemplates: BusinessTemplate[] = [
     label: "VTC / Chauffeur",
     emoji: "🚗",
     description: "Notifie tes clients quand tu passes près de chez eux",
+    superAdminOnly: true,
     config: {
       loyalty_type: "points",
       max_points_per_card: 10,
