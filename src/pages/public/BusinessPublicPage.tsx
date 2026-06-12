@@ -42,7 +42,7 @@ const BusinessPublicPage = () => {
   const [birthday, setBirthday] = useState("");
   const [homeAddress, setHomeAddress] = useState("");
   const [homeCoords, setHomeCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [geocoding, setGeocoding] = useState(false);
+  
   const [customer, setCustomer] = useState<any>(null);
   const [card, setCard] = useState<any>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -295,32 +295,11 @@ const BusinessPublicPage = () => {
   const showBirthday = business.birthday_notif_enabled;
   const isVtc = business.business_template === "vtc";
 
-  const useMyPosition = () => {
-    if (!("geolocation" in navigator)) {
-      toast.error("Géolocalisation non supportée");
-      return;
-    }
-    setGeocoding(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setHomeCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (!homeAddress) setHomeAddress(`📍 Position GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
-        toast.success("Position enregistrée");
-        setGeocoding(false);
-      },
-      () => {
-        toast.error("Impossible d'accéder à votre position");
-        setGeocoding(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  };
 
   // Auto-geocode the typed address on blur via Lovable AI
   const geocodeTypedAddress = async () => {
     const addr = homeAddress.trim();
-    if (!addr || addr.startsWith("📍") || homeCoords || geocoding) return;
-    setGeocoding(true);
+    if (!addr || homeCoords) return;
     try {
       const { data, error } = await supabase.functions.invoke("geocode-address", {
         body: { address: addr },
@@ -332,12 +311,10 @@ const BusinessPublicPage = () => {
           setHomeAddress(data.formatted_address);
         }
       } else {
-        toast.warning("Adresse non reconnue — essaie d'utiliser ta position actuelle");
+        toast.warning("Adresse non reconnue — vérifiez l'orthographe");
       }
     } catch (e) {
       console.error("[geocode]", e);
-    } finally {
-      setGeocoding(false);
     }
   };
 
@@ -515,16 +492,6 @@ const BusinessPublicPage = () => {
                   {homeCoords && !homeAddress.startsWith("📍") && (
                     <p className="text-[10px] text-emerald-600 flex items-center gap-1">✓ Adresse localisée ({homeCoords.lat.toFixed(3)}, {homeCoords.lng.toFixed(3)})</p>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={useMyPosition}
-                    disabled={geocoding}
-                    className="w-full text-xs"
-                  >
-                    {geocoding ? "Localisation…" : homeCoords ? "✓ Position enregistrée" : "📍 Utiliser ma position actuelle"}
-                  </Button>
                   <p className="text-[10px] text-muted-foreground">
                     Votre chauffeur vous enverra une notif quand il roule près de chez vous.
                   </p>
