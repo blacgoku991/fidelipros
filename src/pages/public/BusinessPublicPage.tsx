@@ -473,6 +473,36 @@ const BusinessPublicPage = () => {
                 </div>
               )}
 
+              {/* VTC: adresse domicile pour notifs de proximité */}
+              {isVtc && (
+                <div className="space-y-1.5 rounded-xl border border-dashed border-primary/40 p-3 bg-primary/5">
+                  <Label className="flex items-center gap-1.5">
+                    🚗 Votre adresse / zone habituelle
+                  </Label>
+                  <Input
+                    value={homeAddress}
+                    onChange={(e) => setHomeAddress(e.target.value)}
+                    placeholder="Ex : 12 rue Victor Hugo, Asnières-sur-Seine"
+                    className="rounded-xl h-11"
+                    autoComplete="street-address"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={useMyPosition}
+                    disabled={geocoding}
+                    className="w-full text-xs"
+                  >
+                    {geocoding ? "Localisation…" : homeCoords ? "✓ Position enregistrée" : "📍 Utiliser ma position actuelle"}
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground">
+                    Votre chauffeur vous enverra une notif quand il roule près de chez vous.
+                  </p>
+                </div>
+              )}
+
+
               <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
                 En créant votre carte, vous acceptez que vos données soient traitées par {business.name} via FidéliPro pour la gestion de votre programme de fidélité.{" "}
                 <a href="/privacy" target="_blank" rel="noopener" className="underline hover:text-foreground">Politique de confidentialité</a>
