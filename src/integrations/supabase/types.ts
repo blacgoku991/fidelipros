@@ -118,6 +118,14 @@ export type Database = {
           city: string | null
           created_at: string
           description: string | null
+          driver_current_lat: number | null
+          driver_current_lng: number | null
+          driver_discount_percent: number
+          driver_is_online: boolean
+          driver_last_position_at: string | null
+          driver_proximity_cooldown_hours: number
+          driver_proximity_message: string
+          driver_proximity_radius_km: number
           feature_analytics: boolean | null
           feature_customer_scoring: boolean | null
           feature_gamification: boolean | null
@@ -140,6 +148,7 @@ export type Database = {
           id: string
           is_demo: boolean
           is_franchise: boolean
+          is_mobile_merchant: boolean
           label_color: string | null
           latitude: number | null
           logo_url: string | null
@@ -213,6 +222,14 @@ export type Database = {
           city?: string | null
           created_at?: string
           description?: string | null
+          driver_current_lat?: number | null
+          driver_current_lng?: number | null
+          driver_discount_percent?: number
+          driver_is_online?: boolean
+          driver_last_position_at?: string | null
+          driver_proximity_cooldown_hours?: number
+          driver_proximity_message?: string
+          driver_proximity_radius_km?: number
           feature_analytics?: boolean | null
           feature_customer_scoring?: boolean | null
           feature_gamification?: boolean | null
@@ -235,6 +252,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
+          is_mobile_merchant?: boolean
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
@@ -308,6 +326,14 @@ export type Database = {
           city?: string | null
           created_at?: string
           description?: string | null
+          driver_current_lat?: number | null
+          driver_current_lng?: number | null
+          driver_discount_percent?: number
+          driver_is_online?: boolean
+          driver_last_position_at?: string | null
+          driver_proximity_cooldown_hours?: number
+          driver_proximity_message?: string
+          driver_proximity_radius_km?: number
           feature_analytics?: boolean | null
           feature_customer_scoring?: boolean | null
           feature_gamification?: boolean | null
@@ -330,6 +356,7 @@ export type Database = {
           id?: string
           is_demo?: boolean
           is_franchise?: boolean
+          is_mobile_merchant?: boolean
           label_color?: string | null
           latitude?: number | null
           logo_url?: string | null
@@ -598,11 +625,18 @@ export type Database = {
           current_streak: number | null
           email: string | null
           full_name: string | null
+          home_address: string | null
+          home_lat: number | null
+          home_lng: number | null
           id: string
+          last_known_lat: number | null
+          last_known_lng: number | null
+          last_position_at: string | null
           last_visit_at: string | null
           level: Database["public"]["Enums"]["loyalty_level"] | null
           longest_streak: number | null
           phone: string | null
+          position_token: string
           push_token: string | null
           total_points: number | null
           total_visits: number | null
@@ -616,11 +650,18 @@ export type Database = {
           current_streak?: number | null
           email?: string | null
           full_name?: string | null
+          home_address?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
           id?: string
+          last_known_lat?: number | null
+          last_known_lng?: number | null
+          last_position_at?: string | null
           last_visit_at?: string | null
           level?: Database["public"]["Enums"]["loyalty_level"] | null
           longest_streak?: number | null
           phone?: string | null
+          position_token?: string
           push_token?: string | null
           total_points?: number | null
           total_visits?: number | null
@@ -634,11 +675,18 @@ export type Database = {
           current_streak?: number | null
           email?: string | null
           full_name?: string | null
+          home_address?: string | null
+          home_lat?: number | null
+          home_lng?: number | null
           id?: string
+          last_known_lat?: number | null
+          last_known_lng?: number | null
+          last_position_at?: string | null
           last_visit_at?: string | null
           level?: Database["public"]["Enums"]["loyalty_level"] | null
           longest_streak?: number | null
           phone?: string | null
+          position_token?: string
           push_token?: string | null
           total_points?: number | null
           total_visits?: number | null
@@ -754,6 +802,45 @@ export type Database = {
             columns: ["merchant_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      driver_proximity_log: {
+        Row: {
+          business_id: string
+          customer_id: string
+          distance_km: number | null
+          id: string
+          sent_at: string
+        }
+        Insert: {
+          business_id: string
+          customer_id: string
+          distance_km?: number | null
+          id?: string
+          sent_at?: string
+        }
+        Update: {
+          business_id?: string
+          customer_id?: string
+          distance_km?: number | null
+          id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "driver_proximity_log_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_proximity_log_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -2087,6 +2174,9 @@ export type Database = {
           p_business_id: string
           p_email?: string
           p_full_name: string
+          p_home_address?: string
+          p_home_lat?: number
+          p_home_lng?: number
           p_phone?: string
           p_source?: string
         }
@@ -2096,6 +2186,7 @@ export type Database = {
           current_points: number
           customer_id: string
           max_points: number
+          position_token: string
         }[]
       }
       update_card_wallet_status: {
@@ -2105,6 +2196,15 @@ export type Database = {
           p_wallet_installed_at?: string
           p_wallet_last_fetched_at?: string
           p_wallet_pass_installed?: boolean
+        }
+        Returns: boolean
+      }
+      update_customer_position: {
+        Args: {
+          p_customer_id: string
+          p_lat: number
+          p_lng: number
+          p_token: string
         }
         Returns: boolean
       }
