@@ -121,8 +121,8 @@ export default function DemoPage() {
       const res = await fetch(`${supabaseUrl}/functions/v1/generate-google-pass?card_code=${encodeURIComponent(card.card_code)}`);
       const data = await res.json();
       if (data.saveUrl) {
-        if (sessionId) {
-          await supabase.from("demo_sessions").update({ pass_installed: true, updated_at: new Date().toISOString() }).eq("id", sessionId);
+        if (sessionId && sessionToken) {
+          await supabase.rpc("update_demo_session", { p_id: sessionId, p_token: sessionToken, p_pass_installed: true } as any);
         }
         window.open(data.saveUrl, "_blank");
         setPhase("send_updates");
