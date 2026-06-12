@@ -30,6 +30,7 @@ export default function DemoPage() {
   // Flow state
   const [phase, setPhase] = useState<DemoPhase>("add_pass");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [sentUpdates, setSentUpdates] = useState<SentUpdate[]>([]);
   const [sendingStep, setSendingStep] = useState<number | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
