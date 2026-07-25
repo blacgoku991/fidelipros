@@ -23,16 +23,20 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   const accueil = ctx.accueil;
 
   // ── Protection email : vérifiable même si le site est en panne ─────────────
+  // Un enregistrement non vérifié (résolveur injoignable) ne produit aucun constat.
   if (ctx.dns) {
-    if (!ctx.dns.spf) {
+    const { spf, dmarc, mx } = ctx.dns;
+    if (spf.verifie && !spf.valeur) {
       findings.push(constate("sec_spf_absent", "Aucun enregistrement SPF sur le domaine"));
     }
-    if (!ctx.dns.dmarc) {
-      findings.push(constate("sec_dmarc_absent", "Aucun enregistrement DMARC (_dmarc)"));
-    } else if (/p=none/i.test(ctx.dns.dmarc)) {
-      findings.push(constate("sec_dmarc_permissif", `Politique déclarée : « ${ctx.dns.dmarc.slice(0, 80)} »`));
+    if (dmarc.verifie) {
+      if (!dmarc.valeur) {
+        findings.push(constate("sec_dmarc_absent", "Aucun enregistrement DMARC (_dmarc)"));
+      } else if (/p=none/i.test(dmarc.valeur)) {
+        findings.push(constate("sec_dmarc_permissif", `Politique déclarée : « ${dmarc.valeur.slice(0, 80)} »`));
+      }
     }
-    if (!ctx.dns.mx.length) {
+    if (mx.verifie && !mx.valeur.length) {
       findings.push(constate("sec_mx_absent", "Aucun serveur de messagerie (MX) sur le domaine"));
     }
   }

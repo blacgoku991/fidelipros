@@ -181,7 +181,9 @@ export async function collecteDns(
   if (!hote) return null;
   const fetchImpl = options.fetchImpl ?? fetch;
 
-  const interroge = async (nom: string, type: "TXT" | "MX"): Promise<string[]> => {
+  // null = la requête n'a pas abouti (à ne pas confondre avec « aucun enregistrement »),
+  // sinon les règles conclueraient à tort à l'absence de SPF/DMARC.
+  const interroge = async (nom: string, type: "TXT" | "MX"): Promise<string[] | null> => {
     const controleur = new AbortController();
     const minuteur = setTimeout(() => controleur.abort(), options.timeoutMs ?? 8000);
     try {
@@ -189,11 +191,13 @@ export async function collecteDns(
         `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(nom)}&type=${type}`,
         { headers: { Accept: "application/dns-json", "User-Agent": USER_AGENT }, signal: controleur.signal },
       );
-      if (!res.ok) return [];
-      const data = (await res.json()) as { Answer?: Array<{ data?: string }> };
+      if (!res.ok) return null;
+      const data = (await res.json()) as { Status?: number; Answer?: Array<{ data?: string }> };
+      // Status 0 = réponse valide, 3 = domaine sans cet enregistrement : les deux sont exploitables.
+      if (typeof data.Status === "number" && data.Status !== 0 && data.Status !== 3) return null;
       return (data.Answer ?? []).map((r) => (r.data ?? "").replace(/^"|"$/g, "")).filter(Boolean);
     } catch {
-      return [];
+      return null;
     } finally {
       clearTimeout(minuteur);
     }
@@ -205,10 +209,18 @@ export async function collecteDns(
     interroge(`_dmarc.${hote}`, "TXT"),
   ]);
 
+  // Le résolveur est totalement injoignable : l'audit le signalera comme non vérifié.
+  if (txt === null && mx === null && dmarc === null) {
+    throw new Error("résolveur DNS injoignable");
+  }
+
   return {
-    mx,
-    spf: txt.find((t) => t.toLowerCase().startsWith("v=spf1")) ?? null,
-    dmarc: dmarc.find((t) => t.toLowerCase().startsWith("v=dmarc1")) ?? null,
+    mx: { verifie: mx !== null, valeur: mx ?? [] },
+    spf: { verifie: txt !== null, valeur: txt?.find((t) => t.toLowerCase().startsWith("v=spf1")) ?? null },
+    dmarc: {
+      verifie: dmarc !== null,
+      valeur: dmarc?.find((t) => t.toLowerCase().startsWith("v=dmarc1")) ?? null,
+    },
   };
 }
 

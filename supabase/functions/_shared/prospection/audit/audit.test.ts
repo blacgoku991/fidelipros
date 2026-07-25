@@ -99,12 +99,24 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
     page404: { statut: 404, personnalisee: true },
-    dns: { mx: ["10 mx.ovh.net."], spf: "v=spf1 include:mx.ovh.com ~all", dmarc: "v=DMARC1; p=quarantine" },
+    dns: dns({ mx: ["10 mx.ovh.net."], spf: "v=spf1 include:mx.ovh.com ~all", dmarc: "v=DMARC1; p=quarantine" }),
     lighthouse: null,
     fichiersExposes: [],
     anneeCourante: 2026,
     erreurs: [],
     ...surcharge,
+  };
+}
+
+/** Enregistrements DNS vérifiés, sauf mention contraire. */
+function dns(
+  valeurs: { mx?: string[]; spf?: string | null; dmarc?: string | null },
+  verifie = true,
+): ContexteAudit["dns"] {
+  return {
+    mx: { verifie, valeur: valeurs.mx ?? [] },
+    spf: { verifie, valeur: valeurs.spf ?? null },
+    dmarc: { verifie, valeur: valeurs.dmarc ?? null },
   };
 }
 
@@ -331,7 +343,7 @@ describe("evalueSecurite", () => {
   });
 
   it("signale les défauts de protection email", () => {
-    const findings = evalueSecurite(contexte({ dns: { mx: [], spf: null, dmarc: "v=DMARC1; p=none" } }));
+    const findings = evalueSecurite(contexte({ dns: dns({ dmarc: "v=DMARC1; p=none" }) }));
     const ids = findings.map((f) => f.regle);
 
     expect(ids).toContain("sec_spf_absent");
@@ -341,8 +353,13 @@ describe("evalueSecurite", () => {
   });
 
   it("évalue la protection email même si le site est injoignable", () => {
-    const findings = evalueSecurite(contexte({ accueil: null, dns: { mx: [], spf: null, dmarc: null } }));
+    const findings = evalueSecurite(contexte({ accueil: null, dns: dns({}) }));
     expect(findings.map((f) => f.regle)).toEqual(["sec_spf_absent", "sec_dmarc_absent", "sec_mx_absent"]);
+  });
+
+  it("ne conclut rien sur la protection email si le résolveur n'a pas répondu", () => {
+    const findings = evalueSecurite(contexte({ accueil: null, dns: dns({}, false) }));
+    expect(findings).toEqual([]);
   });
 
   it("signale les cookies non protégés et les fichiers exposés", () => {
@@ -510,15 +527,24 @@ describe("collecteurs", () => {
 
   it("lit SPF, DMARC et MX via DNS-over-HTTPS", async () => {
     const impl = fetchSimule({
-      "https://cloudflare-dns.com/dns-query?name=x.fr&type=TXT": { json: { Answer: [{ data: '"v=spf1 -all"' }] } },
-      "https://cloudflare-dns.com/dns-query?name=x.fr&type=MX": { json: { Answer: [{ data: "10 mx.x.fr." }] } },
-      "https://cloudflare-dns.com/dns-query?name=_dmarc.x.fr&type=TXT": { json: { Answer: [{ data: '"v=DMARC1; p=reject"' }] } },
+      "https://cloudflare-dns.com/dns-query?name=x.fr&type=TXT": { json: { Status: 0, Answer: [{ data: '"v=spf1 -all"' }] } },
+      "https://cloudflare-dns.com/dns-query?name=x.fr&type=MX": { json: { Status: 0, Answer: [{ data: "10 mx.x.fr." }] } },
+      "https://cloudflare-dns.com/dns-query?name=_dmarc.x.fr&type=TXT": { json: { Status: 0, Answer: [{ data: '"v=DMARC1; p=reject"' }] } },
     });
     expect(await collecteDns("https://x.fr/", { fetchImpl: impl })).toEqual({
-      mx: ["10 mx.x.fr."],
-      spf: "v=spf1 -all",
-      dmarc: "v=DMARC1; p=reject",
+      mx: { verifie: true, valeur: ["10 mx.x.fr."] },
+      spf: { verifie: true, valeur: "v=spf1 -all" },
+      dmarc: { verifie: true, valeur: "v=DMARC1; p=reject" },
     });
+  });
+
+  it("distingue « aucun enregistrement » de « résolveur injoignable »", async () => {
+    const absent = fetchSimule({ "https://cloudflare-dns.com": { json: { Status: 3 } } });
+    const resultat = await collecteDns("https://x.fr/", { fetchImpl: absent });
+    expect(resultat?.spf).toEqual({ verifie: true, valeur: null });
+
+    const injoignable = fetchSimule({});
+    await expect(collecteDns("https://x.fr/", { fetchImpl: injoignable })).rejects.toThrow(/DNS/);
   });
 
   it("extrait scores, métriques et capture de PageSpeed Insights", async () => {

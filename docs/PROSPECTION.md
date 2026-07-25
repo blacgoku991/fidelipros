@@ -1,5 +1,9 @@
 # Prospection web — trouver des entreprises à équiper d'un site
 
+> Une fois les prospects trouvés, l'audit complet (SEO, design, sécurité, technique) et la
+> proposition commerciale (devis, rapport, email, script d'appel) sont décrits dans
+> [AUDIT.md](./AUDIT.md).
+
 Module de génération de leads B2B : il repère les entreprises françaises qui ont
 **besoin d'un site web** (aucune présence en ligne) ou dont le **site est dépassé**
 (non responsive, HTTP, CMS obsolète, contenu abandonné), puis les qualifie selon leur

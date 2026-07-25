@@ -168,5 +168,6 @@ export const adminSidebarItems: SidebarItem[] = [
   { icon: MessageSquare, label: "Messages", path: "/admin/messages" },
   { icon: Wand2, label: "Démo Generator", path: "/admin/demos" },
   { icon: Target, label: "Prospection web", path: "/admin/prospection" },
+  { icon: CreditCard, label: "Prestations & devis", path: "/admin/prestations" },
   { icon: Shield, label: "Journal d'audit", path: "/admin/audit" },
 ];

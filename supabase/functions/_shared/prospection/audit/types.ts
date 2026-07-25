@@ -50,10 +50,19 @@ export interface ReponseHttp {
   octets: number;
 }
 
+/**
+ * Enregistrement DNS interrogé. `verifie: false` signifie que la requête n'a pas abouti :
+ * les règles doivent alors s'abstenir de conclure à une absence de protection.
+ */
+export interface EnregistrementDns<T> {
+  verifie: boolean;
+  valeur: T;
+}
+
 export interface DonneesDns {
-  mx: string[];
-  spf: string | null;
-  dmarc: string | null;
+  mx: EnregistrementDns<string[]>;
+  spf: EnregistrementDns<string | null>;
+  dmarc: EnregistrementDns<string | null>;
 }
 
 export interface ResultatLighthouse {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
-  Building2, Download, ExternalLink, Flame, Globe, Loader2, RefreshCw, Search, Wrench,
+  Building2, Download, ExternalLink, Flame, Globe, Loader2, RefreshCw, Search, Stethoscope, Wrench,
 } from "lucide-react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { ProspectDetailDialog } from "@/components/admin/ProspectDetailDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ANCIENNETES, chargeProspects, dateIlYaNMois, formateDate, formateEuros, lancerProspection,
-  majProspect, PRIORITES, SECTEURS_CIBLES, STATUTS_COMMERCIAUX, STATUTS_SITE, telechargeCsv,
+  ANCIENNETES, auditeProspect, chargeProspects, classeScore, dateIlYaNMois, formateDate,
+  formateEuros, lancerProspection, majProspect, PRIORITES, SECTEURS_CIBLES, STATUTS_COMMERCIAUX,
+  STATUTS_SITE, telechargeCsv,
   type ProspectEnregistre, type ProspectionFilters, type StatutCommercial,
 } from "@/lib/prospection";
 import { cn } from "@/lib/utils";
@@ -81,7 +82,9 @@ const AdminProspection = () => {
   const [filtreTexte, setFiltreTexte] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("tous");
   const [filtreSite, setFiltreSite] = useState("tous");
-  const [selection, setSelection] = useState<ProspectEnregistre | null>(null);
+  const [auditEnCours, setAuditEnCours] = useState<string | null>(null);
+  const [auditLot, setAuditLot] = useState(false);
+  const navigate = useNavigate();
 
   const recharge = useCallback(async () => {
     setChargement(true);
@@ -157,9 +160,44 @@ const AdminProspection = () => {
     }
   };
 
-  const appliqueMaj = (id: string, patch: Partial<ProspectEnregistre>) => {
-    setProspects((liste) => liste.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-    setSelection((courant) => (courant && courant.id === id ? { ...courant, ...patch } : courant));
+  /** Audit complet d'un prospect depuis la liste. */
+  const audite = async (prospect: ProspectEnregistre) => {
+    setAuditEnCours(prospect.id);
+    try {
+      const resultat = await auditeProspect({ prospect_id: prospect.id }, "complet");
+      if (resultat.sans_site) {
+        toast.info(`${prospect.nom} : aucun site trouvé — opportunité de création`);
+      } else {
+        toast.success(`${prospect.nom} : ${resultat.audit?.scores.global}/100`);
+      }
+      await recharge();
+    } catch (erreur) {
+      toast.error(erreur instanceof Error ? erreur.message : "L'audit a échoué");
+    } finally {
+      setAuditEnCours(null);
+    }
+  };
+
+  /** Audite en série les prospects les mieux notés qui n'ont pas encore été audités. */
+  const auditeLesMeilleurs = async (nombre = 10) => {
+    const aTraiter = filtres.filter((p) => !p.audit_le).slice(0, nombre);
+    if (!aTraiter.length) {
+      toast.info("Tous les prospects affichés ont déjà été audités.");
+      return;
+    }
+    setAuditLot(true);
+    let succes = 0;
+    for (const prospect of aTraiter) {
+      try {
+        await auditeProspect({ prospect_id: prospect.id }, "complet");
+        succes++;
+      } catch {
+        // On continue : un site injoignable ne doit pas interrompre le lot.
+      }
+    }
+    setAuditLot(false);
+    toast.success(`${succes}/${aTraiter.length} audit(s) terminé(s)`);
+    await recharge();
   };
 
   const filtres = useMemo(() => {
@@ -389,6 +427,16 @@ const AdminProspection = () => {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl"
+          onClick={() => auditeLesMeilleurs(10)}
+          disabled={auditLot || !filtres.length}
+        >
+          {auditLot ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-2" />}
+          Auditer les 10 meilleurs
+        </Button>
         <Button variant="outline" size="icon" className="rounded-xl" onClick={recharge} aria-label="Recharger">
           <RefreshCw className={cn("w-4 h-4", chargement && "animate-spin")} />
         </Button>
@@ -403,9 +451,10 @@ const AdminProspection = () => {
               <TableHead>Créée le</TableHead>
               <TableHead>Effectif / CA</TableHead>
               <TableHead>Site web</TableHead>
+              <TableHead className="w-36">Audit</TableHead>
               <TableHead>Priorité</TableHead>
               <TableHead className="w-44">Statut</TableHead>
-              <TableHead className="w-24" />
+              <TableHead className="w-28" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -413,7 +462,11 @@ const AdminProspection = () => {
               const site = STATUTS_SITE[prospect.site_statut];
               const priorite = PRIORITES[prospect.priorite];
               return (
-                <TableRow key={prospect.id} className="cursor-pointer" onClick={() => setSelection(prospect)}>
+                <TableRow
+                  key={prospect.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/admin/prospection/${prospect.id}`)}
+                >
                   <TableCell className="font-semibold tabular-nums">{prospect.score}</TableCell>
                   <TableCell>
                     <p className="font-medium">{prospect.nom}</p>
@@ -443,6 +496,20 @@ const AdminProspection = () => {
                     </div>
                   </TableCell>
                   <TableCell>
+                    {prospect.audit_le ? (
+                      <div className="flex items-center gap-2 text-xs tabular-nums">
+                        <span className={cn("font-semibold", classeScore(prospect.score_audit ?? 0))}>
+                          {prospect.score_audit ?? "—"}
+                        </span>
+                        <span className="text-muted-foreground">
+                          S {prospect.score_seo ?? "—"} · D {prospect.score_design ?? "—"} · Séc {prospect.score_securite ?? "—"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Non audité</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Badge variant="secondary" className={priorite.classe}>{priorite.label}</Badge>
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
@@ -458,17 +525,32 @@ const AdminProspection = () => {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" className="rounded-xl" onClick={() => setSelection(prospect)}>
-                      Détail
-                    </Button>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl px-2"
+                        onClick={() => audite(prospect)}
+                        disabled={auditEnCours === prospect.id || auditLot}
+                        aria-label={`Auditer ${prospect.nom}`}
+                        title="Auditer le site"
+                      >
+                        {auditEnCours === prospect.id
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : <Stethoscope className="w-4 h-4" />}
+                      </Button>
+                      <Button variant="ghost" size="sm" className="rounded-xl px-2" asChild>
+                        <Link to={`/admin/prospection/${prospect.id}`}>Fiche</Link>
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               );
             })}
             {!filtres.length && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                   {chargement
                     ? "Chargement…"
                     : prospects.length
@@ -481,12 +563,6 @@ const AdminProspection = () => {
         </Table>
       </div>
 
-      <ProspectDetailDialog
-        prospect={selection}
-        open={Boolean(selection)}
-        onOpenChange={(ouvert) => !ouvert && setSelection(null)}
-        onEnregistre={appliqueMaj}
-      />
     </AdminLayout>
   );
 };
