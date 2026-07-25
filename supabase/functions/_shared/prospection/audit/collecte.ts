@@ -58,14 +58,45 @@ function expire(echeance?: number): boolean {
   return Boolean(echeance && Date.now() > echeance);
 }
 
-/** Normalise une saisie utilisateur en URL absolue. */
+/**
+ * Hôtes qui ne peuvent pas être un site de prospect : boucle locale, réseaux privés,
+ * adresse de métadonnées des hébergeurs cloud, domaines réservés aux tests.
+ * L'audit part d'une URL fournie par un administrateur : on l'empêche de servir de relais
+ * vers le réseau interne de l'infrastructure (SSRF).
+ */
+const HOTES_INTERDITS = [
+  /^localhost$/i,
+  /\.localhost$/i,
+  /^127\./,
+  /^0\./,
+  /^10\./,
+  /^169\.254\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
+  /^\[?::1\]?$/,
+  /^\[?f[cd]/i,
+  /\.internal$/i,
+  /\.local$/i,
+  /\.(test|invalid|example)$/i,
+];
+
+/** Vrai si l'hôte peut être un site public légitime. */
+export function hotePublic(hote: string): boolean {
+  const propre = hote.trim().toLowerCase();
+  if (!propre || !propre.includes(".") && !propre.startsWith("[")) return false;
+  return !HOTES_INTERDITS.some((motif) => motif.test(propre));
+}
+
+/** Normalise une saisie utilisateur en URL absolue publique (http/https uniquement). */
 export function normaliseUrl(saisie: string): string | null {
   const propre = saisie.trim();
   if (!propre) return null;
   const avecSchema = /^https?:\/\//i.test(propre) ? propre : `https://${propre}`;
   try {
     const url = new URL(avecSchema);
-    if (!url.hostname.includes(".")) return null;
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    if (!hotePublic(url.hostname)) return null;
     return url.toString();
   } catch {
     return null;
@@ -353,12 +384,19 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   const erreurs: string[] = [];
   const anneeCourante = options.anneeCourante ?? new Date().getFullYear();
 
-  const accueil = await recupereHttp(url, {
+  let accueil = await recupereHttp(url, {
     fetchImpl: options.fetchImpl,
     timeoutMs: options.timeoutMs ?? 10_000,
     maxOctets: options.maxOctets ?? 500_000,
   });
   if (!accueil) erreurs.push("Page d'accueil injoignable");
+
+  // Une redirection peut mener ailleurs que l'hôte demandé : on refuse d'auditer (et donc
+  // d'aller sonder) une arrivée sur le réseau interne.
+  if (accueil && !hotePublic(new URL(accueil.urlFinale).hostname)) {
+    erreurs.push(`Redirection vers un hôte non public : ${accueil.urlFinale}`);
+    accueil = null;
+  }
 
   const contexte: ContexteAudit = {
     url,

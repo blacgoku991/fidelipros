@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { appliqueRegles, auditeSite } from "./index.ts";
 import {
   collecte, collecte404, collecteDns, collecteLighthouse, collecteRobots, collecteSitemap,
-  FICHIERS_SONDES, normaliseUrl, sondeFichiers,
+  FICHIERS_SONDES, hotePublic, normaliseUrl, sondeFichiers,
 } from "./collecte.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
@@ -499,6 +499,24 @@ describe("normaliseUrl", () => {
     expect(normaliseUrl("pas-un-domaine")).toBeNull();
     expect(normaliseUrl("   ")).toBeNull();
   });
+
+  it("refuse les hôtes internes et les schémas exotiques", () => {
+    for (const saisie of [
+      "http://localhost:8080",
+      "http://127.0.0.1/",
+      "https://169.254.169.254/latest/meta-data/",
+      "http://10.0.0.5/",
+      "http://192.168.1.1/",
+      "http://172.16.4.2/",
+      "https://serveur.internal/",
+      "https://intranet.local/",
+      "https://exemple.test/",
+      "file:///etc/passwd",
+    ]) {
+      expect(normaliseUrl(saisie), saisie).toBeNull();
+    }
+    expect(hotePublic("garagemartin.fr")).toBe(true);
+  });
 });
 
 describe("collecteurs", () => {
@@ -657,6 +675,22 @@ describe("auditeSite", () => {
     expect(audit.scores.global).toBeGreaterThan(85);
     expect(audit.findings.filter((f) => f.severite === "critique")).toEqual([]);
     expect(audit.emailContact).toBeNull();
+  });
+
+  it("n'audite pas une redirection vers un hôte interne", async () => {
+    const impl = (async () => ({
+      ok: true,
+      status: 200,
+      url: "http://169.254.169.254/latest/meta-data/",
+      headers: { get: () => "text/html" },
+      text: async () => "<html>metadonnees</html>",
+      json: async () => ({}),
+      body: null,
+    })) as unknown as typeof fetch;
+
+    const audit = await auditeSite("https://garagemartin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+    expect(audit.erreurs.join(" ")).toContain("hôte non public");
+    expect(audit.findings.map((f) => f.regle)).toContain("tech_site_injoignable");
   });
 
   it("rejette une adresse invalide sans lancer de requête", async () => {
