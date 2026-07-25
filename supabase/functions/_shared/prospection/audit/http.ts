@@ -136,4 +136,15 @@ export function domaine(url: string): string | null {
   }
 }
 
+/**
+ * Nom présentable déduit d'un domaine : « garage-martin.fr » → « Garage Martin ».
+ * Utilisé quand on audite une URL sans connaître la raison sociale.
+ */
+export function nomDepuisDomaine(hote: string): string {
+  const racine = hote.replace(/^www\./, "").split(".")[0];
+  const mots = racine.split(/[-_]+/).filter(Boolean);
+  if (!mots.length) return hote;
+  return mots.map((mot) => mot.charAt(0).toUpperCase() + mot.slice(1)).join(" ");
+}
+
 export const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

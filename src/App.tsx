@@ -45,6 +45,7 @@ const AdminPlans = lazy(() => import("./pages/admin/AdminPlans"));
 const AdminMessages = lazy(() => import("./pages/admin/AdminMessages"));
 const AdminDemoGenerator = lazy(() => import("./pages/admin/AdminDemoGenerator"));
 const AdminProspection = lazy(() => import("./pages/admin/AdminProspection"));
+const AdminAuditUrl = lazy(() => import("./pages/admin/AdminAuditUrl"));
 const AdminProspectDetail = lazy(() => import("./pages/admin/AdminProspectDetail"));
 const AdminProspectRapport = lazy(() => import("./pages/admin/AdminProspectRapport"));
 const AdminPrestations = lazy(() => import("./pages/admin/AdminPrestations"));
@@ -128,6 +129,7 @@ const App = () => (
                 <Route path="/admin/messages" element={<AdminGuard><AdminMessages /></AdminGuard>} />
                 <Route path="/admin/demos" element={<AdminGuard><AdminDemoGenerator /></AdminGuard>} />
                 <Route path="/admin/prospection" element={<AdminGuard><AdminProspection /></AdminGuard>} />
+                <Route path="/admin/prospection/audit" element={<AdminGuard><AdminAuditUrl /></AdminGuard>} />
                 <Route path="/admin/prospection/:prospectId" element={<AdminGuard><AdminProspectDetail /></AdminGuard>} />
                 <Route path="/admin/prospection/:prospectId/rapport" element={<AdminGuard><AdminProspectRapport /></AdminGuard>} />
                 <Route path="/admin/prestations" element={<AdminGuard><AdminPrestations /></AdminGuard>} />

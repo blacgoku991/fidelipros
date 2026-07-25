@@ -6,7 +6,8 @@
 // publiques, d'en-têtes HTTP et d'enregistrements DNS, sans aucune intrusion.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { auditeSite } from "../_shared/prospection/audit/index.ts";
+import { auditeSite, normaliseUrl } from "../_shared/prospection/audit/index.ts";
+import { domaine as domaineDe, nomDepuisDomaine } from "../_shared/prospection/audit/http.ts";
 import { scoreProspect } from "../_shared/prospection/core.ts";
 import { detecteEtAuditeSite } from "../_shared/prospection/website.ts";
 import type { AuditSiteComplet, Profondeur } from "../_shared/prospection/audit/types.ts";
@@ -35,7 +36,7 @@ const BUCKET_CAPTURES = "prospect-audits";
 
 interface ProspectRow {
   id: string;
-  siren: string;
+  siren: string | null;
   nom: string;
   enseigne: string | null;
   site_web: string | null;
@@ -46,14 +47,14 @@ interface ProspectRow {
 /** Enregistre la capture Lighthouse dans le bucket privé et retourne son chemin. */
 async function stockeCapture(
   supabase: ReturnType<typeof createClient>,
-  siren: string,
+  dossier: string,
   dataUri: string,
 ): Promise<string | null> {
   const correspondance = dataUri.match(/^data:image\/(jpeg|png|webp);base64,(.+)$/);
   if (!correspondance) return null;
   const [, extension, base64] = correspondance;
   const octets = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-  const chemin = `${siren}/${Date.now()}.${extension === "jpeg" ? "jpg" : extension}`;
+  const chemin = `${dossier}/${Date.now()}.${extension === "jpeg" ? "jpg" : extension}`;
 
   const { error } = await supabase.storage
     .from(BUCKET_CAPTURES)
@@ -124,6 +125,50 @@ Deno.serve(async (req) => {
       return json({ error: "Fournissez un prospect_id, un siren ou une url" }, 400);
     }
 
+    // ── Audit d'une URL libre : le site devient un prospect à part entière ──
+    // Sans cela, la proposition commerciale (qui s'appuie sur un prospect_id) ne pourrait
+    // pas suivre. Dédoublonnage sur le domaine : réauditer un site réutilise sa fiche.
+    if (!prospect && urlDemandee && body.creer_prospect !== false) {
+      const urlNormalisee = normaliseUrl(urlDemandee);
+      const hote = urlNormalisee ? domaineDe(urlNormalisee) : null;
+      if (!urlNormalisee || !hote) {
+        return json({ error: `Adresse invalide : ${urlDemandee}` }, 400);
+      }
+
+      const nomSaisi = typeof body.nom === "string" ? body.nom.trim().slice(0, 120) : "";
+      const { data: existant } = await supabase
+        .from("prospects")
+        .select("id, siren, nom, enseigne, site_web, site_statut, budget_score")
+        .eq("domaine", hote)
+        .maybeSingle();
+
+      if (existant) {
+        prospect = existant as ProspectRow;
+        if (nomSaisi && nomSaisi !== prospect.nom) {
+          await supabase.from("prospects").update({ nom: nomSaisi }).eq("id", prospect.id);
+          prospect.nom = nomSaisi;
+        }
+      } else {
+        const { data: cree, error: creationErr } = await supabase
+          .from("prospects")
+          .insert({
+            domaine: hote,
+            nom: nomSaisi || nomDepuisDomaine(hote),
+            site_web: urlNormalisee,
+            site_statut: "non_verifie",
+            source: "manuel",
+            // Sans données Sirene, la capacité budgétaire est inconnue : socle neutre.
+            budget_score: 50,
+          })
+          .select("id, siren, nom, enseigne, site_web, site_statut, budget_score")
+          .maybeSingle();
+        if (creationErr || !cree) {
+          return json({ error: creationErr?.message ?? "Création du prospect impossible" }, 400);
+        }
+        prospect = cree as ProspectRow;
+      }
+    }
+
     // ── Détection du site si le prospect n'en a pas encore ────────────────
     let url = urlDemandee ?? prospect?.site_web ?? null;
     let siteRedecouvert = false;
@@ -175,7 +220,7 @@ Deno.serve(async (req) => {
     // ── Persistance ──────────────────────────────────────────────────────
     let capturePath: string | null = null;
     if (audit.captureDataUri && prospect) {
-      capturePath = await stockeCapture(supabase, prospect.siren, audit.captureDataUri);
+      capturePath = await stockeCapture(supabase, prospect.siren ?? prospect.id, audit.captureDataUri);
     }
 
     const { data: auditRow, error: insertErr } = await supabase
@@ -217,6 +262,7 @@ Deno.serve(async (req) => {
       }
       return json({
         audit_id: auditRow?.id ?? null,
+        prospect_id: prospect?.id ?? null,
         concluant: false,
         accessibilite: audit.accessibilite,
         message: audit.erreurs[0] ?? "Le site n'a pas pu être analysé.",
@@ -259,6 +305,7 @@ Deno.serve(async (req) => {
 
     return json({
       audit_id: auditRow?.id ?? null,
+      prospect_id: prospect?.id ?? null,
       concluant: true,
       accessibilite: audit.accessibilite,
       site_redecouvert: siteRedecouvert,

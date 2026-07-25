@@ -15,6 +15,7 @@ décrite dans [PROSPECTION.md](./PROSPECTION.md).
 | Devis et rédaction | `supabase/functions/_shared/prospection/proposition/` |
 | Edge function d'audit | `supabase/functions/audit-prospect/index.ts` |
 | Edge function de proposition | `supabase/functions/generate-proposal/index.ts` |
+| Audit d'une URL | `/admin/prospection/audit` — `src/pages/admin/AdminAuditUrl.tsx` |
 | Fiche prospect | `/admin/prospection/:id` — `src/pages/admin/AdminProspectDetail.tsx` |
 | Rapport imprimable | `/admin/prospection/:id/rapport` |
 | Catalogue de prix | `/admin/prestations` |
@@ -128,7 +129,16 @@ quels et l'interface l'indique.
 
 ## Utilisation
 
-### Depuis l'admin
+### Auditer l'adresse d'un site précis
+
+`/admin/prospection/audit` (« Auditer un site » dans le menu) : collez une adresse, ajoutez le
+nom de l'entreprise si vous le connaissez, et lancez. Comptez 15 à 45 secondes. Le résultat
+s'affiche à l'écran — les quatre notes, les défauts par volet, la capture mobile — et le site
+est **enregistré comme prospect** (`source = manuel`, dédoublonné sur le domaine). Vous
+enchaînez ensuite sur « Générer la proposition », la fiche complète et le rapport imprimable,
+exactement comme pour un prospect issu de Sirene. Aucun terminal nécessaire.
+
+### Depuis la liste de prospects
 
 1. `/admin/prospection` : bouton **Auditer** sur une ligne, ou **Auditer les 10 meilleurs**
    pour enchaîner les prospects non encore audités (l'onglet doit rester ouvert : chaque audit
@@ -137,7 +147,9 @@ quels et l'interface l'indique.
 3. **Générer la proposition** : devis chiffré, rapport imprimable, email / SMS / script d'appel
    avec bouton copier. Le suivi commercial (statut, notes) reste sur la même page.
 
-### En ligne de commande
+### En ligne de commande (traitement par lot)
+
+Utile pour auditer un CSV entier en une fois ; l'interface reste préférable pour un site isolé.
 
 ```bash
 npm run audit -- --url https://site-du-prospect.fr --nom "Garage Dupont"

@@ -225,6 +225,8 @@ const AdminProspection = () => {
       chauds: prospects.filter((p) => p.priorite === "chaud").length,
       sansSite: prospects.filter((p) => p.site_statut === "aucun_site" || p.site_statut === "site_injoignable").length,
       aRefaire: prospects.filter((p) => p.site_statut === "site_obsolete" || p.site_statut === "site_a_rafraichir").length,
+      audites: prospects.filter((p) => p.audit_le).length,
+      enCours: prospects.filter((p) => ["a_contacter", "contacte", "rdv"].includes(p.statut)).length,
     }),
     [prospects],
   );
@@ -246,6 +248,30 @@ const AdminProspection = () => {
         </Button>
       }
     >
+      {/* ── Le parcours, en clair ─────────────────────────────────────── */}
+      <div className="rounded-2xl border border-border/40 bg-muted/30 p-4 mb-6">
+        <div className="grid gap-3 sm:grid-cols-4">
+          {[
+            { etape: "1. Trouver", texte: "Entreprises ciblées depuis l'open data Sirene", compte: stats.total },
+            { etape: "2. Auditer", texte: "SEO, design, sécurité, technique", compte: stats.audites },
+            { etape: "3. Proposer", texte: "Devis, rapport client, email et script d'appel", compte: stats.chauds },
+            { etape: "4. Suivre", texte: "Statut commercial et relances", compte: stats.enCours },
+          ].map((item) => (
+            <div key={item.etape}>
+              <p className="text-sm font-medium">
+                {item.etape}
+                <span className="ml-2 text-muted-foreground tabular-nums">{item.compte}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">{item.texte}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Pour analyser l'adresse d'un site précis sans passer par la recherche, utilisez{" "}
+          <Link to="/admin/prospection/audit" className="underline">Auditer un site</Link>.
+        </p>
+      </div>
+
       {/* ── Critères de recherche ─────────────────────────────────────── */}
       <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm mb-6">
         <p className="text-sm font-medium mb-3">Secteurs ciblés</p>

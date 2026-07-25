@@ -23,6 +23,7 @@ export {
   constate, LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, REGLES, reglesDuPilier,
 } from "./regles.ts";
 export { echappeHtml } from "./html.ts";
+export { domaine, nomDepuisDomaine } from "./http.ts";
 export { FICHIERS_SONDES } from "./collecte.ts";
 export type * from "./types.ts";
 

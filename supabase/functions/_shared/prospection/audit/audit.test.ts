@@ -5,6 +5,7 @@ import {
   collecte, collecte404, collecteDns, collecteLighthouse, collecteRobots, collecteSitemap,
   estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl, resoutDomaine, sondeFichiers,
 } from "./collecte.ts";
+import { domaine, nomDepuisDomaine } from "./http.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
   niveauxTitres, ressourcesNonSecurisees, texteVisible, titrePage, typesJsonLd,
@@ -505,6 +506,19 @@ function fetchSimule(routes: Record<string, ReponseSimulee | (() => never)>, app
     } as unknown as Response;
   }) as unknown as typeof fetch;
 }
+
+describe("identité déduite d'une URL", () => {
+  it("extrait le domaine sans www", () => {
+    expect(domaine("https://www.garage-martin.fr/contact")).toBe("garage-martin.fr");
+    expect(domaine("pas une url")).toBeNull();
+  });
+
+  it("déduit un nom présentable du domaine", () => {
+    expect(nomDepuisDomaine("garage-martin.fr")).toBe("Garage Martin");
+    expect(nomDepuisDomaine("www.smartfixx.fr")).toBe("Smartfixx");
+    expect(nomDepuisDomaine("le_fournil_du_marche.com")).toBe("Le Fournil Du Marche");
+  });
+});
 
 describe("normaliseUrl", () => {
   it("complète le schéma et rejette les saisies invalides", () => {

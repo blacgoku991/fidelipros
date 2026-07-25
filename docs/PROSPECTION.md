@@ -1,5 +1,7 @@
 # Prospection web — trouver des entreprises à équiper d'un site
 
+> **Où faire quoi** : la découverte de leads se fait sur `/admin/prospection` (cette page),
+> l'audit d'un site dont vous avez déjà l'adresse sur `/admin/prospection/audit`.
 > Une fois les prospects trouvés, l'audit complet (SEO, design, sécurité, technique) et la
 > proposition commerciale (devis, rapport, email, script d'appel) sont décrits dans
 > [AUDIT.md](./AUDIT.md).

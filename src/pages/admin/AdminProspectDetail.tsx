@@ -7,6 +7,9 @@ import {
 } from "lucide-react";
 
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import {
+  BandeauNonConcluant, ListeFindings, NotesAudit,
+} from "@/components/admin/prospection/AffichageAudit";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,48 +19,11 @@ import {
   auditeProspect, chargeDernierAudit, chargeDocuments, chargeProspect, CLASSES_SEVERITE,
   classeScore, euros, formateDate, formateEuros, genereProposition, LIBELLES_ACCESSIBILITE,
   LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, LIBELLES_URGENCE, lienMaps, majProspect,
-  PRIORITES, STATUTS_COMMERCIAUX, STATUTS_SITE, telechargeFichier, urlCapture,
+  PILIERS, PRIORITES, STATUTS_COMMERCIAUX, STATUTS_SITE, telechargeFichier, urlCapture,
   type AuditEnregistre, type DocumentProspect, type Finding, type Pilier,
   type ProspectEnregistre, type StatutCommercial,
 } from "@/lib/prospection";
 import { cn } from "@/lib/utils";
-
-const PILIERS: Pilier[] = ["seo", "design", "securite", "technique"];
-
-function Score({ label, valeur }: { label: string; valeur: number | null }) {
-  return (
-    <div className="rounded-2xl border border-border/40 bg-card p-4 text-center shadow-sm">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-2xl font-semibold mt-1", valeur === null ? "text-muted-foreground" : classeScore(valeur))}>
-        {valeur === null ? "—" : valeur}
-        {valeur !== null && <span className="text-sm font-normal text-muted-foreground">/100</span>}
-      </p>
-    </div>
-  );
-}
-
-function ListeFindings({ findings }: { findings: Finding[] }) {
-  if (!findings.length) {
-    return <p className="text-sm text-emerald-600 dark:text-emerald-400 py-4">Aucun défaut relevé sur ce volet.</p>;
-  }
-  return (
-    <ul className="divide-y divide-border/40">
-      {findings.map((finding) => (
-        <li key={finding.regle} className="py-3 flex gap-3">
-          <Badge variant="secondary" className={cn("h-fit shrink-0", CLASSES_SEVERITE[finding.severite])}>
-            {LIBELLES_SEVERITE[finding.severite]}
-          </Badge>
-          <div className="min-w-0">
-            <p className="font-medium text-sm">{finding.titre}</p>
-            <p className="text-xs text-muted-foreground mt-0.5 break-words">{finding.constat}</p>
-            <p className="text-xs mt-1 italic">{finding.impact}</p>
-          </div>
-          <span className="ml-auto shrink-0 text-xs text-muted-foreground">{LIBELLES_EFFORT[finding.effort]}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 function BoutonCopier({ texte, libelle }: { texte: string; libelle: string }) {
   const copie = async () => {
@@ -259,18 +225,14 @@ const AdminProspectDetail = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <Score
-          label="Note globale"
-          valeur={auditExploitable?.score_global ?? (audit ? null : prospect.score_audit ?? null)}
+      <div className="mb-6">
+        <NotesAudit
+          global={auditExploitable?.score_global ?? (audit ? null : prospect.score_audit ?? null)}
+          seo={auditExploitable?.score_seo ?? null}
+          design={auditExploitable?.score_design ?? null}
+          securite={auditExploitable?.score_securite ?? null}
+          technique={auditExploitable?.score_technique ?? null}
         />
-        {PILIERS.map((pilier) => (
-          <Score
-            key={pilier}
-            label={LIBELLES_PILIERS[pilier]}
-            valeur={auditExploitable ? auditExploitable[`score_${pilier}` as const] : null}
-          />
-        ))}
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -278,18 +240,15 @@ const AdminProspectDetail = () => {
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
             {audit && audit.concluant === false ? (
-              <div className="text-sm">
-                <p className="font-medium mb-1">Audit non concluant</p>
-                <p className="text-muted-foreground">
-                  {audit.erreurs[0] ?? "Le site n'a pas pu être analysé."} Aucun défaut n'est
-                  affirmé et aucun devis n'est proposé : ouvrez le site à la main, ou relancez
-                  l'audit depuis un autre réseau.
-                </p>
-                <Button size="sm" className="rounded-xl mt-3" onClick={lanceAudit} disabled={enAudit}>
-                  {enAudit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Relancer l'audit
-                </Button>
-              </div>
+              <BandeauNonConcluant
+                raison={audit.erreurs[0] ?? "Le site n'a pas pu être analysé."}
+                action={
+                  <Button size="sm" className="rounded-xl" onClick={lanceAudit} disabled={enAudit}>
+                    {enAudit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    Relancer l'audit
+                  </Button>
+                }
+              />
             ) : !audit ? (
               <div className="text-sm text-muted-foreground">
                 <p className="mb-3">

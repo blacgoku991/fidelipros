@@ -28,6 +28,9 @@ export {
 } from "@prospection/audit/index.ts";
 export { euros } from "@prospection/proposition/devis.ts";
 
+/** Ordre d'affichage des quatre volets d'audit. */
+export const PILIERS: Pilier[] = ["seo", "design", "securite", "technique"];
+
 export const LIBELLES_URGENCE: Record<Urgence, { label: string; classe: string }> = {
   critique: { label: "Urgence critique", classe: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300" },
   elevee: { label: "Urgence élevée", classe: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
@@ -269,6 +272,8 @@ export interface ResultatAudit {
   /** Faux quand le site n'a pas pu être observé : aucune note n'est exploitable. */
   concluant?: boolean;
   accessibilite?: Accessibilite;
+  /** Fiche prospect créée ou réutilisée pour l'URL auditée. */
+  prospect_id?: string | null;
   /** Aucun site trouvé pour l'entreprise : c'est une opportunité de création. */
   sans_site?: boolean;
   message?: string;
@@ -286,6 +291,31 @@ export interface ResultatProposition {
   genere_par_ia: boolean;
   arguments: Finding[];
   sans_audit: boolean;
+}
+
+/**
+ * Audite une URL libre : le site est enregistré comme prospect (source « manuel »),
+ * ce qui permet d'enchaîner sur le devis, le rapport et le suivi commercial.
+ */
+export async function auditeUrl(url: string, nom?: string): Promise<ResultatAudit> {
+  const { data, error } = await supabase.functions.invoke("audit-prospect", {
+    body: { url, nom, creer_prospect: true, profondeur: "complet" },
+  });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data as ResultatAudit;
+}
+
+/** Derniers sites audités à la main, les plus récents d'abord. */
+export async function chargeProspectsManuels(limite = 10): Promise<ProspectEnregistre[]> {
+  const { data, error } = await db
+    .from("prospects")
+    .select("*")
+    .eq("source", "manuel")
+    .order("audit_le", { ascending: false, nullsFirst: false })
+    .limit(limite);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ProspectEnregistre[];
 }
 
 /** Lance l'audit du site d'un prospect (edge function). */
