@@ -10,6 +10,7 @@ import {
   extraitContacts,
   statutDepuisScoreSite,
 } from "./core.ts";
+import { recupereHttp, type OptionsHttp } from "./audit/http.ts";
 import type { AuditSite, Prospect } from "./types.ts";
 
 export interface OptionsAudit {
@@ -22,14 +23,6 @@ export interface OptionsAudit {
   maxCandidats?: number;
 }
 
-interface Reponse {
-  urlFinale: string;
-  statut: number;
-  html: string;
-  dureeMs: number;
-  octets: number;
-}
-
 const auditVide = (): AuditSite => ({
   url: null,
   statut: "aucun_site",
@@ -40,62 +33,13 @@ const auditVide = (): AuditSite => ({
   verifieLe: new Date().toISOString(),
 });
 
-/** Lit le corps de la réponse en s'arrêtant à `maxOctets` (évite de rapatrier 50 Mo). */
-async function litTexteLimite(res: Response, maxOctets: number): Promise<{ texte: string; octets: number }> {
-  if (!res.body) {
-    const texte = await res.text();
-    return { texte: texte.slice(0, maxOctets), octets: texte.length };
-  }
-  const reader = res.body.getReader();
-  const decodeur = new TextDecoder("utf-8", { fatal: false });
-  let texte = "";
-  let octets = 0;
-  try {
-    while (octets < maxOctets) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      octets += value.byteLength;
-      texte += decodeur.decode(value, { stream: true });
-    }
-  } finally {
-    await reader.cancel().catch(() => undefined);
-  }
-  return { texte, octets };
-}
-
-async function recupere(
-  url: string,
-  options: Required<Pick<OptionsAudit, "fetchImpl" | "timeoutMs" | "maxOctets">>,
-): Promise<Reponse | null> {
-  const controleur = new AbortController();
-  const minuteur = setTimeout(() => controleur.abort(), options.timeoutMs);
-  const debut = Date.now();
-  try {
-    const res = await options.fetchImpl(url, {
-      redirect: "follow",
-      signal: controleur.signal,
-      headers: {
-        // Certains hébergeurs anciens renvoient 403 sans User-Agent de navigateur.
-        "User-Agent":
-          "Mozilla/5.0 (compatible; FideliProProspection/1.0; +https://fidelipro.com)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
-    const typeContenu = res.headers.get("content-type") ?? "";
-    if (res.ok && typeContenu && !typeContenu.includes("html")) return null;
-    const { texte, octets } = await litTexteLimite(res, options.maxOctets);
-    return {
-      urlFinale: res.url || url,
-      statut: res.status,
-      html: texte,
-      dureeMs: Date.now() - debut,
-      octets,
-    };
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(minuteur);
-  }
+/** Récupère une page en écartant les réponses qui ne sont pas du HTML. */
+async function recupereHtml(url: string, options: OptionsHttp) {
+  const reponse = await recupereHttp(url, options);
+  if (!reponse) return null;
+  const typeContenu = reponse.entetes["content-type"] ?? "";
+  if (reponse.statut < 400 && typeContenu && !typeContenu.includes("html")) return null;
+  return reponse;
 }
 
 /**
@@ -108,7 +52,7 @@ export async function detecteEtAuditeSite(
   options: OptionsAudit = {},
 ): Promise<AuditSite> {
   const config = {
-    fetchImpl: options.fetchImpl ?? fetch,
+    fetchImpl: options.fetchImpl,
     timeoutMs: options.timeoutMs ?? 8000,
     maxOctets: options.maxOctets ?? 500_000,
   };
@@ -117,7 +61,8 @@ export async function detecteEtAuditeSite(
 
   for (const domaine of candidats) {
     const reponse =
-      (await recupere(`https://${domaine}`, config)) ?? (await recupere(`http://${domaine}`, config));
+      (await recupereHtml(`https://${domaine}`, config)) ??
+      (await recupereHtml(`http://${domaine}`, config));
     if (!reponse) continue;
     if (reponse.statut >= 400) continue;
     if (estPageParking(reponse.html)) continue;

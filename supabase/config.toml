@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.prospect-companies]
 verify_jwt = true
+
+[functions.audit-prospect]
+verify_jwt = true
+
+[functions.generate-proposal]
+verify_jwt = true
