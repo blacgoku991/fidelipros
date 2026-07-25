@@ -27,6 +27,12 @@ export interface OptionsCollecte {
   /** Timestamp (ms) au-delà duquel on arrête de collecter. */
   echeance?: number;
   anneeCourante?: number;
+  /**
+   * Autorise les hôtes privés (127.0.0.1, .local…). Réservé aux tests locaux via le CLI :
+   * les edge functions ne passent jamais cette option, le garde-fou SSRF reste entier côté
+   * serveur.
+   */
+  autoriseHotesPrives?: boolean;
 }
 
 /** Fichiers publics vérifiés : liste fixe, lecture seule, aucune tentative d'exploitation. */
@@ -89,18 +95,38 @@ export function hotePublic(hote: string): boolean {
 }
 
 /** Normalise une saisie utilisateur en URL absolue publique (http/https uniquement). */
-export function normaliseUrl(saisie: string): string | null {
+export function normaliseUrl(saisie: string, autoriseHotesPrives = false): string | null {
   const propre = saisie.trim();
   if (!propre) return null;
   const avecSchema = /^https?:\/\//i.test(propre) ? propre : `https://${propre}`;
   try {
     const url = new URL(avecSchema);
     if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    if (!hotePublic(url.hostname)) return null;
+    if (!autoriseHotesPrives && !hotePublic(url.hostname)) return null;
     return url.toString();
   } catch {
     return null;
   }
+}
+
+/** Signatures des pare-feux applicatifs qui bloquent les requêtes non navigateur. */
+const ENTETES_PARE_FEU = ["cf-ray", "cf-mitigated", "x-sucuri-id", "x-iinfo", "x-akamai-transformed"];
+const CORPS_PARE_FEU = [
+  "just a moment", "attention required", "checking your browser", "access denied",
+  "cloudflare", "sucuri website firewall", "request unsuccessful", "captcha",
+  "vous avez été bloqué", "ddos protection",
+];
+
+/**
+ * Une réponse d'erreur provient-elle d'une protection anti-robot plutôt que d'une panne ?
+ * Très fréquent chez les PME derrière Cloudflare : conclure « site en erreur » serait faux.
+ */
+export function estBlocageParPareFeu(reponse: ReponseHttp): boolean {
+  if (![403, 406, 429, 503].includes(reponse.statut)) return false;
+  if (ENTETES_PARE_FEU.some((cle) => reponse.entetes[cle])) return true;
+  if (/cloudflare|sucuri|incapsula|akamai|imperva/i.test(reponse.entetes.server ?? "")) return true;
+  const corps = reponse.html.slice(0, 4000).toLowerCase();
+  return CORPS_PARE_FEU.some((marqueur) => corps.includes(marqueur));
 }
 
 /** Vérifie que l'adresse en http:// redirige bien vers https://. */
@@ -203,6 +229,55 @@ export async function collecte404(
   return { statut: reponse.statut, personnalisee };
 }
 
+/**
+ * Interroge le DNS via DNS-over-HTTPS Cloudflare.
+ * Retourne `null` quand la requête n'a pas abouti — à ne surtout pas confondre avec
+ * « aucun enregistrement », sinon les règles concluraient à tort à une absence de protection.
+ */
+export async function interrogeDns(
+  nom: string,
+  type: "TXT" | "MX" | "A",
+  options: OptionsCollecte,
+): Promise<string[] | null> {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const controleur = new AbortController();
+  const minuteur = setTimeout(() => controleur.abort(), options.timeoutMs ?? 8000);
+  try {
+    const res = await fetchImpl(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(nom)}&type=${type}`,
+      { headers: { Accept: "application/dns-json", "User-Agent": USER_AGENT }, signal: controleur.signal },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { Status?: number; Answer?: Array<{ data?: string }> };
+    // Status 0 = réponse valide, 3 = domaine sans cet enregistrement : les deux sont exploitables.
+    if (typeof data.Status === "number" && data.Status !== 0 && data.Status !== 3) return null;
+    return (data.Answer ?? []).map((r) => (r.data ?? "").replace(/^"|"$/g, "")).filter(Boolean);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(minuteur);
+  }
+}
+
+/**
+ * Le domaine existe-t-il dans le DNS ? `null` si le résolveur n'a pas répondu.
+ * Sert à distinguer un site réellement hors ligne d'un site que nous n'arrivons pas à joindre.
+ */
+export async function resoutDomaine(
+  url: string,
+  options: OptionsCollecte,
+): Promise<boolean | null> {
+  const hote = domaine(url);
+  if (!hote) return null;
+  const enregistrements = await interrogeDns(hote, "A", options);
+  if (enregistrements === null) return null;
+  if (enregistrements.length) return true;
+  // Certains domaines n'ont qu'un enregistrement de messagerie ou une délégation : on
+  // vérifie l'apex en MX avant de conclure à l'inexistence.
+  const mx = await interrogeDns(hote, "MX", options);
+  return mx === null ? null : mx.length > 0;
+}
+
 /** Enregistrements DNS liés à l'usurpation d'email, via DNS-over-HTTPS Cloudflare. */
 export async function collecteDns(
   url: string,
@@ -210,29 +285,7 @@ export async function collecteDns(
 ): Promise<DonneesDns | null> {
   const hote = domaine(url);
   if (!hote) return null;
-  const fetchImpl = options.fetchImpl ?? fetch;
-
-  // null = la requête n'a pas abouti (à ne pas confondre avec « aucun enregistrement »),
-  // sinon les règles conclueraient à tort à l'absence de SPF/DMARC.
-  const interroge = async (nom: string, type: "TXT" | "MX"): Promise<string[] | null> => {
-    const controleur = new AbortController();
-    const minuteur = setTimeout(() => controleur.abort(), options.timeoutMs ?? 8000);
-    try {
-      const res = await fetchImpl(
-        `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(nom)}&type=${type}`,
-        { headers: { Accept: "application/dns-json", "User-Agent": USER_AGENT }, signal: controleur.signal },
-      );
-      if (!res.ok) return null;
-      const data = (await res.json()) as { Status?: number; Answer?: Array<{ data?: string }> };
-      // Status 0 = réponse valide, 3 = domaine sans cet enregistrement : les deux sont exploitables.
-      if (typeof data.Status === "number" && data.Status !== 0 && data.Status !== 3) return null;
-      return (data.Answer ?? []).map((r) => (r.data ?? "").replace(/^"|"$/g, "")).filter(Boolean);
-    } catch {
-      return null;
-    } finally {
-      clearTimeout(minuteur);
-    }
-  };
+  const interroge = (nom: string, type: "TXT" | "MX") => interrogeDns(nom, type, options);
 
   const [txt, mx, dmarc] = await Promise.all([
     interroge(hote, "TXT"),
@@ -389,11 +442,10 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     timeoutMs: options.timeoutMs ?? 10_000,
     maxOctets: options.maxOctets ?? 500_000,
   });
-  if (!accueil) erreurs.push("Page d'accueil injoignable");
 
   // Une redirection peut mener ailleurs que l'hôte demandé : on refuse d'auditer (et donc
   // d'aller sonder) une arrivée sur le réseau interne.
-  if (accueil && !hotePublic(new URL(accueil.urlFinale).hostname)) {
+  if (accueil && !options.autoriseHotesPrives && !hotePublic(new URL(accueil.urlFinale).hostname)) {
     erreurs.push(`Redirection vers un hôte non public : ${accueil.urlFinale}`);
     accueil = null;
   }
@@ -401,6 +453,8 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   const contexte: ContexteAudit = {
     url,
     accueil,
+    accessibilite: "ok",
+    resolutionDns: null,
     redirigeVersHttps: null,
     robots: null,
     sitemap: null,
@@ -412,7 +466,38 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     anneeCourante,
     erreurs,
   };
-  if (!accueil) return contexte;
+
+  // ── Qualifier l'accès avant toute conclusion ─────────────────────────────
+  // Un site qu'on ne voit pas n'est pas un site en panne : sans cette distinction, un
+  // pare-feu applicatif ou un blocage réseau produirait un faux « site cassé » chez le prospect.
+  if (accueil && estBlocageParPareFeu(accueil)) {
+    contexte.accessibilite = "bloque";
+    erreurs.push(
+      `Accès refusé par une protection anti-robot (HTTP ${accueil.statut}) : le site n'a pas pu être analysé`,
+    );
+    contexte.accueil = null;
+    return contexte;
+  }
+
+  if (!accueil) {
+    contexte.resolutionDns = await resoutDomaine(url, options).catch(() => null);
+    if (contexte.resolutionDns === false) {
+      contexte.accessibilite = "injoignable";
+      erreurs.push("Le domaine ne résout pas : site réellement hors ligne");
+    } else {
+      contexte.accessibilite = "bloque";
+      erreurs.push(
+        contexte.resolutionDns === true
+          ? "Le domaine existe mais le site n'a pas répondu : analyse impossible depuis notre réseau"
+          : "Site et résolveur DNS injoignables : analyse impossible depuis notre réseau",
+      );
+    }
+    return contexte;
+  }
+
+  if (accueil.statut >= 400) {
+    contexte.accessibilite = "erreur_serveur";
+  }
 
   const urlEffective = accueil.urlFinale;
   const taches: Array<[string, Promise<unknown>]> = [

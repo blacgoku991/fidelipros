@@ -10,7 +10,7 @@ import { evalueTechnique } from "./technique.ts";
 import { calculeScores, trieFindings } from "./score.ts";
 import type { AuditSiteComplet, ContexteAudit, Finding, Profondeur } from "./types.ts";
 
-export { collecte, normaliseUrl } from "./collecte.ts";
+export { collecte, estBlocageParPareFeu, normaliseUrl, resoutDomaine } from "./collecte.ts";
 export { evalueDesign } from "./design.ts";
 export { evalueSecurite } from "./securite.ts";
 export { evalueSeo } from "./seo.ts";
@@ -49,7 +49,7 @@ export async function auditeSite(
   options: OptionsAuditSite = {},
 ): Promise<AuditSiteComplet> {
   const debut = Date.now();
-  const url = normaliseUrl(urlSaisie);
+  const url = normaliseUrl(urlSaisie, options.autoriseHotesPrives);
   const profondeur: Profondeur = options.profondeur ?? "complet";
 
   if (!url) {
@@ -57,6 +57,8 @@ export async function auditeSite(
       url: urlSaisie,
       urlFinale: null,
       profondeur,
+      accessibilite: "bloque",
+      concluant: false,
       scores: calculeScores([]),
       findings: [],
       lighthouse: null,
@@ -83,6 +85,9 @@ export async function auditeSite(
     url,
     urlFinale: ctx.accueil?.urlFinale ?? null,
     profondeur,
+    accessibilite: ctx.accessibilite,
+    // Un audit sans observation du site ne conclut rien : ni note à présenter, ni devis.
+    concluant: ctx.accessibilite !== "bloque",
     scores: calculeScores(findings),
     findings,
     lighthouse: ctx.lighthouse,

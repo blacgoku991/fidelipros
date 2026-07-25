@@ -39,6 +39,28 @@ résolveur DNS est injoignable, l'audit ne conclut pas « aucun SPF » — il in
 `erreurs`, affichée dans le rapport comme point non vérifiable. C'est ce qui rend le rapport
 défendable devant le prospect.
 
+### Audit non concluant
+
+Un site que nous n'arrivons pas à voir n'est pas un site en panne. Le moteur distingue quatre
+situations, portées par le champ `accessibilite` :
+
+| Valeur | Situation | Conséquence |
+|---|---|---|
+| `ok` | page récupérée | audit normal |
+| `erreur_serveur` | le serveur répond 4xx/5xx sans signature de pare-feu | défaut réel : « la page d'accueil renvoie une erreur » |
+| `bloque` | pare-feu applicatif (Cloudflare, Sucuri, Akamai…) ou site injoignable alors que le domaine résout | **audit non concluant** |
+| `injoignable` | aucune réponse **et** domaine qui ne résout pas | défaut réel : « aucun site en ligne » |
+
+Un audit `bloque` est marqué `concluant: false` et se comporte comme suit : aucun défaut n'est
+émis, aucune note n'est présentée, le devis est vide, l'email et le script d'appel sont remplacés
+par une note de travail interne, le rapport affiche un bandeau « Analyse impossible », la fiche
+prospect n'est pas requalifiée, et l'IA n'est pas appelée. Relancez l'audit depuis un réseau qui
+accède au site, ou vérifiez-le à la main.
+
+C'est le cas le plus fréquent en pratique : beaucoup de sites de PME sont derrière Cloudflare et
+répondent 403 à un client non navigateur. Sans cette distinction, le rapport envoyé au prospect
+affirmerait que son site est cassé alors qu'il fonctionne.
+
 ## Sources de données
 
 - **La page d'accueil, une page interne, `robots.txt`, `sitemap.xml`** et une URL inexistante
@@ -121,7 +143,11 @@ quels et l'interface l'indique.
 npm run audit -- --url https://site-du-prospect.fr --nom "Garage Dupont"
 npm run audit -- --csv prospects.csv --top 10 --sortie rapports
 npm run audit -- --url https://site.fr --rapide --sans-sonde
+npm run audit -- --url http://127.0.0.1:8099/ --autorise-local   # tests uniquement
 ```
+
+`--autorise-local` lève le garde-fou anti-SSRF pour auditer un serveur local : réservé aux
+tests, l'edge function ne l'expose pas.
 
 Produit dans `rapports/` : `<siren>-rapport.html`, `-email.txt`, `-appel.txt`, `-devis.json`.
 `--tarifs mon-catalogue.json` permet d'utiliser ses propres prix sans base de données.

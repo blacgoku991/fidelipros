@@ -70,7 +70,9 @@ export async function construitProposition(
     arguments: audit ? argumentsCles(audit.findings, options.nbArguments ?? 3) : [],
   };
 
-  const textes = await reformule(contexte, options.ia ?? {});
+  // Audit non concluant : on n'appelle pas l'IA — il n'y a rien à raconter, et lui donner
+  // un contexte vide l'inviterait à broder.
+  const textes = audit && !audit.concluant ? null : await reformule(contexte, options.ia ?? {});
   const syntheseTexte = textes?.synthese ?? synthese(contexte);
   const email = textes
     ? { objet: textes.objet, corps: textes.corps }

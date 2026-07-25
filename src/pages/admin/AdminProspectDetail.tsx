@@ -14,9 +14,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   auditeProspect, chargeDernierAudit, chargeDocuments, chargeProspect, CLASSES_SEVERITE,
-  classeScore, euros, formateDate, formateEuros, genereProposition, LIBELLES_EFFORT,
-  LIBELLES_PILIERS, LIBELLES_SEVERITE, LIBELLES_URGENCE, lienMaps, majProspect, PRIORITES,
-  STATUTS_COMMERCIAUX, STATUTS_SITE, telechargeFichier, urlCapture,
+  classeScore, euros, formateDate, formateEuros, genereProposition, LIBELLES_ACCESSIBILITE,
+  LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, LIBELLES_URGENCE, lienMaps, majProspect,
+  PRIORITES, STATUTS_COMMERCIAUX, STATUTS_SITE, telechargeFichier, urlCapture,
   type AuditEnregistre, type DocumentProspect, type Finding, type Pilier,
   type ProspectEnregistre, type StatutCommercial,
 } from "@/lib/prospection";
@@ -117,6 +117,10 @@ const AdminProspectDetail = () => {
       const resultat = await auditeProspect({ prospect_id: prospectId }, "complet");
       if (resultat.sans_site) {
         toast.info(resultat.message ?? "Aucun site détecté pour cette entreprise");
+      } else if (resultat.concluant === false) {
+        toast.warning("Audit non concluant", {
+          description: resultat.message ?? "Le site n'a pas pu être analysé — rien n'est conclu.",
+        });
       } else {
         toast.success(`Audit terminé : ${resultat.audit?.scores.global}/100`, {
           description: resultat.audit?.erreurs.length
@@ -182,8 +186,9 @@ const AdminProspectDetail = () => {
 
   const findingsParPilier = useMemo(() => {
     const groupes = {} as Record<Pilier, Finding[]>;
+    const exploitables = audit?.concluant === false ? [] : audit?.findings ?? [];
     for (const pilier of PILIERS) {
-      groupes[pilier] = (audit?.findings ?? []).filter((f) => f.pilier === pilier);
+      groupes[pilier] = exploitables.filter((f) => f.pilier === pilier);
     }
     return groupes;
   }, [audit]);
@@ -211,7 +216,11 @@ const AdminProspectDetail = () => {
 
   const site = STATUTS_SITE[prospect.site_statut];
   const priorite = PRIORITES[prospect.priorite];
-  const urgence = audit ? LIBELLES_URGENCE[audit.urgence] : null;
+  const auditExploitable = audit?.concluant !== false ? audit : null;
+  const urgence = auditExploitable ? LIBELLES_URGENCE[auditExploitable.urgence] : null;
+  const accessibilite = audit && audit.concluant === false
+    ? LIBELLES_ACCESSIBILITE[audit.accessibilite ?? "bloque"]
+    : null;
 
   return (
     <AdminLayout
@@ -234,6 +243,9 @@ const AdminProspectDetail = () => {
         <Badge variant="secondary" className={priorite.classe}>{priorite.label} · {prospect.score}/100</Badge>
         <Badge variant="secondary" className={site.classe}>{site.label}</Badge>
         {urgence && <Badge variant="secondary" className={urgence.classe}>{urgence.label}</Badge>}
+        {accessibilite && (
+          <Badge variant="secondary" className={accessibilite.classe}>{accessibilite.label}</Badge>
+        )}
         <span className="text-xs text-muted-foreground">SIREN {prospect.siren}</span>
         {prospect.site_web && (
           <a
@@ -248,12 +260,15 @@ const AdminProspectDetail = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
-        <Score label="Note globale" valeur={audit?.score_global ?? prospect.score_audit ?? null} />
+        <Score
+          label="Note globale"
+          valeur={auditExploitable?.score_global ?? (audit ? null : prospect.score_audit ?? null)}
+        />
         {PILIERS.map((pilier) => (
           <Score
             key={pilier}
             label={LIBELLES_PILIERS[pilier]}
-            valeur={audit ? audit[`score_${pilier}` as const] : null}
+            valeur={auditExploitable ? auditExploitable[`score_${pilier}` as const] : null}
           />
         ))}
       </div>
@@ -262,7 +277,20 @@ const AdminProspectDetail = () => {
         {/* ── Défauts par volet ────────────────────────────────────────── */}
         <div className="lg:col-span-2 space-y-6">
           <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-            {!audit ? (
+            {audit && audit.concluant === false ? (
+              <div className="text-sm">
+                <p className="font-medium mb-1">Audit non concluant</p>
+                <p className="text-muted-foreground">
+                  {audit.erreurs[0] ?? "Le site n'a pas pu être analysé."} Aucun défaut n'est
+                  affirmé et aucun devis n'est proposé : ouvrez le site à la main, ou relancez
+                  l'audit depuis un autre réseau.
+                </p>
+                <Button size="sm" className="rounded-xl mt-3" onClick={lanceAudit} disabled={enAudit}>
+                  {enAudit ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Relancer l'audit
+                </Button>
+              </div>
+            ) : !audit ? (
               <div className="text-sm text-muted-foreground">
                 <p className="mb-3">
                   Aucun audit pour ce prospect. Lancez-le pour obtenir les notes SEO, design,
@@ -391,7 +419,17 @@ const AdminProspectDetail = () => {
             )}
 
             <div className="grid gap-2 mt-4">
-              <Button size="sm" className="rounded-xl" onClick={() => genere(true)} disabled={enGeneration}>
+              {audit?.concluant === false && (
+                <p className="text-xs text-muted-foreground">
+                  Proposition indisponible : l'audit n'a rien pu constater.
+                </p>
+              )}
+              <Button
+                size="sm"
+                className="rounded-xl"
+                onClick={() => genere(true)}
+                disabled={enGeneration || audit?.concluant === false}
+              >
                 {enGeneration ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
                 {devis ? "Régénérer avec l'IA" : "Générer la proposition"}
               </Button>
@@ -400,7 +438,7 @@ const AdminProspectDetail = () => {
                 variant="outline"
                 className="rounded-xl"
                 onClick={() => genere(false)}
-                disabled={enGeneration}
+                disabled={enGeneration || audit?.concluant === false}
               >
                 <FileText className="w-4 h-4 mr-2" />
                 Générer sans IA

@@ -191,6 +191,8 @@ Deno.serve(async (req) => {
         score_securite: audit.scores.securite,
         score_technique: audit.scores.technique,
         urgence: audit.scores.urgence,
+        concluant: audit.concluant,
+        accessibilite: audit.accessibilite,
         findings: audit.findings,
         lighthouse: audit.lighthouse,
         fichiers_exposes: audit.fichiersExposes,
@@ -202,6 +204,26 @@ Deno.serve(async (req) => {
       .select("id")
       .maybeSingle();
     if (insertErr) console.error("[audit-prospect] insert:", insertErr.message);
+
+    // Audit non concluant : on garde la trace de la tentative, mais on ne touche pas à la
+    // qualification du prospect — écrire une note issue d'un site qu'on n'a pas vu reviendrait
+    // à fabriquer un faux diagnostic.
+    if (!audit.concluant) {
+      if (prospect) {
+        await supabase
+          .from("prospects")
+          .update({ audit_le: new Date().toISOString(), dernier_audit_id: auditRow?.id ?? null })
+          .eq("id", prospect.id);
+      }
+      return json({
+        audit_id: auditRow?.id ?? null,
+        concluant: false,
+        accessibilite: audit.accessibilite,
+        message: audit.erreurs[0] ?? "Le site n'a pas pu être analysé.",
+        audit,
+        duree_ms: Date.now() - debut,
+      });
+    }
 
     if (prospect) {
       // L'opportunité commerciale est l'inverse de la qualité du site : un site noté 20/100
@@ -237,6 +259,8 @@ Deno.serve(async (req) => {
 
     return json({
       audit_id: auditRow?.id ?? null,
+      concluant: true,
+      accessibilite: audit.accessibilite,
       site_redecouvert: siteRedecouvert,
       audit,
       duree_ms: Date.now() - debut,

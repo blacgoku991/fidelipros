@@ -31,6 +31,7 @@ Options :
   --top <n>             Nombre de lignes du CSV à auditer (défaut : 5)
   --rapide              Sans Lighthouse ni sondage des fichiers publics
   --sans-sonde          Ne pas vérifier les fichiers publics exposés
+  --autorise-local      Autorise 127.0.0.1 et les hôtes privés (tests uniquement)
   --sortie <dossier>    Dossier des rapports (défaut : rapports)
   --tarifs <fichier>    Catalogue de prestations au format JSON
   --aide                Afficher cette aide
@@ -152,7 +153,13 @@ function nomFichier(cible: Cible): string {
 
 async function traite(
   cible: Cible,
-  options: { rapide: boolean; sonde: boolean; dossier: string; catalogue: Prestation[] },
+  options: {
+    rapide: boolean;
+    sonde: boolean;
+    local: boolean;
+    dossier: string;
+    catalogue: Prestation[];
+  },
 ): Promise<void> {
   console.log(`\n▸ ${cible.nom}${cible.ville ? ` (${cible.ville})` : ""}`);
   if (!cible.url) {
@@ -163,11 +170,15 @@ async function traite(
     ? await auditeSite(cible.url, {
       profondeur: options.rapide ? "rapide" : "complet",
       avecSonde: options.sonde && !options.rapide,
+      autoriseHotesPrives: options.local,
       clePageSpeed: process.env.PAGESPEED_API_KEY,
     })
     : null;
 
-  if (audit) {
+  if (audit && !audit.concluant) {
+    console.log(`  Audit NON CONCLUANT — ${audit.erreurs[0] ?? "site non analysable"}`);
+    console.log("  Aucun défaut affirmé, aucun devis : à vérifier à la main ou depuis un autre réseau.");
+  } else if (audit) {
     console.log(
       `  Note globale ${audit.scores.global}/100 — ` +
         PILIERS.map((pilier) => `${LIBELLES_PILIERS[pilier]} ${audit.scores[pilier]}`).join(" · "),
@@ -202,12 +213,14 @@ async function traite(
   writeFileSync(join(options.dossier, `${base}-appel.txt`), `${proposition.script_appel}\n`, "utf8");
   writeFileSync(join(options.dossier, `${base}-devis.json`), JSON.stringify(proposition.devis, null, 2), "utf8");
 
-  console.log(
-    `  Devis : ${euros(proposition.devis.total_ht)} HT` +
-      (proposition.devis.mensuel_ht ? ` puis ${euros(proposition.devis.mensuel_ht)} HT/mois` : "") +
-      ` — ${proposition.devis.lignes_projet.length} prestation(s)` +
-      (proposition.genere_par_ia ? " — textes personnalisés par l'IA" : ""),
-  );
+  if (proposition.devis.lignes_projet.length || proposition.devis.lignes_recurrentes.length) {
+    console.log(
+      `  Devis : ${euros(proposition.devis.total_ht)} HT` +
+        (proposition.devis.mensuel_ht ? ` puis ${euros(proposition.devis.mensuel_ht)} HT/mois` : "") +
+        ` — ${proposition.devis.lignes_projet.length} prestation(s)` +
+        (proposition.genere_par_ia ? " — textes personnalisés par l'IA" : ""),
+    );
+  }
   console.log(`  Fichiers : ${join(options.dossier, base)}-{rapport.html,email.txt,appel.txt,devis.json}`);
 }
 
@@ -246,6 +259,7 @@ async function principal() {
   const config = {
     rapide: options.rapide === true,
     sonde: options["sans-sonde"] !== true,
+    local: options["autorise-local"] === true,
     dossier,
     catalogue,
   };

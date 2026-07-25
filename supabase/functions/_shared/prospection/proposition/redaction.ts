@@ -22,9 +22,29 @@ function prenomDirigeant(dirigeant: string | null | undefined): string | null {
   return propre || null;
 }
 
+/** Vrai quand le site n'a pas pu être observé : on ne peut rien affirmer à son sujet. */
+export function auditNonConcluant(ctx: ContexteProposition): boolean {
+  return Boolean(ctx.audit && !ctx.audit.concluant);
+}
+
+/** Raison lisible de l'échec de l'audit, ponctuée pour s'enchaîner dans une phrase. */
+function raisonNonConcluant(ctx: ContexteProposition): string {
+  const raison = ctx.audit?.erreurs[0] ?? "Le site n'a pas pu être analysé";
+  return /[.!?]$/.test(raison) ? raison : `${raison}.`;
+}
+
 /** Synthèse en trois phrases, orientée conséquence commerciale. */
 export function synthese(ctx: ContexteProposition): string {
   const nom = nomCommercial(ctx.prospect);
+
+  if (auditNonConcluant(ctx)) {
+    return (
+      `Le site de ${nom} n'a pas pu être analysé automatiquement : ${raisonNonConcluant(ctx)} ` +
+      `Aucune conclusion n'est tirée sur son état, et aucun chiffrage n'est proposé. ` +
+      `Une vérification manuelle est nécessaire avant tout contact commercial.`
+    );
+  }
+
   if (!ctx.audit || ctx.prospect.site_statut === "aucun_site") {
     return (
       `${nom} n'a aujourd'hui aucun site web à son nom. ` +
@@ -48,6 +68,22 @@ export function synthese(ctx: ContexteProposition): string {
 /** Email de prise de contact : trois arguments, une proposition claire, un opt-out. */
 export function emailPriseContact(ctx: ContexteProposition): { objet: string; corps: string } {
   const nom = nomCommercial(ctx.prospect);
+
+  // Rien n'a pu être observé : pas de message de démarchage, une note de travail interne.
+  if (auditNonConcluant(ctx)) {
+    return {
+      objet: `${nom} : audit à refaire manuellement`,
+      corps: [
+        `Audit non concluant pour ${nom}.`,
+        "",
+        raisonNonConcluant(ctx),
+        "",
+        "Aucun email de prospection n'a été rédigé : il faudrait affirmer des défauts qui n'ont pas",
+        "été vérifiés. Ouvrez le site dans un navigateur, ou relancez l'audit depuis un autre réseau,",
+        "puis régénérez la proposition.",
+      ].join("\n"),
+    };
+  }
   const ville = ctx.prospect.ville ?? "";
   const dirigeant = prenomDirigeant(ctx.prospect.dirigeant);
   const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
@@ -94,6 +130,9 @@ export function emailPriseContact(ctx: ContexteProposition): { objet: string; co
 /** SMS court : un seul argument, une question. */
 export function sms(ctx: ContexteProposition): string {
   const nom = nomCommercial(ctx.prospect);
+  if (auditNonConcluant(ctx)) {
+    return `Audit non concluant pour ${nom} : à vérifier manuellement avant tout contact.`;
+  }
   const argument = ctx.arguments[0];
   const accroche = argument
     ? `${argument.titre.toLowerCase()}`
@@ -107,6 +146,16 @@ export function sms(ctx: ContexteProposition): string {
 /** Script d'appel : accroche, qualification, objections, conclusion. */
 export function scriptAppel(ctx: ContexteProposition): string {
   const nom = nomCommercial(ctx.prospect);
+  if (auditNonConcluant(ctx)) {
+    return [
+      `AUCUN SCRIPT — audit non concluant pour ${nom}`,
+      "",
+      raisonNonConcluant(ctx),
+      "",
+      "Vérifiez le site à la main (ou relancez l'audit depuis un autre réseau) avant d'appeler :",
+      "annoncer des défauts non vérifiés vous décrédibiliserait dès la première minute.",
+    ].join("\n");
+  }
   const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
   const lignes: string[] = [];
 
@@ -233,9 +282,20 @@ function tableauDevis(ctx: ContexteProposition): string {
 export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(ctx)): string {
   const { audit, prospect, emetteur } = ctx;
   const nom = nomCommercial(prospect);
-  const scores = audit?.scores;
+  const nonConcluant = auditNonConcluant(ctx);
+  // Un audit non concluant n'affiche aucune note : elles ne mesureraient rien.
+  const scores = nonConcluant ? undefined : audit?.scores;
 
-  const sections = audit
+  const sections = nonConcluant
+    ? `<section class="pilier">
+        <h2>Analyse impossible</h2>
+        <p class="alerte">
+          ${echappeHtml(raisonNonConcluant(ctx))}
+          Aucun défaut n'est affirmé et aucun chiffrage n'est proposé : l'audit doit être refait
+          depuis un réseau qui accède au site, ou vérifié à la main.
+        </p>
+       </section>`
+    : audit
     ? PILIERS.map((pilier) => {
         const findings = audit.findings.filter((f) => f.pilier === pilier);
         return `
@@ -280,6 +340,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     .badge-majeur { background: #fff4e5; color: #a35200; }
     .badge-mineur { background: #eef1f4; color: #4a5560; }
     .ok { color: #0f9d58; font-size: 13px; }
+    .alerte { background: #fff4e5; border-left: 3px solid #a35200; color: #6b3800; padding: 12px 14px; border-radius: 0 8px 8px 0; font-size: 13px; }
     .devis th { text-align: left; padding: 8px; border-bottom: 2px solid #1a1a1a; font-size: 12px; }
     .devis td { padding: 9px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
     .devis .section td { background: #f7f7f8; font-weight: 600; font-size: 12px; }
@@ -321,11 +382,13 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
 
   ${sections}
 
-  <section>
+  ${nonConcluant
+      ? ""
+      : `<section>
     <h2>Proposition chiffrée</h2>
     ${tableauDevis(ctx)}
     <p class="meta">Devis valable jusqu'au ${echappeHtml(ctx.devis.valide_jusqu_au)}.</p>
-  </section>
+  </section>`}
 
   <footer class="mentions">
     ${echappeHtml(emetteur.mentions)}<br>

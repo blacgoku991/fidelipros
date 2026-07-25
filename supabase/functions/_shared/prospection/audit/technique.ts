@@ -7,8 +7,16 @@ export function evalueTechnique(ctx: ContexteAudit): Finding[] {
   const findings: Finding[] = [];
   const accueil = ctx.accueil;
 
+  // Un site que nous n'avons pas pu voir (pare-feu applicatif, blocage réseau) ne produit
+  // aucun constat : l'audit est non concluant, il n'y a rien à affirmer au prospect.
+  if (ctx.accessibilite === "bloque") return findings;
+
   if (!accueil) {
-    findings.push(constate("tech_site_injoignable", `Aucune réponse de ${ctx.url} (domaine, hébergement ou certificat en cause)`));
+    if (ctx.accessibilite === "injoignable") {
+      findings.push(
+        constate("tech_site_injoignable", `Le domaine de ${ctx.url} ne résout pas : aucun site en ligne`),
+      );
+    }
     return findings;
   }
   if (accueil.statut >= 400) {

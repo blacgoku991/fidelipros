@@ -7,6 +7,16 @@ export type Effort = "faible" | "moyen" | "eleve";
 export type Urgence = "critique" | "elevee" | "moyenne" | "faible";
 export type Profondeur = "rapide" | "complet";
 
+/**
+ * Ce qu'on sait de l'accès au site :
+ * - `ok` : page récupérée, l'audit est exploitable ;
+ * - `erreur_serveur` : le serveur répond en erreur, c'est un vrai défaut du site ;
+ * - `bloque` : nous n'avons pas pu voir le site (pare-feu applicatif, réseau) alors que le
+ *   domaine existe — aucune conclusion possible, l'audit est non concluant ;
+ * - `injoignable` : le domaine ne résout pas, le site est réellement hors ligne.
+ */
+export type Accessibilite = "ok" | "erreur_serveur" | "bloque" | "injoignable";
+
 /** Règle d'audit : ce qui est vérifié, ce que ça coûte au client, ce que ça nous fait vendre. */
 export interface Regle {
   pilier: Pilier;
@@ -90,6 +100,9 @@ export interface FichierExpose {
 export interface ContexteAudit {
   url: string;
   accueil: ReponseHttp | null;
+  accessibilite: Accessibilite;
+  /** Le domaine résout-il ? `null` si le résolveur n'a pas répondu. */
+  resolutionDns: boolean | null;
   /** null si non testable (site déjà en HTTPS non joignable en HTTP). */
   redirigeVersHttps: boolean | null;
   robots: { present: boolean; contenu: string } | null;
@@ -108,6 +121,12 @@ export interface AuditSiteComplet {
   url: string;
   urlFinale: string | null;
   profondeur: Profondeur;
+  accessibilite: Accessibilite;
+  /**
+   * Faux quand le site n'a pas pu être observé : les scores ne veulent alors rien dire,
+   * aucun défaut n'est affirmé et aucune proposition commerciale n'est construite.
+   */
+  concluant: boolean;
   scores: ScoresAudit;
   findings: Finding[];
   lighthouse: ResultatLighthouse | null;

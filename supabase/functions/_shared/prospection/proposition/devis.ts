@@ -57,9 +57,34 @@ function ligne(prestation: Prestation, motifs: string[], quantite = 1): LigneDev
   };
 }
 
+/** Date de fin de validité du devis. */
+function validiteJusquA(emetteur: Emetteur, maintenant: Date): string {
+  const validite = new Date(maintenant);
+  validite.setDate(validite.getDate() + emetteur.validite_jours);
+  return validite.toISOString().slice(0, 10);
+}
+
+/** Devis sans aucune ligne, utilisé quand il n'y a rien de vérifié à chiffrer. */
+function devisVide(emetteur: Emetteur, maintenant: Date): Devis {
+  return {
+    lignes_projet: [],
+    lignes_recurrentes: [],
+    sous_total_ht: 0,
+    remise: 0,
+    taux_remise: 0,
+    total_ht: 0,
+    taux_tva: emetteur.taux_tva,
+    tva: 0,
+    total_ttc: 0,
+    mensuel_ht: 0,
+    valide_jusqu_au: validiteJusquA(emetteur, maintenant),
+  };
+}
+
 /**
  * Sélectionne les prestations à facturer et calcule les totaux.
- * `audit` à null (aucun site trouvé) débouche sur une création de site.
+ * `audit` à null (aucun site trouvé) débouche sur une création de site ; un audit non
+ * concluant débouche sur un devis vide.
  */
 export function construitDevis(
   audit: AuditSiteComplet | null,
@@ -78,6 +103,12 @@ export function construitDevis(
     if (motif && !motifs.includes(motif)) motifs.push(motif);
     motifsParPrestation.set(code, motifs);
   };
+
+  // Audit non concluant : nous n'avons pas vu le site. Ce n'est pas « aucun site » — il n'y a
+  // aucune information, donc rien à chiffrer tant que l'audit n'a pas été refait.
+  if (audit && !audit.concluant) {
+    return devisVide(emetteur, maintenant);
+  }
 
   const sansSite = options.sansSite ?? !audit;
   if (sansSite) {
@@ -128,9 +159,6 @@ export function construitDevis(
   const total_ht = arrondi(sous_total_ht - remise);
   const tva = arrondi(total_ht * (emetteur.taux_tva / 100));
 
-  const validite = new Date(maintenant);
-  validite.setDate(validite.getDate() + emetteur.validite_jours);
-
   return {
     lignes_projet,
     lignes_recurrentes,
@@ -142,7 +170,7 @@ export function construitDevis(
     tva,
     total_ttc: arrondi(total_ht + tva),
     mensuel_ht: arrondi(lignes_recurrentes.reduce((total, l) => total + l.total, 0)),
-    valide_jusqu_au: validite.toISOString().slice(0, 10),
+    valide_jusqu_au: validiteJusquA(emetteur, maintenant),
   };
 }
 

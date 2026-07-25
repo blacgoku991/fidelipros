@@ -12,13 +12,13 @@ import type {
   StatutSite,
 } from "@prospection/types.ts";
 import type {
-  Finding, Pilier, ResultatLighthouse, Severite, Urgence,
+  Accessibilite, Finding, Pilier, ResultatLighthouse, Severite, Urgence,
 } from "@prospection/audit/types.ts";
 import type { Devis, LigneDevis, Prestation } from "@prospection/proposition/types.ts";
 
 export type {
   Prospect, ProspectionFilters, PrioriteProspect, StatutSite,
-  Finding, Pilier, Severite, Urgence, ResultatLighthouse,
+  Finding, Pilier, Severite, Urgence, ResultatLighthouse, Accessibilite,
   Devis, LigneDevis, Prestation,
 };
 export { dateIlYaNMois };
@@ -33,6 +33,14 @@ export const LIBELLES_URGENCE: Record<Urgence, { label: string; classe: string }
   elevee: { label: "Urgence élevée", classe: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" },
   moyenne: { label: "Urgence moyenne", classe: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
   faible: { label: "Pas d'urgence", classe: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+};
+
+/** Ce qu'on peut dire quand le site n'a pas pu être observé. */
+export const LIBELLES_ACCESSIBILITE: Record<Accessibilite, { label: string; classe: string }> = {
+  ok: { label: "Site analysé", classe: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+  erreur_serveur: { label: "Site en erreur", classe: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300" },
+  bloque: { label: "Audit non concluant", classe: "bg-slate-200 text-slate-800 dark:bg-slate-700/60 dark:text-slate-200" },
+  injoignable: { label: "Domaine hors ligne", classe: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300" },
 };
 
 export const CLASSES_SEVERITE: Record<Severite, string> = {
@@ -218,6 +226,8 @@ export interface AuditEnregistre {
   score_securite: number;
   score_technique: number;
   urgence: Urgence;
+  concluant: boolean;
+  accessibilite: Accessibilite;
   findings: Finding[];
   lighthouse: ResultatLighthouse | null;
   fichiers_exposes: Array<{ chemin: string; indice: string }>;
@@ -250,10 +260,16 @@ export interface ResultatAudit {
   audit: {
     url: string;
     urlFinale: string | null;
+    concluant: boolean;
+    accessibilite: Accessibilite;
     scores: { global: number; seo: number; design: number; securite: number; technique: number; urgence: Urgence };
     findings: Finding[];
     erreurs: string[];
   } | null;
+  /** Faux quand le site n'a pas pu être observé : aucune note n'est exploitable. */
+  concluant?: boolean;
+  accessibilite?: Accessibilite;
+  /** Aucun site trouvé pour l'entreprise : c'est une opportunité de création. */
   sans_site?: boolean;
   message?: string;
   site_redecouvert?: boolean;

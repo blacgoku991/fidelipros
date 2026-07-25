@@ -167,6 +167,10 @@ const AdminProspection = () => {
       const resultat = await auditeProspect({ prospect_id: prospect.id }, "complet");
       if (resultat.sans_site) {
         toast.info(`${prospect.nom} : aucun site trouvé — opportunité de création`);
+      } else if (resultat.concluant === false) {
+        toast.warning(`${prospect.nom} : audit non concluant`, {
+          description: resultat.message ?? "Le site n'a pas pu être analysé.",
+        });
       } else {
         toast.success(`${prospect.nom} : ${resultat.audit?.scores.global}/100`);
       }
@@ -496,7 +500,7 @@ const AdminProspection = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    {prospect.audit_le ? (
+                    {prospect.audit_le && prospect.score_audit !== null ? (
                       <div className="flex items-center gap-2 text-xs tabular-nums">
                         <span className={cn("font-semibold", classeScore(prospect.score_audit ?? 0))}>
                           {prospect.score_audit ?? "—"}
@@ -506,7 +510,9 @@ const AdminProspection = () => {
                         </span>
                       </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Non audité</span>
+                      <span className="text-xs text-muted-foreground">
+                        {prospect.audit_le ? "Non concluant" : "Non audité"}
+                      </span>
                     )}
                   </TableCell>
                   <TableCell>

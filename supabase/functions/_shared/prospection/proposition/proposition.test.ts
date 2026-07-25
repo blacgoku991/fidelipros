@@ -43,6 +43,8 @@ function audit(findings: Finding[], surcharge: Partial<AuditSiteComplet> = {}): 
     url: "http://garagemartin.fr",
     urlFinale: "http://garagemartin.fr",
     profondeur: "complet",
+    accessibilite: "ok",
+    concluant: true,
     scores: calculeScores(findings),
     findings,
     lighthouse: null,
@@ -154,6 +156,23 @@ describe("construitDevis", () => {
     expect(devis.lignes_projet.map((l) => l.code)).toContain("redaction_contenu");
   });
 
+  it("ne facture rien quand l'audit n'a pas pu voir le site", () => {
+    const bloque = audit(DEFAUTS_LOURDS, {
+      concluant: false,
+      accessibilite: "bloque",
+      findings: [],
+      erreurs: ["Accès refusé par une protection anti-robot (HTTP 403)"],
+    });
+    const devis = construitDevis(bloque, CATALOGUE);
+
+    expect(devis.lignes_projet).toEqual([]);
+    expect(devis.lignes_recurrentes).toEqual([]);
+    expect(devis.total_ht).toBe(0);
+    expect(devis.total_ttc).toBe(0);
+    // Surtout : pas de bascule refonte déclenchée par une note qui ne mesure rien.
+    expect(devis.valide_jusqu_au).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   it("formate les montants à la française", () => {
     // Intl insère une espace insécable : on la normalise avant comparaison.
     const normalise = (valeur: string) => valeur.replace(/[\u00a0\u202f]/g, " ");
@@ -256,6 +275,64 @@ describe("rédaction", () => {
     const ctx = contexte();
     const html = rapportHtml({ ...ctx, audit: audit(DEFAUTS_LOURDS, { erreurs: ["Lighthouse : quota dépassé"] }) });
     expect(html).toContain("Lighthouse : quota dépassé");
+  });
+});
+
+describe("audit non concluant", () => {
+  function contexteBloque(): ContexteProposition {
+    const bloque = audit([], {
+      concluant: false,
+      accessibilite: "bloque",
+      erreurs: ["Le domaine existe mais le site n'a pas répondu : analyse impossible depuis notre réseau"],
+    });
+    return {
+      prospect: PROSPECT,
+      audit: bloque,
+      devis: construitDevis(bloque, CATALOGUE),
+      emetteur: EMETTEUR_PAR_DEFAUT,
+      arguments: [],
+    };
+  }
+
+  it("dit clairement qu'aucune conclusion n'est tirée", () => {
+    const texte = synthese(contexteBloque());
+    expect(texte).toContain("n'a pas pu être analysé");
+    expect(texte).toContain("Aucune conclusion");
+  });
+
+  it("ne rédige pas de message de démarchage", () => {
+    const ctx = contexteBloque();
+    const { objet, corps } = emailPriseContact(ctx);
+
+    expect(objet).toContain("audit à refaire");
+    expect(corps).toContain("Aucun email de prospection");
+    // Aucun argument ni chiffrage inventé.
+    expect(corps).not.toContain("€");
+    expect(sms(ctx)).toContain("non concluant");
+    expect(scriptAppel(ctx)).toContain("AUCUN SCRIPT");
+  });
+
+  it("affiche un bandeau au lieu de notes dans le rapport", () => {
+    const html = rapportHtml(contexteBloque());
+
+    expect(html).toContain("Analyse impossible");
+    expect(html).toContain("analyse impossible depuis notre réseau");
+    expect(html).not.toContain("Proposition chiffrée");
+    expect(html).not.toContain("/100");
+  });
+
+  it("traverse construitProposition sans rien affirmer", async () => {
+    const bloque = audit([], {
+      concluant: false,
+      accessibilite: "bloque",
+      erreurs: ["Accès refusé par une protection anti-robot (HTTP 403)"],
+    });
+    const proposition = await construitProposition(PROSPECT as unknown as Prospect, bloque, CATALOGUE);
+
+    expect(proposition.devis.total_ht).toBe(0);
+    expect(proposition.contexte.arguments).toEqual([]);
+    expect(proposition.rapport_html).toContain("Analyse impossible");
+    expect(proposition.email.objet).toContain("audit à refaire");
   });
 });
 

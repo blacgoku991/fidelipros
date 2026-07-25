@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { appliqueRegles, auditeSite } from "./index.ts";
 import {
   collecte, collecte404, collecteDns, collecteLighthouse, collecteRobots, collecteSitemap,
-  FICHIERS_SONDES, hotePublic, normaliseUrl, sondeFichiers,
+  estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl, resoutDomaine, sondeFichiers,
 } from "./collecte.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
@@ -94,6 +94,8 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
   return {
     url: "https://garagemartin.fr",
     accueil: reponse(),
+    accessibilite: "ok",
+    resolutionDns: true,
     redirigeVersHttps: true,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
@@ -386,14 +388,26 @@ describe("evalueTechnique", () => {
     expect(evalueTechnique(contexte({ lighthouse: lighthouse() })).map((f) => f.regle)).toEqual([]);
   });
 
-  it("conclut à l'indisponibilité quand rien ne répond", () => {
-    const findings = evalueTechnique(contexte({ accueil: null }));
+  it("conclut à l'indisponibilité seulement si le domaine ne résout pas", () => {
+    const findings = evalueTechnique(
+      contexte({ accueil: null, accessibilite: "injoignable", resolutionDns: false }),
+    );
     expect(findings.map((f) => f.regle)).toEqual(["tech_site_injoignable"]);
     expect(findings[0].severite).toBe("critique");
   });
 
+  it("ne conclut rien quand le site n'a pas pu être vu", () => {
+    // Pare-feu applicatif ou blocage réseau : affirmer « site en panne » serait faux.
+    expect(evalueTechnique(contexte({ accueil: null, accessibilite: "bloque" }))).toEqual([]);
+    expect(
+      evalueTechnique(contexte({ accueil: reponse({ statut: 403 }), accessibilite: "bloque" })),
+    ).toEqual([]);
+  });
+
   it("signale une erreur HTTP sans chercher plus loin", () => {
-    const findings = evalueTechnique(contexte({ accueil: reponse({ statut: 500 }) }));
+    const findings = evalueTechnique(
+      contexte({ accueil: reponse({ statut: 500 }), accessibilite: "erreur_serveur" }),
+    );
     expect(findings.map((f) => f.regle)).toEqual(["tech_erreur_http"]);
   });
 
@@ -498,6 +512,11 @@ describe("normaliseUrl", () => {
     expect(normaliseUrl("http://garagemartin.fr/accueil")).toBe("http://garagemartin.fr/accueil");
     expect(normaliseUrl("pas-un-domaine")).toBeNull();
     expect(normaliseUrl("   ")).toBeNull();
+  });
+
+  it("accepte un hôte privé uniquement quand on l'autorise explicitement", () => {
+    expect(normaliseUrl("http://127.0.0.1:8099/")).toBeNull();
+    expect(normaliseUrl("http://127.0.0.1:8099/", true)).toBe("http://127.0.0.1:8099/");
   });
 
   it("refuse les hôtes internes et les schémas exotiques", () => {
@@ -630,9 +649,88 @@ describe("collecteurs", () => {
   });
 });
 
+// ── Accessibilité : voir le site, ou ne rien affirmer ───────────────────────
+
+describe("accessibilité du site", () => {
+  const entetesHtml = { "content-type": "text/html" };
+
+  it("reconnaît un blocage par pare-feu applicatif", () => {
+    expect(estBlocageParPareFeu(reponse({ statut: 403, entetes: { "cf-ray": "8a1b2c3d" } }))).toBe(true);
+    expect(estBlocageParPareFeu(reponse({ statut: 503, entetes: { server: "cloudflare" } }))).toBe(true);
+    expect(estBlocageParPareFeu(reponse({ statut: 429, html: "<html>Just a moment…</html>" }))).toBe(true);
+    // Une vraie erreur serveur ne doit pas être confondue avec un blocage.
+    expect(estBlocageParPareFeu(reponse({ statut: 500, html: "<html>Erreur interne</html>" }))).toBe(false);
+    expect(estBlocageParPareFeu(reponse({ statut: 200 }))).toBe(false);
+  });
+
+  it("classe un 403 de pare-feu en « bloqué » et n'émet aucun constat", async () => {
+    const impl = fetchSimule({
+      "https://protege.fr": {
+        statut: 403,
+        corps: "<html><body>Attention Required! | Cloudflare</body></html>",
+        entetes: { ...entetesHtml, "cf-ray": "8a1b2c3d" },
+      },
+    });
+    const ctx = await collecte("https://protege.fr/", { fetchImpl: impl });
+
+    expect(ctx.accessibilite).toBe("bloque");
+    expect(ctx.accueil).toBeNull();
+    expect(appliqueRegles(ctx)).toEqual([]);
+    expect(ctx.erreurs.join(" ")).toContain("anti-robot");
+  });
+
+  it("distingue un domaine mort d'un site simplement injoignable", async () => {
+    const mort = fetchSimule({
+      "https://cloudflare-dns.com/dns-query?name=disparu.fr&type=A": { json: { Status: 3 } },
+      "https://cloudflare-dns.com/dns-query?name=disparu.fr&type=MX": { json: { Status: 3 } },
+    });
+    const ctxMort = await collecte("https://disparu.fr/", { fetchImpl: mort });
+    expect(ctxMort.accessibilite).toBe("injoignable");
+    expect(appliqueRegles(ctxMort).map((f) => f.regle)).toEqual(["tech_site_injoignable"]);
+
+    const vivant = fetchSimule({
+      "https://cloudflare-dns.com/dns-query?name=vivant.fr&type=A": { json: { Status: 0, Answer: [{ data: "1.2.3.4" }] } },
+    });
+    const ctxVivant = await collecte("https://vivant.fr/", { fetchImpl: vivant });
+    expect(ctxVivant.accessibilite).toBe("bloque");
+    expect(appliqueRegles(ctxVivant)).toEqual([]);
+  });
+
+  it("reste prudent quand le résolveur DNS ne répond pas non plus", async () => {
+    const ctx = await collecte("https://inconnu.fr/", { fetchImpl: fetchSimule({}) });
+    expect(ctx.resolutionDns).toBeNull();
+    expect(ctx.accessibilite).toBe("bloque");
+    expect(appliqueRegles(ctx)).toEqual([]);
+  });
+
+  it("résout un domaine via l'enregistrement MX quand il n'a pas d'adresse", async () => {
+    const impl = fetchSimule({
+      "https://cloudflare-dns.com/dns-query?name=courrier.fr&type=A": { json: { Status: 0 } },
+      "https://cloudflare-dns.com/dns-query?name=courrier.fr&type=MX": { json: { Status: 0, Answer: [{ data: "10 mx.fr." }] } },
+    });
+    expect(await resoutDomaine("https://courrier.fr/", { fetchImpl: impl })).toBe(true);
+  });
+});
+
 // ── Audit de bout en bout ───────────────────────────────────────────────────
 
 describe("auditeSite", () => {
+  it("marque l'audit non concluant quand le site est bloqué", async () => {
+    const impl = fetchSimule({
+      "https://protege.fr": {
+        statut: 403,
+        corps: "<html>Checking your browser…</html>",
+        entetes: { "content-type": "text/html", "cf-ray": "abc" },
+      },
+      "https://cloudflare-dns.com": { json: { Status: 0, Answer: [{ data: "1.2.3.4" }] } },
+    });
+    const audit = await auditeSite("https://protege.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    expect(audit.concluant).toBe(false);
+    expect(audit.accessibilite).toBe("bloque");
+    expect(audit.findings).toEqual([]);
+  });
+
   it("note très bas un site daté et injoignable en HTTPS", async () => {
     const impl = fetchSimule({
       "https://vieuxsite.fr": { corps: SITE_DATE, entetes: { "content-type": "text/html" } },
