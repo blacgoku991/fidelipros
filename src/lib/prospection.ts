@@ -4,7 +4,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { versCsv } from "@prospection/core.ts";
+import { dateIlYaNMois, versCsv } from "@prospection/core.ts";
 import type {
   PrioriteProspect,
   Prospect,
@@ -13,6 +13,7 @@ import type {
 } from "@prospection/types.ts";
 
 export type { Prospect, ProspectionFilters, PrioriteProspect, StatutSite };
+export { dateIlYaNMois };
 export { SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "@prospection/naf.ts";
 
 /** Statut commercial + notes stockés en base en plus des données de l'API. */
@@ -136,13 +137,6 @@ export const ANCIENNETES: Array<{ valeur: string; label: string; mois: number | 
   { valeur: "toutes", label: "Toutes les entreprises", mois: null },
 ];
 
-/** Date au format YYYY-MM-DD correspondant à « il y a N mois ». */
-export function dateIlYaNMois(mois: number, maintenant = new Date()): string {
-  const date = new Date(maintenant);
-  date.setMonth(date.getMonth() - mois);
-  return date.toISOString().slice(0, 10);
-}
-
 export function formateEuros(montant: number | null): string {
   if (montant === null || montant === undefined) return "—";
   return new Intl.NumberFormat("fr-FR", {
@@ -161,7 +155,7 @@ export function formateDate(date: string | null): string {
 
 /** Télécharge la sélection au format CSV (séparateur `;`, BOM pour Excel). */
 export function telechargeCsv(prospects: Prospect[], nomFichier = "prospects.csv"): void {
-  const blob = new Blob(["﻿", versCsv(prospects)], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\uFEFF" + versCsv(prospects)], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const lien = document.createElement("a");
   lien.href = url;

@@ -367,6 +367,17 @@ describe("versCsv", () => {
     expect(ligne).toContain('"BOULANGERIE ""DU MARCHE""; BORDEAUX"');
     expect(ligne).toContain("Pas de HTTPS | Non responsive");
   });
+
+  it("neutralise les formules injectées par un site tiers", () => {
+    const csv = versCsv([
+      prospectDeTest({ nom: "=cmd|'/C calc'!A0", site_signaux: ["@SUM(1+1)"], dirigeant: "+33" }),
+    ]);
+    const ligne = csv.split("\n")[1];
+
+    expect(ligne).toContain("'=cmd|'/C calc'!A0");
+    expect(ligne).toContain("'@SUM(1+1)");
+    expect(ligne).toContain("'+33");
+  });
 });
 
 describe("secteurs NAF", () => {

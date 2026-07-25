@@ -11,7 +11,7 @@
 import { writeFileSync } from "node:fs";
 import process from "node:process";
 
-import { appliqueAudit, filtreSelonCible, versCsv } from "../supabase/functions/_shared/prospection/core.ts";
+import { appliqueAudit, dateIlYaNMois, filtreSelonCible, versCsv } from "../supabase/functions/_shared/prospection/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES } from "../supabase/functions/_shared/prospection/naf.ts";
 import { rechercheEntreprises } from "../supabase/functions/_shared/prospection/sirene.ts";
 import { auditeProspects } from "../supabase/functions/_shared/prospection/website.ts";
@@ -52,12 +52,6 @@ function litArguments(argv: string[]): Record<string, string | boolean> {
     }
   }
   return options;
-}
-
-function dateIlYaNMois(mois: number): string {
-  const date = new Date();
-  date.setMonth(date.getMonth() - mois);
-  return date.toISOString().slice(0, 10);
 }
 
 async function principal() {
@@ -107,7 +101,7 @@ async function principal() {
   const retenus = (auditSites ? filtreSelonCible(prospects, cible) : prospects).sort((a, b) => b.score - a.score);
 
   const sortie = typeof options.sortie === "string" ? options.sortie : "prospects.csv";
-  writeFileSync(sortie, "﻿" + versCsv(retenus), "utf8");
+  writeFileSync(sortie, "\uFEFF" + versCsv(retenus), "utf8");
 
   console.log(`\n${retenus.length} prospect(s) retenu(s) sur ${recherche.prospects.length} analysé(s) → ${sortie}\n`);
   for (const prospect of retenus.slice(0, 15)) {

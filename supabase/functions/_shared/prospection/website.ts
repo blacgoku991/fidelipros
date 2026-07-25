@@ -98,50 +98,6 @@ async function recupere(
   }
 }
 
-/** Audite une URL connue et retourne son état commercial. */
-export async function auditeUrl(
-  url: string,
-  options: OptionsAudit = {},
-): Promise<AuditSite> {
-  const config = {
-    fetchImpl: options.fetchImpl ?? fetch,
-    timeoutMs: options.timeoutMs ?? 8000,
-    maxOctets: options.maxOctets ?? 500_000,
-  };
-  const reponse = await recupere(url, config);
-  const verifieLe = new Date().toISOString();
-
-  if (!reponse) {
-    return {
-      url,
-      statut: "site_injoignable",
-      score: 90,
-      signaux: ["Site injoignable (domaine expiré, hébergement en panne ou trop lent)"],
-      emailContact: null,
-      telephone: null,
-      verifieLe,
-    };
-  }
-
-  const { score, signaux } = analyseHtml(reponse.html, {
-    urlFinale: reponse.urlFinale,
-    statutHttp: reponse.statut,
-    dureeMs: reponse.dureeMs,
-    octets: reponse.octets,
-  });
-  const contacts = extraitContacts(reponse.html);
-
-  return {
-    url: reponse.urlFinale,
-    statut: statutDepuisScoreSite(score),
-    score,
-    signaux,
-    emailContact: contacts.email,
-    telephone: contacts.telephone,
-    verifieLe,
-  };
-}
-
 /**
  * Cherche le site d'une entreprise parmi les domaines probables, puis l'audite.
  * Un domaine n'est retenu que si la page mentionne l'entreprise et n'est pas une page parking.
@@ -190,7 +146,7 @@ export async function detecteEtAuditeSite(
 }
 
 /** Exécute `traitement` sur chaque élément avec une concurrence bornée et une échéance. */
-export async function enParallele<T, R>(
+async function enParallele<T, R>(
   elements: T[],
   limite: number,
   traitement: (element: T) => Promise<R>,

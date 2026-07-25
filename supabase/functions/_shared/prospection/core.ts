@@ -169,6 +169,13 @@ function borne(valeur: number, min = 0, max = 100): number {
   return Math.max(min, Math.min(max, Math.round(valeur)));
 }
 
+/** Date au format YYYY-MM-DD correspondant à « il y a N mois ». */
+export function dateIlYaNMois(mois: number, maintenant = new Date()): string {
+  const date = new Date(maintenant);
+  date.setMonth(date.getMonth() - mois);
+  return date.toISOString().slice(0, 10);
+}
+
 /** Âge de l'entreprise en mois, ou null si la date de création est inconnue. */
 export function ageEnMois(dateCreation: string | null, maintenant = new Date()): number | null {
   if (!dateCreation) return null;
@@ -545,7 +552,10 @@ const COLONNES_CSV: Array<[string, (p: Prospect) => unknown]> = [
 
 function celluleCsv(valeur: unknown): string {
   if (valeur === null || valeur === undefined) return "";
-  const texte = String(valeur);
+  let texte = String(valeur);
+  // Le contenu vient de sites tiers (balise generator, raison sociale…) : un tableur
+  // exécuterait une cellule commençant par = + - @ comme une formule.
+  if (/^[=+\-@\t\r]/.test(texte)) texte = `'${texte}`;
   return /[";\n]/.test(texte) ? `"${texte.replace(/"/g, '""')}"` : texte;
 }
 
