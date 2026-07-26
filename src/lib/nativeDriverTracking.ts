@@ -4,7 +4,17 @@
  * (continues tracking with screen locked / app backgrounded).
  * Falls back to navigator.geolocation when running in a regular browser
  * (tracking pauses when the tab is backgrounded — this is a hard browser limit).
+ *
+ * The plugin ships no JavaScript at all (native iOS/Android sources + type definitions only),
+ * so it cannot be imported as a module — doing so breaks the Vite dependency scan and thus
+ * `npm run dev` / `npm run build`. Its documented entry point is registerPlugin(), which talks
+ * to the native implementation at runtime; the type import below is erased at compile time.
  */
+
+import { registerPlugin } from "@capacitor/core";
+import type { BackgroundGeolocationPlugin } from "@capacitor-community/background-geolocation";
+
+const BackgroundGeolocation = registerPlugin<BackgroundGeolocationPlugin>("BackgroundGeolocation");
 
 type Position = { lat: number; lng: number };
 type PositionCallback = (p: Position) => void;
@@ -13,16 +23,16 @@ let webWatchId: number | null = null;
 let nativeWatcherId: string | null = null;
 
 const isNative = (): boolean => {
-  // @ts-ignore — Capacitor global is injected at runtime in native builds
-  return typeof window !== "undefined" && !!(window as any).Capacitor?.isNativePlatform?.();
+  // Capacitor global is injected at runtime in native builds
+  return typeof window !== "undefined" &&
+    !!(window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } })
+      .Capacitor?.isNativePlatform?.();
 };
 
 export const isRunningNative = isNative;
 
 export async function startDriverTracking(onPosition: PositionCallback): Promise<void> {
   if (isNative()) {
-    const mod: any = await import("@capacitor-community/background-geolocation");
-    const BackgroundGeolocation = mod.BackgroundGeolocation ?? mod.default;
     nativeWatcherId = await BackgroundGeolocation.addWatcher(
       {
         backgroundMessage:
@@ -57,8 +67,6 @@ export async function startDriverTracking(onPosition: PositionCallback): Promise
 
 export async function stopDriverTracking(): Promise<void> {
   if (isNative() && nativeWatcherId) {
-    const mod: any = await import("@capacitor-community/background-geolocation");
-    const BackgroundGeolocation = mod.BackgroundGeolocation ?? mod.default;
     await BackgroundGeolocation.removeWatcher({ id: nativeWatcherId });
     nativeWatcherId = null;
     return;
