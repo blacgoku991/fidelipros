@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { animate, useInView } from "framer-motion";
+import { renderMode } from "@/lib/renderMode";
 
 type CounterProps = {
   to: number;
@@ -21,7 +22,8 @@ export function Counter({
 }: CounterProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-15% 0px" });
-  const [value, setValue] = useState(from);
+  // Au pré-rendu, on affiche directement le chiffre final plutôt que 0.
+  const [value, setValue] = useState(renderMode.prerender ? to : from);
 
   useEffect(() => {
     if (!inView) return;

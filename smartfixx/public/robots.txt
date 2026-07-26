@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Rien à cacher : toutes les pages sont publiques et indexables.
+Sitemap: https://smartfixx.fr/sitemap.xml

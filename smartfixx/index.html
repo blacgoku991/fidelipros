@@ -2,26 +2,51 @@
 <html lang="fr" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#04050A" />
 
-    <title>SmartFixx — Sites web, refonte & automatisation métier</title>
+    <title>Création de site internet à Asnières-sur-Seine (92) &amp; automatisation</title>
     <meta
       name="description"
-      content="SmartFixx conçoit des sites web sur-mesure, pilote des refontes complètes et automatise vos logiciels métiers (BlueKango, Netsoins, ERP, API). Design 3D, performance et intégrations sans couture."
+      content="SmartFixx, agence web à Asnières-sur-Seine (92) : création de site internet sur-mesure, refonte complète et automatisation de vos logiciels métiers. Première maquette en 48 h, devis ferme."
     />
     <link rel="canonical" href="https://smartfixx.fr/" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="author" content="SmartFixx" />
+    <link rel="alternate" hreflang="fr" href="https://smartfixx.fr/" />
+    <link rel="alternate" hreflang="x-default" href="https://smartfixx.fr/" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
 
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:site_name" content="SmartFixx" />
-    <meta property="og:title" content="SmartFixx — Sites web, refonte & automatisation métier" />
+    <meta property="og:url" content="https://smartfixx.fr/" />
+    <meta
+      property="og:title"
+      content="Création de site internet à Asnières-sur-Seine (92) &amp; automatisation"
+    />
     <meta
       property="og:description"
-      content="Sites web sur-mesure, refontes complètes et automatisation de vos logiciels métiers. On connecte ce qui ne se parle pas."
+      content="Sites web sur-mesure, refontes complètes et automatisation de vos logiciels métiers. Si une tâche revient chaque semaine, elle peut disparaître."
     />
+    <meta property="og:image" content="https://smartfixx.fr/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="SmartFixx — on conçoit, on refond, on automatise." />
+
     <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Création de site internet à Asnières-sur-Seine (92) &amp; automatisation"
+    />
+    <meta
+      name="twitter:description"
+      content="Sites web sur-mesure, refontes complètes et automatisation de vos logiciels métiers."
+    />
+    <meta name="twitter:image" content="https://smartfixx.fr/og-image.png" />
 
     <!-- Polices auto-hébergées (voir scripts/fetch-fonts.mjs) : aucune requête tierce. -->
     <link
@@ -31,17 +56,35 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="preload" href="/fonts/inter-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/inter-400-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
   </head>
   <body>
+    <!--
+      Le HTML de la page est pré-généré au build : il s'affiche donc avant que le
+      JavaScript ne s'exécute. Sans ce voile, le visiteur verrait le contenu une
+      fraction de seconde puis le préchargeur le recouvrir. Il est posé hors de
+      #root pour que React n'y touche pas, et retiré par le préchargeur.
+    -->
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 400;
+        background: #04050a;
+      }
+      #boot.is-gone {
+        display: none;
+      }
+    </style>
+    <div id="boot" aria-hidden="true"></div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <noscript>
-      <div style="padding: 4rem 1.5rem; color: #c3cbde; font-family: system-ui, sans-serif">
-        <h1>SmartFixx</h1>
-        <p>Création de sites web, refonte complète et automatisation métier.</p>
-        <p>Ce site nécessite JavaScript. Contact : contact@smartfixx.fr</p>
-      </div>
-    </noscript>
   </body>
 </html>

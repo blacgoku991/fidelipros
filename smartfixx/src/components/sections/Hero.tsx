@@ -59,11 +59,12 @@ export function Hero({ ready }: { ready: boolean }) {
         >
           <span className="eyebrow">
             <Sparkles className="h-3 w-3 text-mint" />
-            Studio web & automatisation
+            Agence web · Asnières-sur-Seine (92)
           </span>
         </motion.div>
 
-        <h1 className="headline max-w-[15ch] text-[clamp(2.6rem,7.8vw,5.6rem)] leading-[0.95]">
+        {/* Le slogan porte l'impact, la ligne d'appui porte les mots-clés. */}
+        <h1 className="headline max-w-[16ch] text-[clamp(2.6rem,7.8vw,5.6rem)] leading-[0.95]">
           {ready && (
             <>
               <MaskedWords text="On conçoit," delay={0.1} />
@@ -71,6 +72,15 @@ export function Hero({ ready }: { ready: boolean }) {
               <MaskedWords text="on refond," delay={0.24} />
               <br />
               <MaskedWords text="on automatise." delay={0.38} wordClassName="grad-text" />
+              <motion.span
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.75, ease: EASE }}
+                className="mt-4 block max-w-[32ch] font-display text-[clamp(1rem,2vw,1.3rem)] font-medium leading-snug tracking-normal text-fog"
+              >
+                Sites web sur-mesure et automatisation informatique — à Asnières-sur-Seine et
+                partout en Île-de-France.
+              </motion.span>
             </>
           )}
         </h1>
@@ -79,19 +89,21 @@ export function Hero({ ready }: { ready: boolean }) {
           initial={{ opacity: 0, y: 20 }}
           animate={ready ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 0.85, ease: EASE }}
-          className="mt-8 max-w-xl text-[15.5px] leading-relaxed text-fog-dim sm:text-[17px]"
+          className="mt-6 max-w-xl text-[15px] leading-relaxed text-fog-dim sm:text-[16.5px]"
         >
-          SmartFixx crée des sites web qui marquent, reprend les projets qui patinent et fait
-          dialoguer vos logiciels métiers —{" "}
-          <span className="text-fog">BlueKango, Netsoins, ERP, CRM, tableurs</span> — pour supprimer
-          la double saisie et les tâches répétitives.
+          <strong className="font-normal text-fog">SmartFixx</strong> crée des sites web sur-mesure,
+          reprend les projets qui patinent et automatise tout ce qui se répète dans votre
+          informatique — logiciels métiers, ERP, CRM, tableurs, e-mails, API.{" "}
+          <span className="text-fog">
+            Si une tâche revient chaque semaine, elle peut disparaître.
+          </span>
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={ready ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.9, delay: 1, ease: EASE }}
-          className="mt-10 flex flex-wrap items-center gap-3.5"
+          className="mt-8 flex flex-wrap items-center gap-3.5"
         >
           <Magnetic strength={0.25}>
             <a
@@ -127,7 +139,7 @@ export function Hero({ ready }: { ready: boolean }) {
           initial={{ opacity: 0 }}
           animate={ready ? { opacity: 1 } : {}}
           transition={{ duration: 1, delay: 1.2 }}
-          className="mt-11 grid grid-cols-3 gap-x-4 border-t border-white/[0.07] pt-7 sm:flex sm:flex-wrap sm:gap-x-10"
+          className="mt-9 grid grid-cols-3 gap-x-4 border-t border-white/[0.07] pt-7 sm:flex sm:flex-wrap sm:gap-x-10"
         >
           {[
             { value: "48 h", label: "Première maquette" },

@@ -16,7 +16,7 @@ const LINKS = [
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
-export function Nav() {
+export function Nav({ isHome = true }: { isHome?: boolean }) {
   const [condensed, setCondensed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeId, setActiveId] = useState<string>("");
@@ -26,6 +26,7 @@ export function Nav() {
 
   // Highlight the section currently occupying the upper third of the viewport.
   useEffect(() => {
+    if (!isHome) return;
     const sections = LINKS.map((link) => document.querySelector(link.href)).filter(
       (el): el is Element => Boolean(el),
     );
@@ -42,7 +43,7 @@ export function Nav() {
 
     sections.forEach((section) => observer.observe(section));
     return () => observer.disconnect();
-  }, []);
+  }, [isHome]);
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
@@ -51,7 +52,14 @@ export function Nav() {
     };
   }, [menuOpen]);
 
+  // Les ancres n'existent que sur l'accueil : ailleurs, on navigue vers "/#section".
+  const hrefFor = (hash: string) => (isHome ? hash : `/${hash}`);
+
   const go = (href: string) => {
+    if (!isHome) {
+      window.location.href = hrefFor(href);
+      return;
+    }
     setMenuOpen(false);
     // Let the drawer close before Lenis takes over the scroll.
     window.setTimeout(() => scrollToSection(href), menuOpen ? 260 : 0);
@@ -75,7 +83,7 @@ export function Nav() {
         >
           <nav className="container-x flex h-[68px] items-center justify-between gap-4">
             <a
-              href="#top"
+              href={hrefFor("#top")}
               onClick={(event) => {
                 event.preventDefault();
                 go("#top");
@@ -90,7 +98,7 @@ export function Nav() {
               {LINKS.map((link) => (
                 <a
                   key={link.href}
-                  href={link.href}
+                  href={hrefFor(link.href)}
                   onClick={(event) => {
                     event.preventDefault();
                     go(link.href);
@@ -115,7 +123,7 @@ export function Nav() {
             <div className="flex items-center gap-3">
               <Magnetic strength={0.22} className="hidden sm:block">
                 <a
-                  href="#contact"
+                  href={hrefFor("#contact")}
                   onClick={(event) => {
                     event.preventDefault();
                     go("#contact");
@@ -164,7 +172,7 @@ export function Nav() {
               {[...LINKS, { label: "Contact", href: "#contact" }].map((link, index) => (
                 <motion.a
                   key={link.href}
-                  href={link.href}
+                  href={hrefFor(link.href)}
                   onClick={(event) => {
                     event.preventDefault();
                     go(link.href);

@@ -41,7 +41,7 @@ const PROJECTS = [
   {
     tag: "Automatisation",
     title: "Connecteur entre logiciels métiers",
-    context: "Médico-social · plusieurs établissements",
+    context: "Structure multi-sites · 2 logiciels reliés",
     duration: "4 semaines",
     scope: [
       "Cartographie des données et des règles",

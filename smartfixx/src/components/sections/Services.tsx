@@ -1,13 +1,20 @@
 import { motion } from "framer-motion";
 import {
+  AppWindow,
   ArrowUpRight,
+  BarChart3,
+  Bot,
   Boxes,
+  DatabaseZap,
   Gauge,
+  GraduationCap,
   LayoutTemplate,
   RefreshCcw,
   Search,
+  ServerCog,
   ShieldCheck,
   Smartphone,
+  Sparkle,
   Workflow,
 } from "lucide-react";
 import { SectionHeading } from "../ui/SectionHeading";
@@ -179,43 +186,74 @@ const PILLARS = [
     icon: Workflow,
     title: "Automatisation métier",
     kicker: "Vos logiciels, connectés",
-    body: "BlueKango, Netsoins, ERP, CRM, tableurs, e-mails : on relie ce qui ne se parle pas. Synchronisations planifiées, imports/exports automatiques, alertes et rapports générés seuls.",
+    body: "Logiciel métier, ERP, CRM, tableur, boîte mail, serveur de fichiers : on relie ce qui ne se parle pas, quel que soit l'outil. Synchronisations planifiées, imports/exports automatiques, alertes et rapports générés seuls.",
     bullets: ["Fin de la double saisie", "Scripts & API sur-mesure", "Supervision et alertes"],
     visual: AutomateVisual,
     glow: "255 92 138",
   },
 ];
 
+/* Périmètre élargi : le web n'est qu'une porte d'entrée, l'informatique entière suit. */
 const EXTRAS = [
   {
+    icon: AppWindow,
+    title: "Application métier sur-mesure",
+    body: "Un outil interne taillé pour votre process, quand aucun logiciel du marché ne colle.",
+  },
+  {
+    icon: BarChart3,
+    title: "Tableaux de bord & reporting",
+    body: "Vos chiffres consolidés, à jour, lisibles — sans exports manuels.",
+  },
+  {
+    icon: Bot,
+    title: "Robots & scripts (RPA)",
+    body: "Une machine qui refait vos manipulations répétitives, à l'heure, sans erreur.",
+  },
+  {
+    icon: Sparkle,
+    title: "IA & assistants",
+    body: "Chatbot, tri automatique, rédaction assistée, recherche dans vos documents.",
+  },
+  {
+    icon: DatabaseZap,
+    title: "Migration & reprise de données",
+    body: "Récupération, nettoyage, dédoublonnage, contrôle qualité avant bascule.",
+  },
+  {
+    icon: Boxes,
+    title: "Intégrations & API",
+    body: "Paiement, facturation, agenda, messagerie, signature électronique, livraison.",
+  },
+  {
     icon: Gauge,
-    title: "Performance",
-    body: "Core Web Vitals, cache, images, budget de chargement.",
+    title: "Performance & Core Web Vitals",
+    body: "Cache, images, budget de chargement, score mesuré avant/après.",
   },
   {
     icon: Search,
     title: "SEO technique",
-    body: "Structure, données enrichies, indexation, redirections.",
+    body: "Structure, données enrichies, indexation, redirections, maillage interne.",
   },
   {
     icon: Smartphone,
     title: "Mobile & PWA",
-    body: "Expérience tactile, installable, utilisable hors-ligne.",
+    body: "Expérience tactile, installable sur l'écran d'accueil, utilisable hors-ligne.",
+  },
+  {
+    icon: ServerCog,
+    title: "Hébergement & sauvegardes",
+    body: "Mise en place, nom de domaine, e-mails, certificats, restauration testée.",
   },
   {
     icon: ShieldCheck,
-    title: "Maintenance",
-    body: "Mises à jour, sauvegardes, supervision, correctifs.",
+    title: "Maintenance & infogérance",
+    body: "Mises à jour, supervision, correctifs, astreinte sur les flux critiques.",
   },
   {
-    icon: Boxes,
-    title: "Intégrations",
-    body: "Paiement, facturation, agenda, messagerie, signature.",
-  },
-  {
-    icon: LayoutTemplate,
-    title: "Design system",
-    body: "Composants réutilisables et charte tenue dans le temps.",
+    icon: GraduationCap,
+    title: "Formation & documentation",
+    body: "Vos équipes autonomes, avec un mode opératoire écrit qui reste.",
   },
 ];
 
@@ -230,7 +268,7 @@ export function Services() {
               Trois métiers, <span className="grad-accent">une seule équipe</span> qui va au bout.
             </>
           }
-          description="Du premier pixel jusqu'au script qui tourne à 3 h du matin. Pas de sous-traitance en cascade, pas de projet abandonné à mi-chemin."
+          description="Création de site web, refonte complète et automatisation informatique. Du premier pixel jusqu'au script qui tourne à 3 h du matin. Pas de sous-traitance en cascade, pas de projet abandonné à mi-chemin."
         />
 
         <div className="mt-16 grid gap-5 lg:grid-cols-3">
@@ -271,7 +309,18 @@ export function Services() {
         </div>
 
         {/* Supporting capabilities */}
-        <Stagger className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal className="mt-20">
+          <h3 className="headline text-[clamp(1.5rem,3.4vw,2.2rem)] leading-tight">
+            Et tout le reste de votre informatique.
+          </h3>
+          <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-fog-dim">
+            Le site n&apos;est qu&apos;une porte d&apos;entrée. Dès qu&apos;un outil, un fichier ou
+            une tâche passe par un ordinateur, il y a probablement moyen de l&apos;améliorer, de le
+            relier au reste ou de le faire tourner tout seul.
+          </p>
+        </Reveal>
+
+        <Stagger className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {EXTRAS.map((extra) => (
             <StaggerItem key={extra.title}>
               <div className="panel panel-hover group flex h-full items-start gap-4 p-5">

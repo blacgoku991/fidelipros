@@ -5,10 +5,11 @@ import {
   CalendarClock,
   Database,
   FileSpreadsheet,
-  HeartPulse,
   LayoutDashboard,
   Receipt,
+  RefreshCw,
   ShieldPlus,
+  Users,
   Zap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -32,10 +33,22 @@ type Node = {
 };
 
 const SOURCES: Node[] = [
-  { id: "bluekango", label: "BlueKango", sub: "Qualité & risques", icon: ShieldPlus, y: 80 },
-  { id: "netsoins", label: "Netsoins", sub: "Dossier de soins", icon: HeartPulse, y: 200 },
-  { id: "erp", label: "ERP / CRM", sub: "Sage, Odoo, HubSpot", icon: Database, y: 320 },
-  { id: "files", label: "Excel & CSV", sub: "Fichiers, mails, FTP", icon: FileSpreadsheet, y: 440 },
+  {
+    id: "metier",
+    label: "Logiciel métier",
+    sub: "Votre outil du quotidien",
+    icon: ShieldPlus,
+    y: 80,
+  },
+  { id: "crm", label: "CRM & ventes", sub: "Clients, devis, suivi", icon: Users, y: 200 },
+  { id: "erp", label: "ERP & gestion", sub: "Stocks, achats, compta", icon: Database, y: 320 },
+  {
+    id: "files",
+    label: "Fichiers & e-mails",
+    sub: "Excel, CSV, PDF, FTP",
+    icon: FileSpreadsheet,
+    y: 440,
+  },
 ];
 
 const TARGETS: Node[] = [
@@ -54,7 +67,7 @@ const TARGETS: Node[] = [
     icon: CalendarClock,
     y: 320,
   },
-  { id: "alerts", label: "Alertes", sub: "E-mail, SMS, Teams", icon: BellRing, y: 440 },
+  { id: "alerts", label: "Alertes", sub: "E-mail, SMS, messagerie", icon: BellRing, y: 440 },
 ];
 
 const sourcePath = (y: number) => `M 238 ${y} C 344 ${y}, 352 ${HUB_Y}, 428 ${HUB_Y}`;
@@ -285,9 +298,9 @@ function FlowStack() {
 
 const SCENARIOS = [
   {
-    icon: ShieldPlus,
-    title: "BlueKango ↔ Netsoins",
-    body: "Résidents, événements indésirables et plans d'action alignés automatiquement chaque nuit. Plus de ressaisie d'un logiciel à l'autre, plus d'écart entre les deux bases.",
+    icon: RefreshCw,
+    title: "Deux logiciels enfin synchronisés",
+    body: "Vos données alignées automatiquement chaque nuit entre deux outils qui s'ignoraient. Plus de ressaisie d'un logiciel à l'autre, plus d'écart entre les deux bases.",
     metric: "≈ 6 h",
     metricLabel: "récupérées / semaine",
   },
@@ -301,7 +314,7 @@ const SCENARIOS = [
   {
     icon: AlarmClock,
     title: "Surveillance & alertes",
-    body: "Seuils dépassés, échéance qui approche, import qui échoue : une alerte part immédiatement par e-mail, SMS ou Teams, avec le contexte nécessaire pour agir.",
+    body: "Seuils dépassés, échéance qui approche, import qui échoue : une alerte part immédiatement par e-mail, SMS ou sur votre messagerie d'équipe, avec le contexte nécessaire pour agir.",
     metric: "24/7",
     metricLabel: "sans intervention",
   },
@@ -322,7 +335,7 @@ export function Automation() {
               <span className="grad-accent">On construit le pont.</span>
             </>
           }
-          description="La double saisie coûte plus cher qu'un développement. On relie vos outils entre eux, on planifie les échanges, on contrôle chaque transfert et on vous laisse le journal complet de ce qui s'est passé."
+          description="La double saisie coûte plus cher qu'un développement. Logiciel métier, ERP, CRM, tableur, boîte mail, serveur de fichiers, service en ligne : on relie vos outils entre eux quels qu'ils soient, on planifie les échanges, on contrôle chaque transfert et on vous laisse le journal complet de ce qui s'est passé."
         />
 
         <Reveal delay={0.1} className="mt-14">
@@ -380,12 +393,10 @@ export function Automation() {
           <div className="mt-8 flex flex-wrap items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.02] px-5 py-4">
             <Zap className="h-4 w-4 shrink-0 text-mint" />
             <p className="text-[13px] leading-relaxed text-fog-dim">
-              Si un outil expose une API, un export ou une base de données, on sait
-              l&apos;automatiser. Sinon, on trouve un autre chemin.{" "}
-              <span className="text-fog-faint">
-                Marques citées à titre d&apos;exemples d&apos;intégrations ; SmartFixx n&apos;est
-                affilié à aucun de ces éditeurs.
-              </span>
+              <span className="text-fog">Aucun logiciel n&apos;est hors de portée.</span> API,
+              export planifié, base de données, dépôt de fichiers, e-mail, ou pilotage direct de
+              l&apos;interface quand il n&apos;y a rien d&apos;autre : il existe presque toujours un
+              chemin. On l&apos;évalue au cadrage et on vous dit franchement ce qui est jouable.
             </p>
           </div>
         </Reveal>

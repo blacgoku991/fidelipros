@@ -1,0 +1,86 @@
+/**
+ * Plan du site : source unique pour le routeur, le pré-rendu, le sitemap et le
+ * maillage interne. Ajouter une entrée ici suffit à créer une vraie page HTML
+ * statique servie à son URL propre.
+ *
+ * ⚠️ Pages locales : Google déclasse les « pages satellites » — des pages
+ * identiques où seul le nom de la ville change. Chaque page ci-dessous a donc
+ * un contenu écrit spécifiquement. N'ajoutez une nouvelle commune que si vous y
+ * avez réellement des clients ou une présence, et écrivez-lui un vrai texte.
+ */
+
+export type PageKind = "home" | "landing" | "legal";
+
+export type RouteDef = {
+  path: string;
+  kind: PageKind;
+  /** Balise <title> — le mot-clé doit être en tête. */
+  title: string;
+  description: string;
+  /** Priorité dans le sitemap. */
+  priority: number;
+};
+
+export const ROUTES: RouteDef[] = [
+  {
+    path: "/",
+    kind: "home",
+    title: "Création de site internet à Asnières-sur-Seine (92) & automatisation",
+    description:
+      "SmartFixx, agence web à Asnières-sur-Seine (92) : création de site internet sur-mesure, refonte complète et automatisation de vos logiciels métiers. Première maquette en 48 h, devis ferme.",
+    priority: 1.0,
+  },
+  {
+    path: "/creation-site-internet-asnieres-sur-seine",
+    kind: "landing",
+    title: "Création de site internet à Asnières-sur-Seine (92600) | SmartFixx",
+    description:
+      "Agence web à Asnières-sur-Seine : création de site internet sur-mesure pour commerces, artisans et PME du 92. Rendez-vous sur place, site livré en 2 à 3 semaines, à partir de 1 490 € HT.",
+    priority: 0.9,
+  },
+  {
+    path: "/creation-site-internet-ile-de-france",
+    kind: "landing",
+    title: "Création de site internet en Île-de-France | Agence web SmartFixx",
+    description:
+      "Création de site internet et refonte en Île-de-France : Hauts-de-Seine, Paris et proche banlieue. Design sur-mesure, SEO local, automatisation métier. Devis ferme sous 3 jours.",
+    priority: 0.9,
+  },
+  {
+    path: "/refonte-site-internet",
+    kind: "landing",
+    title: "Refonte de site internet sans perdre son référencement | SmartFixx",
+    description:
+      "Refonte de site web menée sans perte de référencement : audit technique et SEO, plan de redirections 301 complet, migration des données, reprise de la Search Console.",
+    priority: 0.8,
+  },
+  {
+    path: "/automatisation-informatique",
+    kind: "landing",
+    title: "Automatisation informatique & interconnexion de logiciels | SmartFixx",
+    description:
+      "Automatisation des tâches répétitives et interconnexion de vos logiciels métiers, ERP, CRM et tableurs. Fin de la double saisie, rapports générés seuls, alertes automatiques.",
+    priority: 0.8,
+  },
+  {
+    path: "/mentions-legales",
+    kind: "legal",
+    title: "Mentions légales | SmartFixx",
+    description:
+      "Mentions légales de SmartFixx : éditeur du site, identification de l'entreprise, hébergement, propriété intellectuelle et médiation de la consommation.",
+    priority: 0.2,
+  },
+  {
+    path: "/politique-de-confidentialite",
+    kind: "legal",
+    title: "Politique de confidentialité | SmartFixx",
+    description:
+      "Comment SmartFixx traite vos données personnelles : finalités, base légale, durées de conservation, absence de cookies de suivi et exercice de vos droits RGPD.",
+    priority: 0.2,
+  },
+];
+
+export const routeFor = (pathname: string): RouteDef => {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+  return ROUTES.find((route) => route.path === clean) ?? ROUTES[0];
+};

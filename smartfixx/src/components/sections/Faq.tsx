@@ -4,40 +4,14 @@ import { Plus } from "lucide-react";
 import { SectionHeading } from "../ui/SectionHeading";
 import { Reveal } from "../ui/Reveal";
 import { cn } from "@/lib/utils";
+import { FAQ_ITEMS } from "@/data/faq";
+import { renderMode } from "@/lib/renderMode";
 
-const ITEMS = [
-  {
-    q: "Combien de temps prend un site complet ?",
-    a: "Entre 2 et 3 semaines pour un site vitrine standard, 4 à 8 semaines pour un projet sur-mesure ou une refonte e-commerce. Le rétroplanning est fixé au devis, et vous suivez l'avancement sur un lien de recette mis à jour en continu.",
-  },
-  {
-    q: "Vous pouvez reprendre un site fait par quelqu'un d'autre ?",
-    a: "Oui, c'est même une bonne partie de notre activité. On commence par un audit technique et SEO pour savoir ce qui se récupère et ce qui se refait. Vous recevez le verdict par écrit avant tout engagement.",
-  },
-  {
-    q: "Concrètement, qu'est-ce que vous pouvez automatiser ?",
-    a: "Tout échange régulier entre deux systèmes : synchroniser des données entre logiciels métiers, générer et envoyer des rapports, importer des fichiers déposés sur un serveur, créer des alertes sur des seuils, relancer des impayés, alimenter un tableau de bord. Si l'outil expose une API, un export ou une base, on sait le brancher.",
-  },
-  {
-    q: "Et si mon logiciel n'a pas d'API ?",
-    a: "Il reste presque toujours un chemin : exports planifiés, dépôts de fichiers, base de données accessible en lecture, ou automatisation de l'interface. On l'évalue pendant le cadrage et on vous dit honnêtement si c'est jouable, à quel coût, et avec quelles limites.",
-  },
-  {
-    q: "Mes données sont sensibles. Comment vous les traitez ?",
-    a: "Environnement de test d'abord, jamais de bascule sur des données réelles sans validation. Accès limités au strict nécessaire, chiffrement des échanges, journal de chaque exécution, hébergement en Europe. Un accord de traitement des données est signé quand le contexte le demande.",
-  },
-  {
-    q: "Le site m'appartient vraiment ?",
-    a: "Oui. Code, nom de domaine, hébergement, comptes : tout est à votre nom et vous en gardez les accès. Aucun abonnement n'est nécessaire pour que votre site continue de fonctionner — la maintenance est une option, pas une prise d'otage.",
-  },
-  {
-    q: "Vous travaillez à distance ou sur site ?",
-    a: "À distance par défaut, avec des points en visio réguliers. Des rendez-vous sur site sont possibles pour le cadrage et la formation des équipes, notamment sur les projets d'automatisation où il faut voir le terrain.",
-  },
-];
+const ITEMS = FAQ_ITEMS;
 
 function FaqRow({ item, index }: { item: (typeof ITEMS)[number]; index: number }) {
-  const [open, setOpen] = useState(index === 0);
+  // Au pré-rendu, tout est déplié pour que les réponses soient dans le HTML livré.
+  const [open, setOpen] = useState(index === 0 || renderMode.prerender);
 
   return (
     <div className="border-b border-white/[0.07]">

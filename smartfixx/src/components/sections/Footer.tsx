@@ -4,23 +4,25 @@ import { LogoMark } from "../ui/Logo";
 import { scrollToSection } from "@/hooks/useSmoothScroll";
 import { site } from "@/data/site";
 
+/* Le pied de page porte le maillage interne : c'est lui qui relie chaque page
+   locale au reste du site sur toutes les pages. */
 const COLUMNS = [
   {
-    title: "Services",
+    title: "Prestations",
     links: [
-      { label: "Création de site", href: "#services" },
-      { label: "Refonte complète", href: "#services" },
-      { label: "Automatisation", href: "#automatisation" },
-      { label: "Maintenance", href: "#services" },
+      { label: "Création de site internet", href: "/creation-site-internet-asnieres-sur-seine" },
+      { label: "Refonte de site internet", href: "/refonte-site-internet" },
+      { label: "Automatisation informatique", href: "/automatisation-informatique" },
+      { label: "Tarifs", href: "/#tarifs" },
     ],
   },
   {
-    title: "Agence",
+    title: "Zones desservies",
     links: [
-      { label: "Méthode", href: "#methode" },
-      { label: "Réalisations", href: "#realisations" },
-      { label: "Tarifs", href: "#tarifs" },
-      { label: "Contact", href: "#contact" },
+      { label: "Asnières-sur-Seine (92600)", href: "/creation-site-internet-asnieres-sur-seine" },
+      { label: "Hauts-de-Seine", href: "/creation-site-internet-ile-de-france" },
+      { label: "Île-de-France", href: "/creation-site-internet-ile-de-france" },
+      { label: "Contact", href: "/#contact" },
     ],
   },
 ];
@@ -42,8 +44,13 @@ export function Footer() {
               </span>
             </div>
             <p className="mt-4 max-w-xs text-[14px] leading-relaxed text-fog-dim">
-              On conçoit des sites qui marquent, on reprend ceux qui patinent et on automatise tout
-              ce qui vous fait perdre du temps.
+              Agence web à {site.city} ({site.postalCode}). On conçoit des sites qui marquent, on
+              reprend ceux qui patinent et on automatise tout ce qui vous fait perdre du temps.
+            </p>
+            <p className="mt-4 text-[13.5px] leading-relaxed text-fog-faint">
+              {site.city} · {site.region}
+              <br />
+              {site.responseTime}
             </p>
             <a
               href={`mailto:${site.email}`}
@@ -63,10 +70,6 @@ export function Footer() {
                   <li key={`${column.title}-${link.label}`}>
                     <a
                       href={link.href}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        scrollToSection(link.href);
-                      }}
                       className="text-[14px] text-fog-dim transition-colors hover:text-white"
                     >
                       {link.label}
@@ -125,8 +128,14 @@ export function Footer() {
           <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-fog-faint">
             © {year} {site.legal.company} — Tous droits réservés
           </p>
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-fog-faint">
-            Mentions légales · Confidentialité
+          <p className="flex flex-wrap justify-center gap-x-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-fog-faint">
+            <a href="/mentions-legales" className="transition-colors hover:text-fog">
+              Mentions légales
+            </a>
+            <span aria-hidden="true">·</span>
+            <a href="/politique-de-confidentialite" className="transition-colors hover:text-fog">
+              Confidentialité
+            </a>
           </p>
         </div>
       </div>
