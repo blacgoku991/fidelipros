@@ -35,25 +35,40 @@ curl -s https://smartfixx.fr/ | grep -o '<title>[^<]*</title>'
 curl -s https://smartfixx.fr/creation-site-internet-clichy | grep -o '<title>[^<]*</title>'
 ```
 
+### Le www — à régler chez l'hébergeur
+
+L'ancien sitemap déclarait `https://www.smartfixx.fr/`, alors que Google a
+indexé `https://smartfixx.fr/` (sans www). Le site doit répondre sur **une seule**
+des deux formes, l'autre redirigeant vers elle, sinon les signaux se divisent
+entre deux adresses que Google considère comme deux sites.
+
+Ce dépôt déclare `https://smartfixx.fr` (sans www) partout — canonical, Open
+Graph, sitemap, données structurées. C'est cohérent avec ce que Google a déjà
+indexé, donc à conserver.
+
+Sur Vercel, **Settings → Domains** : ajoutez les deux domaines, gardez
+`smartfixx.fr` comme domaine principal et laissez Vercel configurer
+`www.smartfixx.fr` en redirection vers lui. C'est proposé automatiquement.
+
 ### Avant de basculer : les redirections
 
-L'ancien site est indexé et le domaine est premier sur « smartfixx ». Chaque
-ancienne URL qui renverra une 404 après la bascule perd sa position, et les liens
-qui pointaient vers elle ne transmettent plus rien.
+**Inventaire fait : il n'y a rien à rediriger.** L'ancien sitemap ne contenait
+qu'une seule URL réelle — `/` — plus des ancres (`#services`, `#tarifs`,
+`#portfolio`, `#contact`). Une ancre n'est pas une URL distincte : le fragment
+après `#` n'atteint jamais le serveur, aucune règle ne peut le viser. Et l'accueil
+garde son adresse, donc sa position sur « smartfixx » est conservée telle quelle.
 
-Tout se règle dans un seul fichier : **`redirects.json`**, à la racine.
+`redirects.json` reste donc volontairement vide. L'ancre `/#portfolio` de
+l'ancien site a été rebranchée sur la section Réalisations pour que les liens et
+signets existants tombent au bon endroit.
 
-```bash
-# 1. Lister les anciennes URL encore indexées
-curl -s https://smartfixx.fr/sitemap.xml | grep -o '<loc>[^<]*'
-# ou Search Console > Indexation > Pages > Pages indexées > Exporter
-# ou une recherche Google : site:smartfixx.fr
+Si vous découvrez plus tard d'autres URL indexées (Search Console → Indexation →
+Pages, ou une recherche `site:smartfixx.fr`), ajoutez-les dans `redirects.json` :
 
-# 2. Les reporter dans redirects.json
-#    { "from": "/ancienne-page", "to": "/nouvelle-page" }
-
-# 3. Régénérer les configs d'hébergement
-npm run build
+```powershell
+# une ligne par ancienne page
+# { "from": "/ancienne-page", "to": "/nouvelle-page" }
+npm run build   # régénère vercel.json et public/_redirects
 ```
 
 Le build propage la liste vers `vercel.json` et `public/_redirects` : une seule

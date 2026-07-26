@@ -103,6 +103,9 @@ function ProjectCover({ from, to, index }: { from: string; to: string; index: nu
 export function Work() {
   return (
     <section id="realisations" className="relative scroll-mt-24 py-28 sm:py-36">
+      {/* Ancien site : le sitemap listait /#portfolio. On garde l'ancre vivante
+          pour que les liens et signets existants tombent au bon endroit. */}
+      <span id="portfolio" aria-hidden="true" className="block scroll-mt-24" />
       <div className="container-x">
         <SectionHeading
           eyebrow="Réalisations"
