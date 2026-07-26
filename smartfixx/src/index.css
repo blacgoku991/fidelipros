@@ -1,0 +1,218 @@
+@import "./fonts.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --sf-mint: 79 240 212;
+    --sf-violet: 139 92 255;
+    --sf-coral: 255 92 138;
+    color-scheme: dark;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: auto;
+    /* `clip` also constrains the layout viewport — `hidden` alone lets an
+       off-canvas decoration widen the page on mobile. */
+    overflow-x: clip;
+  }
+
+  body {
+    @apply bg-ink-950 font-sans text-fog antialiased;
+    overflow-x: clip;
+  }
+
+  ::selection {
+    background: rgb(var(--sf-mint) / 0.28);
+    color: #ffffff;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #04050a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #21d3b6, #6c3bf5);
+    border-radius: 99px;
+    border: 3px solid #04050a;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display text-white;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  canvas {
+    display: block;
+    touch-action: pan-y;
+  }
+}
+
+@layer components {
+  .container-x {
+    @apply mx-auto w-full max-w-[1240px] px-5 sm:px-8;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] text-fog-dim backdrop-blur-sm;
+  }
+
+  .headline {
+    @apply font-display font-semibold tracking-tightest text-white;
+  }
+
+  /* Gradient text that stays legible on dark */
+  .grad-text {
+    background: linear-gradient(100deg, #ffffff 0%, #b9f7ec 38%, #a985ff 78%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .grad-accent {
+    background: linear-gradient(100deg, #4ff0d4 0%, #8b5cff 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Glass panel */
+  .panel {
+    @apply relative rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-xl;
+  }
+
+  .panel-hover {
+    @apply transition-[border-color,transform,background-color] duration-500;
+  }
+  .panel-hover:hover {
+    @apply border-white/20 bg-white/[0.04];
+  }
+
+  /* Hairline separator */
+  .hairline {
+    @apply h-px w-full bg-gradient-to-r from-transparent via-white/12 to-transparent;
+  }
+
+  /* Primary CTA */
+  .btn-primary {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-6 py-3.5 font-display text-sm font-semibold text-ink-950 transition-transform duration-300 will-change-transform;
+    background: linear-gradient(100deg, #6bf5de 0%, #4ff0d4 40%, #a985ff 100%);
+    box-shadow:
+      0 0 0 1px rgb(255 255 255 / 0.12) inset,
+      0 10px 40px -12px rgb(79 240 212 / 0.55);
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-6 py-3.5 font-display text-sm font-semibold text-white backdrop-blur-sm transition-colors duration-300 hover:border-white/30 hover:bg-white/[0.07];
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3.5 text-[15px] text-white outline-none transition-colors duration-300 placeholder:text-fog-faint focus:border-mint/50 focus:bg-white/[0.05];
+  }
+
+  .link-underline {
+    @apply relative inline-block after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-0 after:bg-mint after:transition-[width] after:duration-300 hover:after:w-full;
+  }
+}
+
+@layer utilities {
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent);
+    mask-image: linear-gradient(180deg, #000 55%, transparent);
+  }
+
+  .text-shadow-glow {
+    text-shadow: 0 0 42px rgb(79 240 212 / 0.35);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .noise {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
+
+/* Marquee track duplicated content */
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee var(--marquee-duration, 40s) linear infinite;
+}
+.marquee-wrap:hover .marquee-track {
+  animation-play-state: paused;
+}
+.marquee-track.reverse {
+  animation-direction: reverse;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* Animated dash flow used by the automation diagram */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.flow-dash {
+  stroke-dasharray: 6 10;
+  animation: dash-flow 14s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .marquee-track {
+    animation: none !important;
+  }
+}
