@@ -17,12 +17,12 @@ const COLUMNS = [
     ],
   },
   {
-    title: "Zones desservies",
+    title: "Agence",
     links: [
-      { label: "Asnières-sur-Seine (92600)", href: "/creation-site-internet-asnieres-sur-seine" },
-      { label: "Hauts-de-Seine (92)", href: "/agence-web-hauts-de-seine" },
-      { label: "Paris (75)", href: "/agence-web-paris" },
-      { label: "Toutes les communes", href: "/zones-desservies" },
+      { label: "Méthode", href: "/#methode" },
+      { label: "Réalisations", href: "/#realisations" },
+      { label: "Zones d'intervention", href: "/zones-desservies" },
+      { label: "Contact", href: "/#contact" },
     ],
   },
 ];

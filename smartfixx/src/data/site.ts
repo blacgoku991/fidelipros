@@ -46,9 +46,10 @@ export const site: SiteConfig = {
   region: "Île-de-France",
   postalCode: "92600",
   country: "FR",
-  /* Communes réellement couvertes depuis Asnières — ne pas gonfler cette liste :
-     Google traite les pages locales sans présence réelle comme des pages
-     satellites et les déclasse. */
+  /* Zones déclarées dans le JSON-LD `areaServed`. Doit rester cohérent avec les
+     pages réellement publiées : annoncer une commune sans page ni présence est
+     un signal contradictoire. Les échelons larges (région, France) traduisent la
+     couverture à distance. */
   areaServed: [
     "Asnières-sur-Seine",
     "Bois-Colombes",
@@ -57,14 +58,22 @@ export const site: SiteConfig = {
     "Courbevoie",
     "Gennevilliers",
     "Levallois-Perret",
-    "Villeneuve-la-Garenne",
+    "Nanterre",
+    "Boulogne-Billancourt",
+    "Neuilly-sur-Seine",
+    "Issy-les-Moulineaux",
+    "Saint-Ouen-sur-Seine",
+    "Argenteuil",
     "Paris",
     "Hauts-de-Seine",
+    "Seine-Saint-Denis",
+    "Val-d'Oise",
     "Île-de-France",
+    "France",
   ],
   /* Coordonnées d'Asnières-sur-Seine — à remplacer par celles du siège exact. */
   geo: { latitude: 48.9105, longitude: 2.2857 },
-  location: "Asnières-sur-Seine (92600) · Hauts-de-Seine & Île-de-France",
+  location: "Asnières-sur-Seine (92600) · Toute l'Île-de-France · À distance partout en France",
   responseTime: "Réponse sous 24 h ouvrées",
   openingHours: "Mo-Fr 09:00-19:00",
   foundingYear: "2026",

@@ -73,6 +73,32 @@ Communes couvertes : Clichy, Levallois-Perret, Courbevoie, Colombes,
 Bois-Colombes, Gennevilliers, Nanterre, Boulogne-Billancourt, Neuilly-sur-Seine,
 Issy-les-Moulineaux, Saint-Ouen-sur-Seine, Argenteuil.
 
+### Les pages locales sont volontairement discrètes
+
+Elles servent au référencement, pas à la navigation. Un visiteur qui arrive sur
+l'accueil ne voit **aucun nom de commune** : ni dans le menu, ni dans le pied de
+page, qui ne porte qu'un lien « Zones d'intervention ». Les pages ville
+n'existent que pour les visiteurs venus de Google sur « création site internet +
+leur ville ».
+
+Ce qu'il ne faut **pas** faire pour aller plus loin :
+
+- **Servir un contenu différent aux robots et aux visiteurs** (cloaking). C'est
+  la violation que Google sanctionne par une action manuelle, et elle porte sur
+  le domaine entier, pas sur les pages fautives.
+- **Mettre les pages en `noindex`** : elles disparaîtraient de Google, ce qui
+  supprime la seule raison de leur existence.
+- **Les retirer de tout lien interne.** Une page orpheline est explorée
+  rarement et mal classée. Le sitemap ne suffit pas : Google suit les liens.
+
+L'index `/zones-desservies` est le compromis : un seul lien discret dans le pied
+de page, qui donne à Google un chemin vers les 12 communes. Contrôle intégré au
+build — aucune page ville ne doit être orpheline.
+
+Le texte des pages précise systématiquement que la liste n'est pas limitative et
+que l'intervention couvre toute l'Île-de-France, plus la France à distance : rien
+ne doit suggérer une activité restreinte à ces communes.
+
 ### Ajouter une commune
 
 Une entrée dans `src/data/cities.ts` suffit : la route, le titre, la

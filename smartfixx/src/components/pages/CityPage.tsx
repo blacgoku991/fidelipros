@@ -57,7 +57,8 @@ export function CityPage({ city }: { city: City }) {
           >
             SmartFixx est une agence web installée à {site.city} ({site.postalCode}) — {city.reach}.
             On conçoit des sites internet sur-mesure, on reprend l&apos;existant et on automatise
-            les tâches répétitives pour les entreprises de {city.name} ({city.postalCode}).
+            les tâches répétitives pour les entreprises de {city.name} ({city.postalCode}), comme
+            partout ailleurs en Île-de-France.
           </motion.p>
 
           <motion.div
@@ -202,7 +203,7 @@ export function CityPage({ city }: { city: City }) {
         <Reveal delay={0.1}>
           <div className="mx-auto mt-14 max-w-3xl">
             <h2 className="font-mono text-[10.5px] uppercase tracking-[0.2em] text-fog-faint">
-              Autres communes du {city.departmentCode}
+              Nous intervenons aussi à
             </h2>
             <ul className="mt-5 grid gap-x-8 border-y border-white/[0.07] py-2 sm:grid-cols-2">
               {siblings.map((sibling) => (
@@ -217,17 +218,18 @@ export function CityPage({ city }: { city: City }) {
                 </li>
               ))}
             </ul>
-            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
+            <p className="mt-7 text-[14px] leading-relaxed text-fog-dim">
+              Cette liste n&apos;est pas limitative : nous travaillons dans toute
+              l&apos;Île-de-France, et à distance partout en France.{" "}
               <a href={city.hub} className="text-mint hover:underline">
-                Toutes nos zones dans le {city.departmentCode}
-              </a>
+                Voir le {city.departmentCode}
+              </a>{" "}
+              ou{" "}
               <a href="/zones-desservies" className="text-mint hover:underline">
-                Toutes les communes couvertes
+                nos zones d&apos;intervention
               </a>
-              <a href="/automatisation-informatique" className="text-mint hover:underline">
-                Automatisation informatique
-              </a>
-            </div>
+              .
+            </p>
           </div>
         </Reveal>
       </div>
@@ -405,10 +407,10 @@ export function ZonesPage({ hubs }: { hubs: Hub[] }) {
               Où nous intervenons en <span className="grad-text">Île-de-France</span>
             </h1>
             <p className="mt-6 text-[15.5px] leading-[1.75] text-fog-dim">
-              Nos bureaux sont à {site.city} ({site.postalCode}). Les communes listées ici sont
-              celles où nous nous déplaçons réellement, et chacune a une page qui décrit son tissu
-              économique et la façon dont les recherches locales s&apos;y comportent. Au-delà de ce
-              périmètre, nous travaillons à distance dans toute la francophonie.
+              Nos bureaux sont à {site.city} ({site.postalCode}) et nous intervenons dans toute
+              l&apos;Île-de-France. Les communes détaillées ci-dessous sont celles où nous nous
+              déplaçons le plus souvent — la liste n&apos;a rien de limitatif. Partout ailleurs en
+              France, nous travaillons à distance, avec des points en visio réguliers.
             </p>
           </Reveal>
 
