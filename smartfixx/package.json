@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b --noCheck && vite build && npm run build:ssr && node scripts/prerender.mjs",
+    "build": "npm run redirects && tsc -b --noCheck && vite build && npm run build:ssr && node scripts/prerender.mjs",
     "build:ssr": "vite build --ssr src/entry-server.tsx --outDir dist/server --ssrManifest false --logLevel warn",
     "build:spa": "tsc -b --noCheck && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "redirects": "node scripts/sync-redirects.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.3",

@@ -35,10 +35,40 @@ curl -s https://smartfixx.fr/ | grep -o '<title>[^<]*</title>'
 curl -s https://smartfixx.fr/creation-site-internet-clichy | grep -o '<title>[^<]*</title>'
 ```
 
-### Avant de basculer
+### Avant de basculer : les redirections
 
-Si l'ancien site a des pages indexées, relevez leurs URL et prévoyez des
-redirections 301 vers les nouvelles. Sinon vous perdez ce qui était déjà acquis.
+L'ancien site est indexé et le domaine est premier sur « smartfixx ». Chaque
+ancienne URL qui renverra une 404 après la bascule perd sa position, et les liens
+qui pointaient vers elle ne transmettent plus rien.
+
+Tout se règle dans un seul fichier : **`redirects.json`**, à la racine.
+
+```bash
+# 1. Lister les anciennes URL encore indexées
+curl -s https://smartfixx.fr/sitemap.xml | grep -o '<loc>[^<]*'
+# ou Search Console > Indexation > Pages > Pages indexées > Exporter
+# ou une recherche Google : site:smartfixx.fr
+
+# 2. Les reporter dans redirects.json
+#    { "from": "/ancienne-page", "to": "/nouvelle-page" }
+
+# 3. Régénérer les configs d'hébergement
+npm run build
+```
+
+Le build propage la liste vers `vercel.json` et `public/_redirects` : une seule
+liste à tenir, les deux hébergeurs couverts, pas de divergence possible. Le
+script refuse les boucles, les doublons et les chemins mal formés plutôt que de
+produire une configuration silencieusement cassée.
+
+Deux règles :
+
+- Envoyez chaque ancienne URL vers **la page nouvelle la plus proche en
+  contenu**. Rediriger tout en bloc vers l'accueil ne transfère rien : Google
+  traite ça comme une page d'erreur déguisée.
+- L'accueil `/` ne change pas d'adresse, il n'y a rien à rediriger pour lui —
+  c'est aussi lui qui porte la position sur « smartfixx », elle est donc
+  conservée.
 
 ---
 
