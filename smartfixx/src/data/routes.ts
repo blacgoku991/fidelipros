@@ -27,15 +27,15 @@ const STATIC_ROUTES: RouteDef[] = [
   {
     path: "/",
     kind: "home",
-    title: "Création de site internet à Asnières-sur-Seine (92) & automatisation",
+    title: "Agence web à Asnières-sur-Seine (92) — Création de site & automatisation",
     description:
-      "SmartFixx, agence web à Asnières-sur-Seine (92) : création de site internet sur-mesure, refonte complète et automatisation de vos logiciels métiers. Première maquette en 48 h, devis ferme.",
+      "SmartFixx, agence web à Asnières-sur-Seine (92600) : création de site internet sur-mesure, refonte complète et automatisation de vos logiciels métiers. Devis ferme, première maquette en 48 h.",
     priority: 1.0,
   },
   {
     path: "/creation-site-internet-asnieres-sur-seine",
     kind: "landing",
-    title: "Création de site internet à Asnières-sur-Seine (92600) | SmartFixx",
+    title: "Agence web à Asnières-sur-Seine (92600) — Création de site internet",
     description:
       "Agence web à Asnières-sur-Seine : création de site internet sur-mesure pour commerces, artisans et PME du 92. Rendez-vous sur place, site livré en 2 à 3 semaines, à partir de 1 490 € HT.",
     priority: 0.9,

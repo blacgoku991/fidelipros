@@ -78,7 +78,7 @@ export function Hero({ ready }: { ready: boolean }) {
                 transition={{ duration: 0.8, delay: 0.75, ease: EASE }}
                 className="mt-4 block max-w-[32ch] font-display text-[clamp(1rem,2vw,1.3rem)] font-medium leading-snug tracking-normal text-fog"
               >
-                Sites web sur-mesure et automatisation informatique — à Asnières-sur-Seine et
+                Agence web à Asnières-sur-Seine : création de site web, refonte et automatisation —
                 partout en Île-de-France.
               </motion.span>
             </>

@@ -23,10 +23,10 @@ export type Landing = {
 export const LANDINGS: Record<string, Landing> = {
   "/creation-site-internet-asnieres-sur-seine": {
     eyebrow: "Asnières-sur-Seine · Hauts-de-Seine",
-    h1: "Création de site internet à",
+    h1: "Agence web à",
     h1Accent: "Asnières-sur-Seine.",
     intro:
-      "SmartFixx est installé à Asnières-sur-Seine (92600). On conçoit des sites internet sur-mesure pour les commerces, artisans, professions libérales et PME de la commune et des villes voisines — avec la possibilité de se voir sur place plutôt que de tout régler par e-mail.",
+      "SmartFixx est une agence web installée à Asnières-sur-Seine (92600). On conçoit des sites internet sur-mesure pour les commerces, artisans, professions libérales et PME de la commune et des villes voisines — avec la possibilité de se voir sur place plutôt que de tout régler par e-mail.",
     facts: [
       { value: "92600", label: "Basé à Asnières-sur-Seine" },
       { value: "2 à 3 sem.", label: "Site vitrine livré" },

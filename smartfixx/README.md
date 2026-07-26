@@ -48,6 +48,11 @@ public/fonts/       Polices auto-hébergées (woff2)
 scripts/            Utilitaires hors build
 ```
 
+> **Le site en ligne n'est pas encore celui-ci.** `smartfixx.fr` sert un autre
+> site : Google affiche un titre différent de celui que produit ce dépôt. Voir
+> [DEPLOIEMENT.md](./DEPLOIEMENT.md) pour la mise en ligne et le plan de
+> référencement classé par impact.
+
 ## Architecture SEO
 
 Le site est **pré-rendu au build** : `npm run build` génère un vrai fichier HTML
