@@ -2,6 +2,7 @@ import { FAQ_ITEMS } from "@/data/faq";
 import { SERVICES, site } from "@/data/site";
 import { LANDINGS } from "@/data/landings";
 import type { RouteDef } from "@/data/routes";
+import { cityBySlug, hubBySlug } from "@/data/cities";
 
 /**
  * Données structurées schema.org, rendues dans le HTML pré-généré au build (voir
@@ -116,6 +117,75 @@ export function Seo({ route }: { route: RouteDef }) {
         name: item.q,
         acceptedAnswer: { "@type": "Answer", text: item.a },
       })),
+    });
+  }
+
+  /* Pages commune : on déclare un Service explicitement rattaché à la ville. Sans
+     ce rattachement, Google n'a aucune raison de relier la page à la localité
+     autrement que par le texte. */
+  const city =
+    route.kind === "city"
+      ? cityBySlug(route.path.replace("/creation-site-internet-", ""))
+      : undefined;
+
+  if (city) {
+    graph.push({
+      "@type": "Service",
+      "@id": `${pageUrl}#service`,
+      name: `Création de site internet à ${city.name}`,
+      description: route.description,
+      serviceType: "Création de site internet",
+      provider: { "@id": orgId },
+      areaServed: {
+        "@type": "City",
+        name: city.name,
+        postalCode: city.postalCode,
+        containedInPlace: { "@type": "AdministrativeArea", name: city.department },
+      },
+    });
+
+    graph.push({
+      "@type": "BreadcrumbList",
+      "@id": `${pageUrl}#breadcrumb`,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${base}/` },
+        { "@type": "ListItem", position: 2, name: city.department, item: `${base}${city.hub}` },
+        { "@type": "ListItem", position: 3, name: city.name, item: pageUrl },
+      ],
+    });
+
+    graph.push({
+      "@type": "FAQPage",
+      "@id": `${pageUrl}#faq`,
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: city.faq.q,
+          acceptedAnswer: { "@type": "Answer", text: city.faq.a },
+        },
+      ],
+    });
+  }
+
+  const hub = route.kind === "hub" ? hubBySlug(route.path) : undefined;
+  if (hub) {
+    graph.push({
+      "@type": "Service",
+      "@id": `${pageUrl}#service`,
+      name: `Agence web dans ${hub.name}`,
+      description: route.description,
+      serviceType: "Création de site internet",
+      provider: { "@id": orgId },
+      areaServed: { "@type": "AdministrativeArea", name: hub.name },
+    });
+
+    graph.push({
+      "@type": "BreadcrumbList",
+      "@id": `${pageUrl}#breadcrumb`,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Accueil", item: `${base}/` },
+        { "@type": "ListItem", position: 2, name: hub.name, item: pageUrl },
+      ],
     });
   }
 

@@ -19,7 +19,7 @@ npm run dev        # http://localhost:5173
 | Script              | Effet                                            |
 | ------------------- | ------------------------------------------------ |
 | `npm run dev`       | Serveur de développement Vite                    |
-| `npm run build`     | Typecheck, build, puis pré-rendu des 7 pages      |
+| `npm run build`     | Typecheck, build, puis pré-rendu des 24 pages     |
 | `npm run build:spa` | Build sans pré-rendu (dépannage)                  |
 | `npm run preview`   | Sert le build de production localement           |
 | `npm run typecheck` | Vérification TypeScript stricte, sans émission   |
@@ -55,24 +55,52 @@ statique par page, contenu et données structurées inclus. Les robots n'ont pas
 besoin d'exécuter du JavaScript, et three.js part dans un chunk asynchrone que
 le premier affichage n'attend pas.
 
-| URL | Cible |
-| --- | --- |
-| `/` | Marque + intention large, ancrée Asnières |
-| `/creation-site-internet-asnieres-sur-seine` | Requête locale principale |
-| `/creation-site-internet-ile-de-france` | Requête régionale |
-| `/refonte-site-internet` | Refonte sans perte de référencement |
-| `/automatisation-informatique` | Automatisation / interconnexion |
-| `/mentions-legales`, `/politique-de-confidentialite` | Obligations légales + confiance |
+**24 pages**, organisées en trois niveaux :
 
-Ajouter une page = une entrée dans `src/data/routes.ts` et son contenu dans
-`src/data/landings.ts`. **Écrivez un texte propre à chaque page** : Google
-déclasse les pages locales identiques où seul le nom de la ville change
-(« pages satellites »). N'ajoutez une commune que si vous y avez réellement
-des clients.
+| Niveau | URL | Cible |
+| --- | --- | --- |
+| Accueil | `/` | Marque + intention large, ancrée Asnières |
+| Prestation | `/creation-site-internet-asnieres-sur-seine` | Requête locale principale |
+| Prestation | `/creation-site-internet-ile-de-france` | Requête régionale |
+| Prestation | `/refonte-site-internet` | Refonte sans perte de référencement |
+| Prestation | `/automatisation-informatique` | Automatisation / interconnexion |
+| Département | `/agence-web-hauts-de-seine`, `-paris`, `-seine-saint-denis`, `-val-d-oise` | « agence web + département » |
+| Commune | `/creation-site-internet-<ville>` × 12 | « création site internet + ville » |
+| Index | `/zones-desservies` | Maillage de toutes les communes |
+| Légal | `/mentions-legales`, `/politique-de-confidentialite` | Obligations + confiance |
+
+Communes couvertes : Clichy, Levallois-Perret, Courbevoie, Colombes,
+Bois-Colombes, Gennevilliers, Nanterre, Boulogne-Billancourt, Neuilly-sur-Seine,
+Issy-les-Moulineaux, Saint-Ouen-sur-Seine, Argenteuil.
+
+### Ajouter une commune
+
+Une entrée dans `src/data/cities.ts` suffit : la route, le titre, la
+description, le sitemap et le maillage se génèrent tout seuls.
+
+**Mais il faut écrire le contenu.** Chaque commune a quatre champs de texte qui
+doivent lui être propres : `fabric` (tissu économique), `searchAngle` (comment
+les recherches s'y comportent), `opportunity` (l'angle local concret) et `faq`
+(une question spécifique). Compter ~20 minutes de rédaction par ville.
+
+Google déclasse les « pages satellites » — les pages locales identiques où seul
+le nom de la ville change. Le recouvrement textuel entre les pages actuelles est
+mesuré à **35 % en moyenne** (nav et pied de page compris), ce qui est sain. Si
+vous ajoutez des villes en dupliquant le texte, ce chiffre monte et l'ensemble
+du réseau se fait déclasser, pas seulement les nouvelles pages.
+
+Vérifier après ajout :
+
+```bash
+npm run build   # échoue si une page rend moins de 3 000 caractères
+```
+
+N'ajoutez une commune que si vous y avez réellement des clients ou une présence.
 
 Données structurées produites : `LocalBusiness` (adresse, coordonnées GPS,
-horaires, 11 zones desservies), `Service` par prestation, `FAQPage` (12
-questions), `BreadcrumbList`, `WebSite`, `WebPage`.
+horaires, zones desservies), `Service` rattaché à la `City` sur chaque page
+commune, `FAQPage` (12 questions sur l'accueil + une question locale par
+commune), `BreadcrumbList` à trois niveaux, `WebSite`, `WebPage`.
 
 ### Ce qui reste à faire hors du code
 

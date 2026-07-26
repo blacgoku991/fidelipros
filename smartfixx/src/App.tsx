@@ -16,9 +16,11 @@ import { Contact } from "./components/sections/Contact";
 import { Footer } from "./components/sections/Footer";
 import { LandingPage } from "./components/pages/LandingPage";
 import { LegalNotice, PrivacyPolicy } from "./components/pages/LegalPage";
+import { CityPage, HubPage, ZonesPage } from "./components/pages/CityPage";
 import { useSmoothScroll } from "./hooks/useSmoothScroll";
 import { routeFor } from "./data/routes";
 import { LANDINGS } from "./data/landings";
+import { HUBS, cityBySlug, hubBySlug } from "./data/cities";
 
 /**
  * three.js pèse plus que tout le reste du site réuni. En import dynamique, il
@@ -62,6 +64,13 @@ export default function App({ prerender = false, pathname }: AppProps) {
   const currentPath = pathname ?? (typeof window === "undefined" ? "/" : window.location.pathname);
   const route = routeFor(currentPath);
   const isHome = route.kind === "home";
+  // Les pages ville et departement sont generees depuis les donnees : on les
+  // resout ici plutot que d'enumerer un composant par URL.
+  const city =
+    route.kind === "city"
+      ? cityBySlug(route.path.replace("/creation-site-internet-", ""))
+      : undefined;
+  const hub = route.kind === "hub" ? hubBySlug(route.path) : undefined;
 
   return (
     <>
@@ -86,7 +95,10 @@ export default function App({ prerender = false, pathname }: AppProps) {
       {isHome && <HomePage ready={ready} />}
       {route.path === "/mentions-legales" && <LegalNotice />}
       {route.path === "/politique-de-confidentialite" && <PrivacyPolicy />}
+      {route.path === "/zones-desservies" && <ZonesPage hubs={HUBS} />}
       {LANDINGS[route.path] && <LandingPage landing={LANDINGS[route.path]} />}
+      {city && <CityPage city={city} />}
+      {hub && <HubPage hub={hub} />}
 
       <Footer />
 

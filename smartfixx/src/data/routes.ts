@@ -9,7 +9,7 @@
  * avez réellement des clients ou une présence, et écrivez-lui un vrai texte.
  */
 
-export type PageKind = "home" | "landing" | "legal";
+export type PageKind = "home" | "landing" | "legal" | "city" | "hub" | "zones";
 
 export type RouteDef = {
   path: string;
@@ -21,7 +21,9 @@ export type RouteDef = {
   priority: number;
 };
 
-export const ROUTES: RouteDef[] = [
+import { CITIES, HUBS } from "./cities";
+
+const STATIC_ROUTES: RouteDef[] = [
   {
     path: "/",
     kind: "home",
@@ -79,6 +81,37 @@ export const ROUTES: RouteDef[] = [
     priority: 0.2,
   },
 ];
+
+/* Une route par commune : c'est ce qui permet d'être trouvé sur « création site
+   internet + <ville> », requête sur laquelle une page unique ne peut rien. */
+const CITY_ROUTES: RouteDef[] = CITIES.map((city) => ({
+  path: `/creation-site-internet-${city.slug}`,
+  kind: "city",
+  title: `Création de site internet à ${city.name} (${city.postalCode}) | SmartFixx`,
+  description: `Agence web à ${city.name} (${city.postalCode}) : création de site internet sur-mesure, refonte et automatisation. Bureaux à Asnières-sur-Seine, ${city.reach}. À partir de 1 490 € HT.`,
+  priority: 0.8,
+}));
+
+/* Hubs départementaux : ils regroupent les communes et captent les requêtes
+   « agence web + département », moins précises mais plus volumineuses. */
+const HUB_ROUTES: RouteDef[] = HUBS.map((hub) => ({
+  path: hub.slug,
+  kind: "hub",
+  title: hub.title,
+  description: hub.description,
+  priority: 0.7,
+}));
+
+const ZONES_ROUTE: RouteDef = {
+  path: "/zones-desservies",
+  kind: "zones",
+  title: "Zones desservies en Île-de-France | Agence web SmartFixx",
+  description:
+    "Les communes d'Île-de-France où SmartFixx intervient : Hauts-de-Seine, Paris, Seine-Saint-Denis et Val-d'Oise. Une page par commune, avec son tissu économique local.",
+  priority: 0.6,
+};
+
+export const ROUTES: RouteDef[] = [...STATIC_ROUTES, ZONES_ROUTE, ...HUB_ROUTES, ...CITY_ROUTES];
 
 export const routeFor = (pathname: string): RouteDef => {
   const clean = pathname.replace(/\/+$/, "") || "/";
