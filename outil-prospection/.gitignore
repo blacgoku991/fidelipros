@@ -1,0 +1,12 @@
+node_modules/
+
+# Base locale : prospects, audits, captures d'écran, documents générés.
+# Données personnelles (dirigeants, emails) : elles restent sur le poste.
+donnees/
+
+# Sorties des commandes en lot
+rapports/
+*.csv
+
+.env
+.DS_Store

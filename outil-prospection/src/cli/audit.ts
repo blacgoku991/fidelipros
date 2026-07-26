@@ -2,9 +2,9 @@
 // Audit complet en ligne de commande : SEO, design, sécurité, technique, puis génération
 // du rapport client et du devis. Même moteur que les edge functions, sans base de données.
 //
-//   node scripts/audit.ts --url https://garagemartin.fr
-//   node scripts/audit.ts --csv prospects.csv --top 10 --sortie rapports
-//   node scripts/audit.ts --aide
+//   npm run audit -- --url https://garagemartin.fr
+//   npm run audit -- --csv prospects.csv --top 10 --sortie rapports
+//   npm run audit -- --aide
 //
 // Nécessite Node 22+ (exécution directe des fichiers TypeScript).
 
@@ -12,17 +12,17 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 
-import { auditeSite } from "../supabase/functions/_shared/prospection/audit/index.ts";
-import { LIBELLES_PILIERS, LIBELLES_SEVERITE } from "../supabase/functions/_shared/prospection/audit/regles.ts";
+import { auditeSite } from "../moteur/audit/index.ts";
+import { LIBELLES_PILIERS, LIBELLES_SEVERITE } from "../moteur/audit/regles.ts";
 import {
   construitProposition, propositionEnFichierHtml,
-} from "../supabase/functions/_shared/prospection/proposition/index.ts";
-import { euros } from "../supabase/functions/_shared/prospection/proposition/devis.ts";
-import type { Prestation } from "../supabase/functions/_shared/prospection/proposition/types.ts";
-import type { Pilier } from "../supabase/functions/_shared/prospection/audit/types.ts";
+} from "../moteur/proposition/index.ts";
+import { euros } from "../moteur/proposition/devis.ts";
+import type { Prestation } from "../moteur/proposition/types.ts";
+import type { Pilier } from "../moteur/audit/types.ts";
 
 const AIDE = `
-Audit de site et proposition commerciale — FideliPro
+Audit de site et proposition commerciale
 
 Options :
   --url <adresse>       Site à auditer

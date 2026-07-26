@@ -46,8 +46,6 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Logique de prospection partagée avec l'edge function (source unique de vérité)
-      "@prospection": path.resolve(__dirname, "./supabase/functions/_shared/prospection"),
     },
     dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
   },

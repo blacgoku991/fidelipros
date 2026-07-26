@@ -5,7 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // outil-prospection/ est un projet Node autonome (destiné à son propre dépôt) :
+  // il a sa propre configuration TypeScript et ne suit pas les règles React d'ici.
+  { ignores: ["dist", "outil-prospection"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

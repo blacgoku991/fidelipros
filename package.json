@@ -9,8 +9,6 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prospect": "node scripts/prospect.ts",
-    "audit": "node scripts/audit.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prospection — sites web à créer ou à refaire</title>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🎯</text></svg>">
+</head>
+<body>
+  <header class="entete">
+    <div class="marque">
+      <span class="cible" aria-hidden="true">🎯</span>
+      <div>
+        <strong>Prospection web</strong>
+        <span class="sous-titre">Trouver, auditer, chiffrer</span>
+      </div>
+    </div>
+    <nav id="menu">
+      <a href="#/prospects" data-vue="prospects">Prospects</a>
+      <a href="#/auditer" data-vue="auditer">Auditer un site</a>
+      <a href="#/prestations" data-vue="prestations">Prestations &amp; devis</a>
+    </nav>
+    <div class="etat" id="etat-cles"></div>
+  </header>
+
+  <main id="vue" aria-live="polite">
+    <p class="attente">Chargement…</p>
+  </main>
+
+  <div id="notifications" class="notifications" aria-live="assertive"></div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -19,9 +19,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@prospection/*": [
-        "./supabase/functions/_shared/prospection/*"
       ]
     },
     "skipLibCheck": true,

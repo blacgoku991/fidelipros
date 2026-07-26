@@ -2,23 +2,23 @@
 // Prospection en ligne de commande — même moteur que l'edge function, sans base de données.
 // Produit un CSV exploitable dans Excel / Google Sheets.
 //
-//   node scripts/prospect.ts --departement 33 --secteurs restauration,beaute --depuis 12
-//   node scripts/prospect.ts --cp 75011 --cible site_a_refaire --pages 4 --sortie leads.csv
-//   node scripts/prospect.ts --aide
+//   npm run prospect -- --departement 33 --secteurs restauration,beaute --depuis 12
+//   npm run prospect -- --cp 75011 --cible site_a_refaire --pages 4 --sortie leads.csv
+//   npm run prospect -- --aide
 //
 // Nécessite Node 22+ (exécution directe des fichiers TypeScript).
 
 import { writeFileSync } from "node:fs";
 import process from "node:process";
 
-import { appliqueAudit, dateIlYaNMois, filtreSelonCible, versCsv } from "../supabase/functions/_shared/prospection/core.ts";
-import { nafDesSecteurs, SECTEURS_CIBLES } from "../supabase/functions/_shared/prospection/naf.ts";
-import { rechercheEntreprises } from "../supabase/functions/_shared/prospection/sirene.ts";
-import { auditeProspects } from "../supabase/functions/_shared/prospection/website.ts";
-import type { CibleProspection, ProspectionFilters } from "../supabase/functions/_shared/prospection/types.ts";
+import { appliqueAudit, dateIlYaNMois, filtreSelonCible, versCsv } from "../moteur/core.ts";
+import { nafDesSecteurs, SECTEURS_CIBLES } from "../moteur/naf.ts";
+import { rechercheEntreprises } from "../moteur/sirene.ts";
+import { auditeProspects } from "../moteur/website.ts";
+import type { CibleProspection, ProspectionFilters } from "../moteur/types.ts";
 
 const AIDE = `
-Prospection FideliPro — entreprises à démarcher pour un site web
+Prospection — entreprises à démarcher pour un site web
 
 Options :
   --departement <code>   Département (ex. 33)

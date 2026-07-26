@@ -1,0 +1,23 @@
+{
+  "name": "prospection",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prospection B2B : trouver des entreprises à équiper d'un site web, auditer le site existant (SEO, design, sécurité, technique) et générer le devis et les messages de prise de contact.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/serveur/index.ts",
+    "prospect": "node src/cli/prospect.ts",
+    "audit": "node src/cli/audit.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verif": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

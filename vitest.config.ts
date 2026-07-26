@@ -16,7 +16,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@prospection": path.resolve(__dirname, "./supabase/functions/_shared/prospection"),
     },
   },
 });
