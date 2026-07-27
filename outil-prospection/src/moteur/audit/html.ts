@@ -135,6 +135,32 @@ export function typesJsonLd(html: string): string[] {
   return types;
 }
 
+/**
+ * Traceurs publicitaires ou de mesure d'audience chargés par la page.
+ * Matomo configuré sans cookie et les outils exemptés ne sont pas listés : on ne signale que
+ * ce qui, en pratique, dépose des cookies soumis au consentement.
+ */
+const TRACEURS = [
+  { motif: /googletagmanager\.com\/gtag|gtag\('config'|google-analytics\.com\/analytics|\bga\('create'/i, nom: "Google Analytics" },
+  { motif: /googletagmanager\.com\/gtm\.js|GTM-[A-Z0-9]{4,}/i, nom: "Google Tag Manager" },
+  { motif: /connect\.facebook\.net|fbevents\.js|fbq\('init'/i, nom: "Meta Pixel" },
+  { motif: /static\.hotjar\.com|hj\.q=/i, nom: "Hotjar" },
+  { motif: /clarity\.ms/i, nom: "Microsoft Clarity" },
+  { motif: /analytics\.tiktok\.com/i, nom: "TikTok Pixel" },
+  { motif: /googleads\.g\.doubleclick\.net|googlesyndication\.com/i, nom: "Google Ads" },
+];
+
+export function traceurs(html: string): string[] {
+  return TRACEURS.filter(({ motif }) => motif.test(html)).map(({ nom }) => nom);
+}
+
+/** Solutions de consentement les plus répandues, plus les formulations habituelles. */
+const CONSENTEMENT = /tarteaucitron|axeptio|cookiebot|didomi|orejime|klaro|cookieyes|complianz|cookie-?consent|cookieconsent|osano|iubenda|sirdata|quantcast|consentmanager|gestion des cookies|accepter les cookies|accepter et fermer|gérer mes cookies|param[eè]trer les cookies|continuer sans accepter/i;
+
+export function aBandeauConsentement(html: string): boolean {
+  return CONSENTEMENT.test(html);
+}
+
 /** Contenu de la balise generator (CMS et version). */
 export function generateur(html: string): string | null {
   return meta(html, "generator");

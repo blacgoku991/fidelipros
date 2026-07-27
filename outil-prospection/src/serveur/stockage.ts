@@ -7,6 +7,8 @@ import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
 
+import type { Contacts } from "../moteur/audit/contacts.ts";
+import { domaine as domaineDe } from "../moteur/audit/http.ts";
 import type { AuditSiteComplet } from "../moteur/audit/types.ts";
 import type { Devis, Emetteur, Prestation } from "../moteur/proposition/types.ts";
 import { EMETTEUR_PAR_DEFAUT } from "../moteur/proposition/devis.ts";
@@ -22,6 +24,12 @@ export interface ProspectStocke extends Prospect {
   source: "recherche-entreprises" | "manuel";
   statut: StatutCommercial;
   notes: string | null;
+  /** Coordonnées relevées sur le site, la meilleure d'abord. */
+  emails: string[];
+  telephones: string[];
+  /** Fiche Google réellement publiée par le site (jamais devinée). */
+  google_maps_url: string | null;
+  reseaux: Contacts["reseaux"];
   dernier_audit_id: string | null;
   score_audit: number | null;
   score_seo: number | null;
@@ -51,6 +59,7 @@ export interface DocumentsStockes {
   audit_id: string | null;
   synthese: string;
   email: { objet: string; corps: string };
+  email_html: string;
   sms: string;
   script_appel: string;
   rapport_html: string;
@@ -81,10 +90,22 @@ const PRESTATIONS_INITIALES: Prestation[] = [
   { code: "mise_https", libelle: "Passage en HTTPS", description: "Certificat SSL, redirections, correction du contenu non sécurisé.", prix: 190, unite: "forfait", categorie: "securite", actif: true, ordre: 90 },
   { code: "securisation_entetes", libelle: "Sécurisation du site", description: "En-têtes de sécurité, cookies conformes, masquage des versions.", prix: 390, unite: "forfait", categorie: "securite", actif: true, ordre: 100 },
   { code: "correctif_dns_email", libelle: "Protection de vos emails", description: "Configuration SPF, DKIM et DMARC contre l'usurpation.", prix: 290, unite: "forfait", categorie: "securite", actif: true, ordre: 110 },
+  { code: "conformite_rgpd", libelle: "Mise en conformité RGPD", description: "Bandeau de consentement, blocage des traceurs avant accord, politique de confidentialité.", prix: 390, unite: "forfait", categorie: "securite", actif: true, ordre: 115 },
   { code: "mise_a_jour_cms", libelle: "Mise à jour et nettoyage du CMS", description: "Montée de version, suppression des fichiers exposés, sauvegardes.", prix: 450, unite: "forfait", categorie: "securite", actif: true, ordre: 120 },
   { code: "maintenance", libelle: "Maintenance et surveillance", description: "Mises à jour, sauvegardes, surveillance de disponibilité.", prix: 79, unite: "mois", categorie: "maintenance", actif: true, ordre: 130 },
   { code: "hebergement", libelle: "Hébergement et nom de domaine", description: "Hébergement en France, certificat SSL, email professionnel.", prix: 15, unite: "mois", categorie: "maintenance", actif: true, ordre: 140 },
 ];
+
+/**
+ * Complète le catalogue enregistré avec les prestations ajoutées depuis, sans toucher aux
+ * prix ni aux libellés déjà personnalisés : une mise à jour de l'outil ne doit ni écraser vos
+ * tarifs, ni laisser une règle d'audit sans ligne de devis correspondante.
+ */
+function fusionnePrestations(enregistrees: Prestation[] | undefined): Prestation[] {
+  if (!enregistrees?.length) return PRESTATIONS_INITIALES;
+  const codes = new Set(enregistrees.map((p) => p.code));
+  return [...enregistrees, ...PRESTATIONS_INITIALES.filter((p) => !codes.has(p.code))];
+}
 
 function baseVide(): BaseDonnees {
   return {
@@ -118,12 +139,21 @@ export class Stockage {
     try {
       const brut = JSON.parse(readFileSync(this.chemin, "utf8")) as Partial<BaseDonnees>;
       // Tolérant : un fichier écrit par une version antérieure reste exploitable.
-      return {
+      const base = {
         ...baseVide(),
         ...brut,
-        prestations: brut.prestations?.length ? brut.prestations : PRESTATIONS_INITIALES,
+        prestations: fusionnePrestations(brut.prestations),
         emetteur: { ...EMETTEUR_PAR_DEFAUT, ...(brut.emetteur ?? {}) },
       } as BaseDonnees;
+      // Fiches écrites par une version antérieure : compléter sans casser.
+      base.prospects = base.prospects.map((prospect) => ({
+        ...prospect,
+        emails: prospect.emails ?? [],
+        telephones: prospect.telephones ?? [],
+        google_maps_url: prospect.google_maps_url ?? null,
+        reseaux: prospect.reseaux ?? { facebook: null, instagram: null, linkedin: null },
+      }));
+      return base;
     } catch (erreur) {
       const message = erreur instanceof Error ? erreur.message : String(erreur);
       throw new Error(`Fichier de données illisible (${this.chemin}) : ${message}`);
@@ -175,11 +205,19 @@ export class Stockage {
     return { nouveaux, total: trouves.length };
   }
 
-  /** Prospect créé depuis l'écran « Auditer une URL », dédoublonné sur le domaine. */
+  /**
+   * Prospect créé depuis l'écran « Auditer une URL », dédoublonné sur le domaine.
+   * Le rapprochement se fait aussi sur le site déjà détecté d'un prospect issu de Sirene :
+   * auditer l'adresse d'une entreprise déjà en base enrichit sa fiche au lieu d'en créer une
+   * deuxième, et l'on conserve alors ses données Sirene (effectif, CA, dirigeant).
+   */
   prospectDepuisDomaine(domaine: string, nom: string, url: string): ProspectStocke {
-    const existant = this.base.prospects.find((p) => p.domaine === domaine);
+    const existant = this.base.prospects.find((p) =>
+      p.domaine === domaine || (p.site_web ? domaineDe(p.site_web) === domaine : false));
     if (existant) {
-      if (nom && nom !== existant.nom) existant.nom = nom;
+      // Un prospect Sirene garde sa raison sociale : elle est plus fiable que la saisie.
+      if (nom && !existant.siren && nom !== existant.nom) existant.nom = nom;
+      existant.domaine ??= domaine;
       existant.site_web = url;
       this.ecrit();
       return existant;
@@ -217,6 +255,10 @@ export class Stockage {
       source,
       statut: "nouveau",
       notes: null,
+      emails: [],
+      telephones: [],
+      google_maps_url: null,
+      reseaux: { facebook: null, instagram: null, linkedin: null },
       dernier_audit_id: null,
       score_audit: null,
       score_seo: null,
@@ -302,9 +344,13 @@ export class Stockage {
   }
 
   dernierAudit(prospectId: string): AuditStocke | undefined {
-    return [...this.base.audits]
+    // À date égale (deux audits dans la même milliseconde), le dernier inscrit gagne.
+    return this.base.audits
       .filter((a) => a.prospect_id === prospectId)
-      .sort((a, b) => b.cree_le.localeCompare(a.cree_le))[0];
+      .reduce<AuditStocke | undefined>(
+        (meilleur, ligne) => (!meilleur || ligne.cree_le >= meilleur.cree_le ? ligne : meilleur),
+        undefined,
+      );
   }
 
   audit(id: string): AuditStocke | undefined {

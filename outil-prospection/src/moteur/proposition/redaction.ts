@@ -16,6 +16,18 @@ function nomCommercial(prospect: ContexteProposition["prospect"]): string {
   return prospect.enseigne?.trim() || prospect.nom;
 }
 
+/** « Site non sécurisé » → « site non sécurisé », pour l'insérer dans une phrase. */
+/** « BORDEAUX » → « Bordeaux » : les villes arrivent en majuscules depuis Sirene. */
+function villeLisible(ville: string | null | undefined): string {
+  if (!ville) return "";
+  if (ville !== ville.toUpperCase()) return ville;
+  return ville.toLowerCase().replace(/(^|[\s'’-])([a-zà-ÿ])/g, (_, avant, lettre) => avant + lettre.toUpperCase());
+}
+
+function minuscule(texte: string): string {
+  return texte.charAt(0).toLowerCase() + texte.slice(1);
+}
+
 function prenomDirigeant(dirigeant: string | null | undefined): string | null {
   if (!dirigeant) return null;
   const propre = dirigeant.replace(/\s+/g, " ").trim();
@@ -84,18 +96,23 @@ export function emailPriseContact(ctx: ContexteProposition): { objet: string; co
       ].join("\n"),
     };
   }
-  const ville = ctx.prospect.ville ?? "";
+  const ville = villeLisible(ctx.prospect.ville);
   const dirigeant = prenomDirigeant(ctx.prospect.dirigeant);
   const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
 
+  // Un objet précis et vérifiable ouvre mieux qu'un décompte de défauts : on met en avant le
+  // point le plus grave réellement constaté, jamais une formule commerciale creuse.
+  const pire = ctx.arguments[0];
   const objet = sansSite
-    ? `${nom} : votre site web (audit offert)`
-    : `${nom} : ${ctx.audit!.findings.length} points à corriger sur votre site`;
+    ? `${nom} n'apparaît pas sur Google${ville ? ` à ${ville}` : ""}`
+    : pire
+      ? `${nom} : ${minuscule(pire.titre)}`
+      : `${nom} : le point de votre site qui vous coûte des clients`;
 
   const salutation = dirigeant ? `Bonjour ${dirigeant},` : "Bonjour,";
   const accroche = sansSite
     ? `Je cherchais un professionnel comme vous${ville ? ` à ${ville}` : ""} et je n'ai trouvé aucun site à votre nom — seulement vos concurrents.`
-    : `J'ai analysé le site de ${nom} ce matin. Il obtient ${ctx.audit!.scores.global}/100 sur les critères que Google et vos visiteurs regardent.`;
+    : `J'ai regardé le site de ${nom}${ville ? ` (${ville})` : ""} ce matin, page par page. Il obtient ${ctx.audit!.scores.global}/100 sur les critères que Google et vos visiteurs regardent, et le détail est mesuré, pas estimé.`;
 
   const listeArguments = ctx.arguments
     .map((f) => `• ${f.titre} — ${f.impact}`)
@@ -115,7 +132,9 @@ export function emailPriseContact(ctx: ContexteProposition): { objet: string; co
     sansSite ? "Concrètement, ce que vous perdez aujourd'hui :" : "Les trois points qui vous coûtent le plus :",
     listeArguments || "• Aucune présence en ligne exploitable",
     chiffrage,
-    `Je peux vous envoyer le rapport complet (${ctx.audit ? ctx.audit.findings.length : 0} points vérifiés, gratuit et sans engagement) ou vous l'expliquer en 15 minutes au téléphone. Quel créneau vous arrange cette semaine ?`,
+    `Est-ce que je vous envoie le rapport complet${ctx.audit ? ` (${ctx.audit.findings.length} points vérifiés)` : ""} ? C'est gratuit et sans engagement : vous le lisez, et vous faites corriger par qui vous voulez.`,
+    "",
+    "Un simple « oui » en réponse suffit, ou dites-moi un créneau de 15 minutes cette semaine.",
     "",
     "Bien à vous,",
     [ctx.emetteur.raison_sociale, ctx.emetteur.telephone, ctx.emetteur.email].filter(Boolean).join(" — "),
@@ -138,8 +157,8 @@ export function sms(ctx: ContexteProposition): string {
     ? `${argument.titre.toLowerCase()}`
     : "aucun site web à votre nom";
   return (
-    `Bonjour, ${ctx.emetteur.raison_sociale}. J'ai regardé la présence en ligne de ${nom} : ${accroche}. ` +
-    `Je vous envoie l'audit complet gratuitement ? ${ctx.emetteur.email}. STOP pour ne plus être contacté.`
+    `Bonjour, ${ctx.emetteur.raison_sociale}. J'ai regardé le site de ${nom} : ${accroche}. ` +
+    `Je vous envoie le rapport détaillé, gratuitement ? Répondez OUI. ${ctx.emetteur.email} — STOP pour ne plus être contacté.`
   ).slice(0, 480);
 }
 
@@ -196,9 +215,11 @@ export function scriptAppel(ctx: ContexteProposition): string {
   return lignes.join("\n");
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Rapport HTML (imprimable en PDF)
-// ─────────────────────────────────────────────────────────────────────────────
+/** 2026-08-25 → 25/08/2026 : personne n'écrit une date en ISO dans un email. */
+function dateFr(iso: string): string {
+  const trouve = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return trouve ? `${trouve[3]}/${trouve[2]}/${trouve[1]}` : iso;
+}
 
 function couleurScore(score: number): string {
   if (score >= 80) return "#0f9d58";
@@ -206,6 +227,227 @@ function couleurScore(score: number): string {
   if (score >= 35) return "#ef6c00";
   return "#d93025";
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email HTML (prêt à coller dans Gmail / Outlook)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Contraintes des clients mail : mise en page en tableaux, styles en ligne uniquement,
+// largeur 600 px, fond clair (le mode sombre des clients mail est imprévisible), aucune
+// image distante. Le contenu est celui de l'email texte — même message, mise en forme lisible.
+
+const POLICE_EMAIL =
+  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+interface BlocEmail {
+  genre: "paragraphe" | "arguments" | "signature" | "mentions";
+  lignes: string[];
+}
+
+/** Découpe le corps texte en blocs, pour habiller chacun selon sa nature. */
+function decoupeCorps(corps: string): BlocEmail[] {
+  const blocs: BlocEmail[] = [];
+  const estPuce = (ligne: string) => /^[•\-*]\s+/.test(ligne);
+
+  for (const brut of corps.split(/\n\s*\n/)) {
+    const lignes = brut.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lignes.length) continue;
+    if (lignes.some(estPuce)) {
+      // « Les trois points qui vous coûtent le plus : » suivi des puces, sans ligne vide :
+      // l'introduction reste un paragraphe, les puces deviennent des cartes.
+      const introduction = lignes.filter((l) => !estPuce(l));
+      const puces = lignes.filter(estPuce).map((l) => l.replace(/^[•\-*]\s+/, ""));
+      if (introduction.length) blocs.push({ genre: "paragraphe", lignes: introduction });
+      blocs.push({ genre: "arguments", lignes: puces });
+    } else if (lignes[0] === "—" || lignes.some((l) => /STOP|open data|droit d'opposition/i.test(l))) {
+      blocs.push({ genre: "mentions", lignes: lignes.filter((l) => l !== "—") });
+    } else if (/^(bien à vous|cordialement|bien cordialement|à bientôt)/i.test(lignes[0])) {
+      blocs.push({ genre: "signature", lignes });
+    } else {
+      blocs.push({ genre: "paragraphe", lignes });
+    }
+  }
+  return blocs;
+}
+
+function paragrapheEmail(texte: string): string {
+  return `<p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#1f2430">${echappeHtml(texte)}</p>`;
+}
+
+/** Un défaut = une carte : le titre, ce que ça coûte, et la mesure qui le prouve. */
+function carteArgument(titre: string, ctx: ContexteProposition): string {
+  const finding = ctx.arguments.find((f) => titre.startsWith(f.titre)) ?? null;
+  const [libelle, suite] = finding
+    ? [finding.titre, finding.impact]
+    : [titre.split(" — ")[0], titre.split(" — ").slice(1).join(" — ")];
+  const constat = finding?.constat;
+
+  return `
+        <tr><td style="padding:0 0 10px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 style="background:#f7f8fa;border-left:3px solid #d93025;border-radius:0 6px 6px 0">
+            <tr><td style="padding:12px 14px">
+              <div style="font-size:15px;font-weight:600;color:#1f2430">${echappeHtml(libelle)}</div>
+              ${constat ? `<div style="font-size:13px;color:#6b7280;margin-top:3px">${echappeHtml(constat)}</div>` : ""}
+              ${suite ? `<div style="font-size:14px;color:#374151;margin-top:5px;line-height:1.5">${echappeHtml(suite)}</div>` : ""}
+            </td></tr>
+          </table>
+        </td></tr>`;
+}
+
+function bandeauScore(ctx: ContexteProposition): string {
+  const scores = ctx.audit?.scores;
+  if (!scores) return "";
+  const volets = PILIERS.map((pilier) => `
+            <td width="25%" align="center" style="padding:8px 4px">
+              <div style="font-size:20px;font-weight:700;color:${couleurScore(scores[pilier])}">${scores[pilier]}</div>
+              <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">${echappeHtml(LIBELLES_PILIERS[pilier])}</div>
+            </td>`).join("");
+
+  return `
+        <tr><td style="padding:4px 0 18px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 style="border:1px solid #e5e7eb;border-radius:8px">
+            <tr><td align="center" style="padding:14px 10px 4px">
+              <div style="font-size:34px;font-weight:700;line-height:1;color:${couleurScore(scores.global)}">
+                ${scores.global}<span style="font-size:15px;color:#9ca3af">/100</span></div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px">Note globale de votre site</div>
+            </td></tr>
+            <tr><td style="padding:0 6px 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${volets}</tr></table></td></tr>
+          </table>
+        </td></tr>`;
+}
+
+function encadreDevis(ctx: ContexteProposition): string {
+  const { devis } = ctx;
+  if (!devis.lignes_projet.length && !devis.lignes_recurrentes.length) return "";
+  const lignes = [...devis.lignes_projet, ...devis.lignes_recurrentes]
+    .map((ligne) => `
+              <tr>
+                <td style="padding:5px 0;font-size:14px;color:#374151">${echappeHtml(ligne.libelle)}</td>
+                <td align="right" style="padding:5px 0;font-size:14px;color:#1f2430;white-space:nowrap">
+                  ${echappeHtml(euros(ligne.total))}${ligne.unite === "mois" ? " / mois" : ""}</td>
+              </tr>`).join("");
+
+  return `
+        <tr><td style="padding:4px 0 18px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                 style="background:#f0f6ff;border:1px solid #d6e4ff;border-radius:8px">
+            <tr><td style="padding:14px 16px">
+              <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#1d4ed8">Ce que je propose</div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px">
+                ${lignes}
+                <tr><td colspan="2" style="border-top:1px solid #d6e4ff;padding-top:8px"></td></tr>
+                <tr>
+                  <td style="font-size:15px;font-weight:700;color:#1f2430">Total</td>
+                  <td align="right" style="font-size:15px;font-weight:700;color:#1f2430;white-space:nowrap">
+                    ${echappeHtml(euros(devis.total_ht))} HT${devis.mensuel_ht > 0 ? ` + ${echappeHtml(euros(devis.mensuel_ht))} / mois` : ""}</td>
+                </tr>
+              </table>
+              <div style="font-size:12px;color:#6b7280;margin-top:8px">
+                Devis valable jusqu'au ${echappeHtml(dateFr(devis.valide_jusqu_au))}. ${echappeHtml(ctx.emetteur.mentions)}</div>
+            </td></tr>
+          </table>
+        </td></tr>`;
+}
+
+/**
+ * Version HTML de l'email de prise de contact, prête à coller dans un client mail.
+ * Reprend exactement le texte de `emailPriseContact` (ou sa reformulation IA) et l'habille :
+ * notes de l'audit, défauts en cartes, chiffrage, bouton de réponse, mentions CNIL.
+ */
+export function emailHtml(
+  ctx: ContexteProposition,
+  email: { objet: string; corps: string } = emailPriseContact(ctx),
+): string {
+  const nom = nomCommercial(ctx.prospect);
+  const emetteur = ctx.emetteur;
+  const nonConcluant = auditNonConcluant(ctx);
+  const blocs = decoupeCorps(email.corps);
+
+  // Audit non concluant : l'email texte est une note de travail interne. On ne fabrique pas
+  // un message commercial habillé par-dessus.
+  if (nonConcluant) {
+    return `<div style="font-family:${POLICE_EMAIL};max-width:600px;padding:16px;background:#fff8e1;border:1px solid #f5d76e;border-radius:8px;color:#7a5c00">
+  <strong>Aucun email à envoyer : audit non concluant pour ${echappeHtml(nom)}.</strong>
+  <p style="margin:8px 0 0;font-size:14px;line-height:1.6">${echappeHtml(raisonNonConcluant(ctx))}</p>
+</div>`;
+  }
+
+  const contenu = blocs.map((bloc) => {
+    switch (bloc.genre) {
+      case "arguments":
+        return `<tr><td><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${bloc.lignes.map((ligne) => carteArgument(ligne, ctx)).join("")}</table></td></tr>
+          <tr><td style="height:6px"></td></tr>`;
+      case "signature":
+        return `<tr><td style="padding:6px 0 0;font-size:15px;line-height:1.6;color:#1f2430">
+          ${bloc.lignes.map((l) => echappeHtml(l)).join("<br>")}</td></tr>`;
+      case "mentions":
+        return "";
+      default:
+        return `<tr><td>${bloc.lignes.map(paragrapheEmail).join("")}</td></tr>`;
+    }
+  });
+
+  const mentions = blocs.filter((b) => b.genre === "mentions").flatMap((b) => b.lignes);
+  const sujetReponse = encodeURIComponent(`Re: ${email.objet}`);
+
+  return `<div style="margin:0;padding:0;background:#eef0f4">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef0f4;padding:24px 12px">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
+           style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:${POLICE_EMAIL}">
+
+      <tr><td style="background:#111827;padding:18px 24px">
+        <div style="font-size:16px;font-weight:700;color:#ffffff">${echappeHtml(emetteur.raison_sociale)}</div>
+        <div style="font-size:12px;color:#9ca3af;margin-top:2px">Audit de présence en ligne — ${echappeHtml(nom)}</div>
+      </td></tr>
+
+      <tr><td style="padding:22px 24px 4px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${bandeauScore(ctx)}
+          ${contenu.join("")}
+          ${encadreDevis(ctx)}
+          <tr><td align="center" style="padding:6px 0 18px">
+            <a href="mailto:${echappeHtml(emetteur.email)}?subject=${sujetReponse}"
+               style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 26px;border-radius:8px">
+              Recevoir le rapport complet</a>
+            <div style="font-size:12px;color:#6b7280;margin-top:8px">Gratuit et sans engagement — répondez simplement à cet email.</div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="background:#f7f8fa;border-top:1px solid #e5e7eb;padding:16px 24px">
+        <div style="font-size:13px;color:#374151">
+          ${[emetteur.raison_sociale, emetteur.telephone, emetteur.email].filter(Boolean).map((v) => echappeHtml(v)).join(" — ")}
+        </div>
+        ${emetteur.siret ? `<div style="font-size:12px;color:#6b7280;margin-top:2px">SIRET ${echappeHtml(emetteur.siret)}${emetteur.adresse ? ` — ${echappeHtml(emetteur.adresse)}` : ""}</div>` : ""}
+        ${mentions.length ? `<div style="font-size:11px;color:#9ca3af;line-height:1.5;margin-top:10px">${mentions.map((l) => echappeHtml(l)).join(" ")}</div>` : ""}
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</div>`;
+}
+
+/** Fichier .html autonome, pour ouvrir l'email dans un navigateur avant de le coller. */
+export function emailHtmlAutonome(
+  ctx: ContexteProposition,
+  email: { objet: string; corps: string } = emailPriseContact(ctx),
+): string {
+  return `<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${echappeHtml(email.objet)}</title></head>
+<body style="margin:0;background:#eef0f4">
+${emailHtml(ctx, email)}
+</body></html>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rapport HTML (imprimable en PDF)
+// ─────────────────────────────────────────────────────────────────────────────
 
 function jauge(label: string, score: number): string {
   return `

@@ -6,14 +6,16 @@ import type { Prospect } from "../types.ts";
 import { construitDevis, EMETTEUR_PAR_DEFAUT, euros, type OptionsDevis } from "./devis.ts";
 import { reformule, type OptionsIa } from "./ia.ts";
 import {
-  emailPriseContact, rapportHtml, rapportHtmlAutonome, scriptAppel, sms, synthese,
+  emailHtml, emailHtmlAutonome, emailPriseContact, rapportHtml, rapportHtmlAutonome,
+  scriptAppel, sms, synthese,
 } from "./redaction.ts";
 import type { ContexteProposition, DocumentsProposition, Devis, Emetteur, Prestation } from "./types.ts";
 
 export { construitDevis, EMETTEUR_PAR_DEFAUT, euros } from "./devis.ts";
 export { reformule } from "./ia.ts";
 export {
-  emailPriseContact, rapportHtml, rapportHtmlAutonome, scriptAppel, sms, synthese,
+  emailHtml, emailHtmlAutonome, emailPriseContact, rapportHtml, rapportHtmlAutonome,
+  scriptAppel, sms, synthese,
 } from "./redaction.ts";
 export type * from "./types.ts";
 
@@ -83,11 +85,17 @@ export async function construitProposition(
     contexte,
     synthese: syntheseTexte,
     email,
+    email_html: emailHtml(contexte, email),
     sms: sms(contexte),
     script_appel: scriptAppel(contexte),
     rapport_html: rapportHtml(contexte, syntheseTexte),
     genere_par_ia: Boolean(textes),
   };
+}
+
+/** Variante autonome de l'email HTML, pour l'ouvrir dans un navigateur avant de le coller. */
+export function propositionEnEmailHtml(proposition: Proposition): string {
+  return emailHtmlAutonome(proposition.contexte, proposition.email);
 }
 
 /** Variante autonome du rapport, pour l'écrire dans un fichier .html. */

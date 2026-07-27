@@ -144,6 +144,13 @@ export const REGLES: Record<string, Regle> = {
     impact: "Téléphone et adresse invisibles : perte directe d'appels, et référencement local pénalisé.",
     effort: "faible", prestations: ["seo_local"],
   },
+  seo_www_duplique: {
+    pilier: "seo", severite: "majeur", poids: 8,
+    titre: "Le site répond sur deux adresses différentes",
+    impact: "Avec et sans « www » servent la même page sans redirection : Google divise le référencement entre les deux.",
+    effort: "faible", prestations: ["seo_technique"],
+  },
+
   seo_maillage_faible: {
     pilier: "seo", severite: "mineur", poids: 5,
     titre: "Très peu de liens internes",
@@ -393,6 +400,13 @@ export const REGLES: Record<string, Regle> = {
     titre: "Pas de politique de confidentialité",
     impact: "Obligation RGPD dès qu'un formulaire collecte des données : exposition à une sanction.",
     effort: "faible", prestations: ["seo_technique"],
+  },
+
+  sec_traceurs_sans_consentement: {
+    pilier: "securite", severite: "majeur", poids: 12,
+    titre: "Traceurs déposés sans consentement",
+    impact: "La CNIL sanctionne le dépôt de cookies publicitaires avant accord du visiteur : mise en demeure puis amende.",
+    effort: "faible", prestations: ["conformite_rgpd"],
   },
 
   // ── Technique ─────────────────────────────────────────────────────────────

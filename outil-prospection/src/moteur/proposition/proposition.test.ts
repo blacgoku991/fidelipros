@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import { constate } from "../audit/regles.ts";
+import { contactsVides } from "../audit/contacts.ts";
 import { calculeScores } from "../audit/score.ts";
 import type { AuditSiteComplet, Finding } from "../audit/types.ts";
 import type { Prospect } from "../types.ts";
 import { construitDevis, EMETTEUR_PAR_DEFAUT, euros } from "./devis.ts";
 import { reformule } from "./ia.ts";
-import { emailPriseContact, rapportHtml, scriptAppel, sms, synthese } from "./redaction.ts";
+import {
+  emailHtml, emailPriseContact, rapportHtml, scriptAppel, sms, synthese,
+} from "./redaction.ts";
 import { construitProposition, emetteurDepuisSettings } from "./index.ts";
 import type { ContexteProposition, Prestation } from "./types.ts";
 
@@ -50,6 +53,14 @@ function audit(findings: Finding[], surcharge: Partial<AuditSiteComplet> = {}): 
     lighthouse: null,
     fichiersExposes: [],
     captureDataUri: null,
+    contacts: {
+      ...contactsVides(),
+      emails: ["contact@garagemartin.fr"],
+      email: "contact@garagemartin.fr",
+      telephones: ["05 56 12 34 56"],
+      telephone: "05 56 12 34 56",
+      googleMaps: "https://maps.app.goo.gl/xyz",
+    },
     emailContact: "contact@garagemartin.fr",
     telephone: "05 56 12 34 56",
     erreurs: [],
@@ -453,7 +464,133 @@ describe("construitProposition", () => {
     );
 
     expect(proposition.devis.lignes_projet.map((l) => l.code)).toEqual(["site_vitrine"]);
-    expect(proposition.email.objet).toContain("audit offert");
+    // Sans site, l'objet dit le fait constaté et remet la ville en casse lisible.
+    expect(proposition.email.objet).toBe("Garage Martin n'apparaît pas sur Google à Bordeaux");
     expect(proposition.rapport_html).toContain("tout est à construire");
+  });
+});
+
+describe("emailHtml", () => {
+  const contexte = (surcharge: Partial<ContexteProposition> = {}): ContexteProposition => {
+    const findings = [
+      constate("sec_https_absent", "Le site répond en HTTP"),
+      constate("design_viewport_absent", "Aucune balise meta viewport"),
+    ];
+    const auditComplet = audit(findings);
+    return {
+      prospect: PROSPECT,
+      audit: auditComplet,
+      devis: construitDevis(auditComplet, CATALOGUE, { emetteur: EMETTEUR_PAR_DEFAUT }),
+      emetteur: { ...EMETTEUR_PAR_DEFAUT, raison_sociale: "Atelier Web", telephone: "05 56 00 00 00", siret: "91234567800017" },
+      arguments: findings,
+      ...surcharge,
+    };
+  };
+
+  it("met en page le même message que l'email texte, en styles en ligne", () => {
+    const ctx = contexte();
+    const texte = emailPriseContact(ctx);
+    const html = emailHtml(ctx, texte);
+
+    // mise en page compatible clients mail : tableaux, largeur bornée, styles en ligne
+    expect(html).toContain('role="presentation"');
+    expect(html).toContain("max-width:600px");
+    expect(html).not.toContain("<style");
+    expect(html).not.toContain("class=");
+    // aucune ressource distante : rien à débloquer chez le destinataire
+    expect(html).not.toMatch(/<img[^>]+src="https?:/);
+
+    // le contenu de l'email texte s'y retrouve
+    expect(html).toContain("Atelier Web");
+    expect(html).toContain("Site non sécurisé (pas de HTTPS)");
+    expect(html).toContain(`${ctx.audit!.scores.global}`);
+    expect(html).toContain("mailto:contact@fidelipro.com?subject=Re%3A");
+    // mentions CNIL conservées dans le pied
+    expect(html).toMatch(/STOP/);
+    expect(html).toContain("SIRET 91234567800017");
+  });
+
+  it("échappe le contenu venu du site du prospect", () => {
+    const html = emailHtml(contexte({
+      // nomCommercial privilégie l'enseigne : on la retire pour tester le nom brut du site.
+      prospect: { ...PROSPECT, enseigne: null, nom: 'Garage <script>alert("xss")</script>' },
+    }));
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("chiffre le devis dans un encadré quand il y a des lignes", () => {
+    const html = emailHtml(contexte());
+    expect(html).toContain("Ce que je propose");
+    expect(html).toMatch(/Total/);
+  });
+
+  it("n'habille pas d'email commercial quand l'audit n'est pas concluant", () => {
+    const auditBloque = audit([], { concluant: false, accessibilite: "bloque", erreurs: ["Accès refusé par une protection anti-robot (HTTP 403)"] });
+    const html = emailHtml(contexte({ audit: auditBloque, arguments: [] }));
+
+    expect(html).toContain("Aucun email à envoyer");
+    expect(html).toContain("protection anti-robot");
+    expect(html).not.toContain("Recevoir le rapport complet");
+  });
+});
+
+describe("qualité de la prise de contact", () => {
+  const ctx = (surcharge: Partial<ContexteProposition> = {}): ContexteProposition => {
+    const findings = [
+      constate("design_viewport_absent", "Aucune balise meta viewport"),
+      constate("sec_https_absent", "Le site répond en HTTP"),
+      constate("seo_description_absente", "Aucune balise meta description"),
+    ];
+    const auditComplet = audit(findings);
+    return {
+      prospect: { ...PROSPECT, ville: "BORDEAUX" },
+      audit: auditComplet,
+      devis: construitDevis(auditComplet, CATALOGUE),
+      emetteur: { ...EMETTEUR_PAR_DEFAUT, raison_sociale: "Atelier Web", telephone: "05 56 00 00 00" },
+      arguments: findings,
+      ...surcharge,
+    };
+  };
+
+  it("met le défaut le plus grave dans l'objet, sans jargon ni décompte", () => {
+    const { objet } = emailPriseContact(ctx());
+    expect(objet).toBe("Garage Martin : site non adapté au mobile");
+    expect(objet.length).toBeLessThan(70);
+    expect(objet).not.toMatch(/audit offert|promo|gratuit|!!/i);
+  });
+
+  it("écrit la ville en casse lisible, pas en majuscules Sirene", () => {
+    const { corps } = emailPriseContact(ctx());
+    expect(corps).toContain("(Bordeaux)");
+    expect(corps).not.toContain("BORDEAUX");
+  });
+
+  it("demande une seule chose, avec une porte de sortie", () => {
+    const { corps } = emailPriseContact(ctx());
+    expect(corps).toContain("Est-ce que je vous envoie le rapport complet");
+    expect(corps).toContain("sans engagement");
+    expect(corps).toContain("Un simple « oui » en réponse suffit");
+    // Origine des données + droit d'opposition : exigés en prospection B2B.
+    expect(corps).toContain("Sirene en open data");
+    expect(corps).toContain("STOP");
+  });
+
+  it("n'affirme dans l'email que des défauts réellement constatés", () => {
+    const contexte = ctx();
+    const { corps } = emailPriseContact(contexte);
+    for (const argument of contexte.arguments) {
+      expect(corps).toContain(argument.titre);
+    }
+    // Aucun défaut inventé : chaque puce provient de la liste d'arguments.
+    const puces = corps.split("\n").filter((l) => l.startsWith("• "));
+    expect(puces).toHaveLength(contexte.arguments.length);
+  });
+
+  it("propose un rendez-vous et un rappel chiffré dans le SMS", () => {
+    const texte = sms(ctx());
+    expect(texte.length).toBeLessThanOrEqual(480);
+    expect(texte).toContain("Répondez OUI");
+    expect(texte).toContain("STOP");
   });
 });

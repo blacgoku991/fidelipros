@@ -17,8 +17,8 @@ entreprises françaises qui **n'ont pas de site** ou dont le **site est dépass�
 l'audit (référencement, design et mobile, sécurité, performance), puis produit le **devis
 chiffré** et les **messages de prise de contact** prêts à envoyer.
 
-Tout tourne sur votre poste : une interface web à `http://127.0.0.1:4000`, un fichier de
-données JSON, **aucun compte, aucune base de données, aucune dépendance d'exécution**.
+Tout tourne sur votre poste : une interface web sombre à `http://127.0.0.1:4000`, un fichier
+de données JSON, **aucun compte, aucune base de données, aucune dépendance d'exécution**.
 
 ## Installation
 
@@ -36,7 +36,8 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 126 tests du moteur
+npm test                   # 167 tests (moteur + stockage)
+npm run verif              # vérification des types
 ```
 
 Le serveur écoute sur `127.0.0.1` uniquement : il n'y a pas d'authentification, il ne doit
@@ -46,10 +47,10 @@ donc pas être exposé sur le réseau.
 
 | Écran | À quoi ça sert |
 |---|---|
-| **Prospects** | Rechercher des entreprises (secteur, département, ancienneté, effectif, CA), voir la liste classée par opportunité, suivre le statut commercial, exporter en CSV |
-| **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, puis enregistrement comme prospect |
-| **Fiche prospect** | Notes par volet, défauts avec leur impact, devis, email / SMS / script d'appel copiables, rapport client imprimable |
-| **Prestations & devis** | Prix du catalogue, activation des prestations, identité portée sur le devis |
+| **Prospects** | Rechercher des entreprises (secteur, département, dates de création, effectif, CA), liste classée par opportunité, statut commercial, export CSV de ce qui est affiché |
+| **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
+| **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, devis, email HTML prêt à envoyer, SMS, script d'appel, rapport client imprimable |
+| **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails |
 
 ## Comment un prospect est trouvé
 
@@ -66,6 +67,26 @@ l'entreprise.
 > Conséquence à connaître : une entreprise dont le domaine n'a aucun rapport avec sa raison
 > sociale sera classée « aucun site » à tort. Le statut se corrige à la main depuis la fiche.
 
+### Les coordonnées et la fiche Google
+
+Sans coordonnées, un prospect ne sert à rien. L'audit relève donc, sur les **pages publiques**
+du site (accueil, première page interne, « Contact » et « Mentions légales » quand elles sont
+liées depuis l'accueil) :
+
+- les **emails**, y compris ceux écrits contre les robots (`contact (at) site (point) fr`) et
+  ceux masqués par Cloudflare — c'est exactement ce qu'un visiteur voit à l'écran ;
+- les **téléphones** français, normalisés (`05 56 78 12 34`), numéros surtaxés écartés ;
+- le lien de la **fiche Google** (Maps, `g.page`, carte intégrée) **s'il est publié sur le
+  site** — c'est la seule preuve qu'une fiche existe. Sinon, l'interface propose une
+  **recherche** Google Maps et le dit explicitement : jamais une fiche « trouvée » à tort ;
+- les pages **Facebook, Instagram, LinkedIn**.
+
+Les adresses sont classées : celle du domaine du site avant une adresse Gmail, une adresse
+générique (`contact@…`) avant l'adresse personnelle d'un salarié. Chaque fiche indique **sur
+quelle page** les coordonnées ont été lues, pour pouvoir le justifier.
+
+Le `robots.txt` du site est respecté : un chemin qu'il interdit n'est ni sondé, ni lu.
+
 ### Le score
 
 `score = 55 % × opportunité site + 45 % × capacité budgétaire`, de 0 à 100.
@@ -78,13 +99,24 @@ l'entreprise.
   entreprise individuelle), catégorie INSEE, nombre d'établissements, bonus aux entreprises
   de moins de 18 mois (budget de lancement).
 
+### Les critères sont respectés, et ce qui est écarté est expliqué
+
+Les critères sont envoyés à l'API **et revérifiés sur chaque résultat** : département, code
+postal, dates de création, tranches d'effectif, CA minimum et maximum. Un prospect qui ne les
+respecte pas est écarté, et le bilan sous le tableau dit combien et pourquoi
+(« 12 × chiffre d'affaires non publié », « 3 × créée avant la date demandée »).
+
+Le cas à connaître : l'API ne connaît le **chiffre d'affaires** que des entreprises qui
+déposent leurs comptes. Filtrer sur un CA minimum écarte donc toutes les autres — l'interface
+le rappelle sous le champ, et le bilan le compte à part.
+
 ## Comment un site est audité
 
 | Volet | Poids | Ce qui est vérifié |
 |---|---|---|
-| **Référencement** | 30 % | title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, note SEO Lighthouse |
+| **Référencement** | 30 % | title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
 | **Design & mobile** | 25 % | viewport, débordement horizontal, taille des textes, cibles tactiles, contrastes, formats d'images, nombre de polices, technologies datées, favicon, contact cliquable, copyright ancien, LCP, CLS, note d'accessibilité Lighthouse |
-| **Sécurité** | 25 % | HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité |
+| **Sécurité** | 25 % | HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
 | **Performance** | 20 % | disponibilité, code HTTP, note de performance, poids et nombre de requêtes, compression, cache, HTTP/3, temps de réponse, erreurs console |
 
 Note d'un volet = `100 − somme des poids des défauts constatés`. L'urgence découle du nombre
@@ -144,6 +176,23 @@ remise de 10 % s'applique. Les prestations mensuelles sont séparées du budget 
 
 Prix, libellés, activation et identité du devis se règlent dans **Prestations & devis**.
 
+## L'email envoyé au prospect
+
+Chaque proposition produit le même message en deux formes :
+
+- une **version HTML** mise en page (notes de l'audit, défauts en cartes avec la mesure et ce
+  qu'elle coûte, chiffrage, bouton de réponse, mentions CNIL). Elle est construite pour les
+  clients mail : tableaux, styles en ligne, 600 px, fond clair, **aucune image distante**.
+  Trois façons de l'utiliser : **Copier avec la mise en forme** (collez dans Gmail ou Outlook,
+  l'habillage suit), **Télécharger .html**, ou **Ouvrir dans un onglet** ;
+- une **version texte**, pour un envoi sans mise en forme.
+
+L'objet reprend le **défaut le plus grave réellement constaté** (« Garage Dupont : site non
+adapté au mobile ») plutôt qu'un décompte : c'est vérifiable, donc crédible. Le message
+demande une seule chose — l'envoi du rapport — et rappelle l'origine des données et le droit
+d'opposition. Quand l'audit n'est pas concluant, **aucun email commercial n'est fabriqué** :
+vous recevez une note de travail interne.
+
 ## Options
 
 Deux clés facultatives, à passer en variables d'environnement :
@@ -178,8 +227,8 @@ npm run audit -- --csv leads.csv --top 10 --sortie rapports
 npm run audit -- --aide
 ```
 
-`npm run audit` produit dans `rapports/` : `<nom>-rapport.html`, `-email.txt`, `-appel.txt`,
-`-devis.json`. Ces commandes n'utilisent pas le fichier de données : elles écrivent des
+`npm run audit` produit dans `rapports/` : `<nom>-rapport.html`, `-email.txt`, `-email.html`,
+`-appel.txt`, `-devis.json`. Ces commandes n'utilisent pas le fichier de données : elles écrivent des
 fichiers, avec le catalogue de prix par défaut (`--tarifs mon-catalogue.json` pour le vôtre).
 
 ## Où sont les données
@@ -188,7 +237,7 @@ Tout est dans `donnees/`, ignoré par git :
 
 ```
 donnees/prospection.json   prospects, audits, documents générés, catalogue, identité
-donnees/captures/          captures mobiles Lighthouse
+donnees/captures/          captures mobiles Lighthouse (hors du JSON, qui reste léger)
 ```
 
 Un seul fichier JSON, écrit de façon atomique (fichier temporaire puis renommage), lisible
@@ -198,13 +247,16 @@ copiez-le. `DONNEES=/chemin/autre.json npm start` permet de travailler sur plusi
 ## Structure
 
 ```
-src/moteur/          recherche, détection de site, audit, devis, rédaction (126 tests)
-  ├── audit/         collecte HTTP/DNS/Lighthouse + ~60 règles des quatre volets
-  └── proposition/   devis, rapport, email, SMS, script d'appel, reformulation IA
+src/moteur/          recherche, détection de site, audit, devis, rédaction
+  ├── audit/         collecte HTTP/DNS/Lighthouse, coordonnées, ~70 règles des quatre volets
+  └── proposition/   devis, rapport, email texte et HTML, SMS, script d'appel, reformulation IA
 src/serveur/         serveur node:http (API JSON + fichiers statiques) et stockage
 src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
+
+167 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+(dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de
 scoring et de chiffrage n'existe qu'une fois, et elle est couverte par des tests.
@@ -219,8 +271,11 @@ scoring et de chiffrage n'existe qu'une fois, et elle est couverte par des tests
   **l'origine des données** et d'offrir un **droit d'opposition** dans chaque message
   (position CNIL) : les modèles d'email et de SMS le font.
 - Les dirigeants sont des personnes physiques : purgez les prospects inexploités et répondez
-  aux demandes d'accès ou d'effacement (bouton de suppression sur la fiche). Les données
-  restent sur votre poste et ne sont envoyées à personne.
+  aux demandes d'accès ou d'effacement — le bouton **Supprimer ce prospect** efface la fiche,
+  ses audits, ses captures et ses documents. Les données restent sur votre poste et ne sont
+  envoyées à personne.
+- Les traceurs et le consentement sont **constatés** dans le code de la page, pas testés en
+  conditions réelles : le rapport le formule comme un constat, pas comme un verdict juridique.
 - L'audit est un **constat externe** en lecture seule : ce n'est pas un test d'intrusion, et
   le rapport client le précise.
 

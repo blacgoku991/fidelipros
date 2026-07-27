@@ -15,7 +15,7 @@ import process from "node:process";
 import { auditeSite } from "../moteur/audit/index.ts";
 import { LIBELLES_PILIERS, LIBELLES_SEVERITE } from "../moteur/audit/regles.ts";
 import {
-  construitProposition, propositionEnFichierHtml,
+  construitProposition, propositionEnEmailHtml, propositionEnFichierHtml,
 } from "../moteur/proposition/index.ts";
 import { euros } from "../moteur/proposition/devis.ts";
 import type { Prestation } from "../moteur/proposition/types.ts";
@@ -54,6 +54,7 @@ const CATALOGUE: Prestation[] = [
   { code: "mise_https", libelle: "Passage en HTTPS", prix: 190, unite: "forfait", categorie: "securite", ordre: 90 },
   { code: "securisation_entetes", libelle: "Sécurisation du site", prix: 390, unite: "forfait", categorie: "securite", ordre: 100 },
   { code: "correctif_dns_email", libelle: "Protection de vos emails", prix: 290, unite: "forfait", categorie: "securite", ordre: 110 },
+  { code: "conformite_rgpd", libelle: "Mise en conformité RGPD", prix: 390, unite: "forfait", categorie: "securite", ordre: 115 },
   { code: "mise_a_jour_cms", libelle: "Mise à jour et nettoyage du CMS", prix: 450, unite: "forfait", categorie: "securite", ordre: 120 },
   { code: "maintenance", libelle: "Maintenance et surveillance", prix: 79, unite: "mois", categorie: "maintenance", ordre: 130 },
   { code: "hebergement", libelle: "Hébergement et nom de domaine", prix: 15, unite: "mois", categorie: "maintenance", ordre: 140 },
@@ -188,6 +189,12 @@ async function traite(
     }
     if (audit.findings.length > 6) console.log(`    … et ${audit.findings.length - 6} autre(s) point(s)`);
     if (audit.erreurs.length) console.log(`    Non vérifié : ${audit.erreurs.join(" · ")}`);
+    const coordonnees = [
+      audit.contacts.email ? `email ${audit.contacts.email}` : null,
+      audit.contacts.telephone ? `tél. ${audit.contacts.telephone}` : null,
+      audit.contacts.googleMaps ? "fiche Google publiée sur le site" : null,
+    ].filter(Boolean);
+    console.log(`    Contact : ${coordonnees.length ? coordonnees.join(" · ") : "aucune coordonnée publiée sur le site"}`);
   }
 
   const proposition = await construitProposition(
@@ -210,6 +217,7 @@ async function traite(
   writeFileSync(join(options.dossier, `${base}-rapport.html`), propositionEnFichierHtml(proposition), "utf8");
   writeFileSync(join(options.dossier, `${base}-email.txt`),
     `Objet : ${proposition.email.objet}\n\n${proposition.email.corps}\n`, "utf8");
+  writeFileSync(join(options.dossier, `${base}-email.html`), propositionEnEmailHtml(proposition), "utf8");
   writeFileSync(join(options.dossier, `${base}-appel.txt`), `${proposition.script_appel}\n`, "utf8");
   writeFileSync(join(options.dossier, `${base}-devis.json`), JSON.stringify(proposition.devis, null, 2), "utf8");
 
@@ -221,7 +229,7 @@ async function traite(
         (proposition.genere_par_ia ? " — textes personnalisés par l'IA" : ""),
     );
   }
-  console.log(`  Fichiers : ${join(options.dossier, base)}-{rapport.html,email.txt,appel.txt,devis.json}`);
+  console.log(`  Fichiers : ${join(options.dossier, base)}-{rapport.html,email.txt,email.html,appel.txt,devis.json}`);
 }
 
 async function principal() {

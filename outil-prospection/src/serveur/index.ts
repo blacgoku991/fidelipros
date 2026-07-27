@@ -14,7 +14,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
-import { appliqueAudit, dateIlYaNMois, filtreSelonCible, scoreProspect, versCsv } from "../moteur/core.ts";
+import {
+  appliqueAudit, appliqueFiltres, dateIlYaNMois, filtreSelonCible, scoreProspect, versCsv,
+} from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
 import { rechercheEntreprises } from "../moteur/sirene.ts";
 import { auditeProspects, detecteEtAuditeSite } from "../moteur/website.ts";
@@ -22,6 +24,7 @@ import type { CibleProspection, ProspectionFilters } from "../moteur/types.ts";
 import { auditeSite, normaliseUrl } from "../moteur/audit/index.ts";
 import { domaine as domaineDe, nomDepuisDomaine } from "../moteur/audit/http.ts";
 import { echappeHtml } from "../moteur/audit/html.ts";
+import { rechercheGoogleMaps } from "../moteur/audit/contacts.ts";
 import { LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE } from "../moteur/audit/regles.ts";
 import type { AuditSiteComplet, Profondeur } from "../moteur/audit/types.ts";
 import { construitProposition } from "../moteur/proposition/index.ts";
@@ -135,6 +138,9 @@ function litFiltres(brut: Record<string, unknown>): ProspectionFilters {
   const cible = (["sans_site", "site_a_refaire", "tous"] as CibleProspection[])
     .find((valeur) => valeur === brut.cible) ?? "tous";
 
+  // Une date explicite l'emporte sur l'ancienneté en mois (l'interface propose les deux).
+  const creeApres = dateIso(brut.creeApres) ?? (depuis && depuis > 0 ? dateIlYaNMois(depuis) : undefined);
+
   return {
     q: texte(brut.q) ?? undefined,
     departement: texte(brut.departement, 3) ?? undefined,
@@ -143,12 +149,20 @@ function litFiltres(brut: Record<string, unknown>): ProspectionFilters {
     trancheEffectif: Array.isArray(brut.trancheEffectif)
       ? brut.trancheEffectif.map(String).filter((code) => code in TRANCHES_EFFECTIF)
       : undefined,
-    creeApres: depuis && depuis > 0 ? dateIlYaNMois(depuis) : undefined,
+    creeApres,
+    creeAvant: dateIso(brut.creeAvant),
     caMin: nombre(brut.caMin),
+    caMax: nombre(brut.caMax),
     cible,
     pages: Math.min(Math.max(nombre(brut.pages) ?? 2, 1), 10),
     auditSites: brut.auditSites !== false,
   };
+}
+
+/** Date au format YYYY-MM-DD, ou rien : une date bancale ne doit pas filtrer au hasard. */
+function dateIso(valeur: unknown): string | undefined {
+  const brut = texte(valeur, 10);
+  return brut && /^\d{4}-\d{2}-\d{2}$/.test(brut) ? brut : undefined;
 }
 
 // ── Vue d'un prospect renvoyée à l'interface ────────────────────────────────
@@ -166,6 +180,8 @@ function vueProspect(prospect: ProspectStocke) {
       }
       : null,
     documents: stockage.documents(prospect.id) ?? null,
+    // Le lien publié par le site s'il existe, sinon une recherche : l'interface distingue les deux.
+    google_recherche: rechercheGoogleMaps(prospect.nom, prospect.ville, prospect.code_postal),
   };
 }
 
@@ -184,13 +200,24 @@ async function lanceProspection(corps: Record<string, unknown>) {
     prospects = prospects.map((prospect, i) => (audits[i] ? appliqueAudit(prospect, audits[i]!) : prospect));
   }
 
-  const retenus = (filtres.auditSites ? filtreSelonCible(prospects, filtres.cible) : prospects)
-    .sort((a, b) => b.score - a.score);
+  // Les critères sont revérifiés ici : ce qui s'affiche correspond à ce qui a été demandé,
+  // et ce que l'API a laissé passer est écarté en le disant.
+  const { retenus: conformes, ecartes } = appliqueFiltres(prospects, filtres);
+  const cibles = filtres.auditSites ? filtreSelonCible(conformes, filtres.cible) : conformes;
+  const retenus = [...cibles].sort((a, b) => b.score - a.score);
   const { nouveaux } = stockage.enregistreProspects(retenus);
+
+  // Raisons d'exclusion regroupées, pour expliquer un écart entre le total annoncé et la liste.
+  const raisons: Record<string, number> = {};
+  for (const ecart of ecartes) raisons[ecart.raison.replace(/ \d[\d\s,.]*.*$/, "")] = (raisons[ecart.raison.replace(/ \d[\d\s,.]*.*$/, "")] ?? 0) + 1;
 
   return {
     total_disponible: recherche.totalDisponible,
     analyses: recherche.prospects.length,
+    hors_criteres: ecartes.length,
+    raisons_ecart: Object.entries(raisons).map(([raison, nombre]) => ({ raison, nombre }))
+      .sort((a, b) => b.nombre - a.nombre),
+    hors_cible: conformes.length - cibles.length,
     retenus: retenus.length,
     nouveaux,
     tronque: recherche.tronque,
@@ -277,6 +304,10 @@ async function lanceAudit(corps: Record<string, unknown>) {
   });
   const maj = stockage.majProspect(prospect.id, {
     site_web: audit.urlFinale ?? url,
+    emails: audit.contacts.emails,
+    telephones: audit.contacts.telephones,
+    google_maps_url: audit.contacts.googleMaps ?? prospect.google_maps_url,
+    reseaux: audit.contacts.reseaux,
     site_statut: statutSite,
     site_score: opportunite,
     site_signaux: audit.findings.slice(0, 8).map((f) => f.titre),
@@ -328,6 +359,7 @@ async function genereProposition(prospectId: string, corps: Record<string, unkno
     audit_id: ligne?.id ?? null,
     synthese: proposition.synthese,
     email: proposition.email,
+    email_html: proposition.email_html,
     sms: proposition.sms,
     script_appel: proposition.script_appel,
     rapport_html: proposition.rapport_html,
@@ -409,6 +441,19 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const chemin = url.pathname;
   const methode = req.method ?? "GET";
 
+  // Les pages servies hors interface (rapport, email) déclenchent une requête de favicon :
+  // on répond une fois pour toutes plutôt que de laisser un 404 dans la console.
+  if (chemin === "/favicon.ico" || chemin === "/favicon.svg") {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="26" font-size="26">🎯</text></svg>`;
+    res.writeHead(200, {
+      "Content-Type": "image/svg+xml",
+      "Content-Length": Buffer.byteLength(svg),
+      "Cache-Control": "max-age=86400",
+    });
+    res.end(svg);
+    return;
+  }
+
   if (!chemin.startsWith("/api/")) {
     if (methode !== "GET") {
       envoieJson(res, { error: "Méthode non autorisée" }, 405);
@@ -422,7 +467,12 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (methode === "GET" && chemin === "/api/config") {
     envoieJson(res, {
       secteurs: SECTEURS_CIBLES.map(({ id, label }) => ({ id, label })),
-      tranches: Object.entries(TRANCHES_EFFECTIF).map(([code, t]) => ({ code, label: t.label })),
+      // Les clés numériques ("11", "12"…) sont énumérées avant les autres par JavaScript :
+      // on trie par effectif moyen pour que la liste se lise dans l'ordre, « non renseigné » à la fin.
+      tranches: Object.entries(TRANCHES_EFFECTIF)
+        .sort(([codeA, a], [codeB, b]) =>
+          codeA === "NN" ? 1 : codeB === "NN" ? -1 : a.moyenne - b.moyenne)
+        .map(([code, t]) => ({ code, label: t.label })),
       statuts: STATUTS,
       piliers: LIBELLES_PILIERS,
       severites: LIBELLES_SEVERITE,
@@ -442,7 +492,19 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
 
   if (chemin === "/api/export.csv" && methode === "GET") {
-    const csv = "﻿" + versCsv(stockage.prospects());
+    // On exporte ce qui est affiché : les filtres de la liste sont passés en paramètres.
+    const filtreStatut = texte(url.searchParams.get("statut"), 20);
+    const filtrePriorite = texte(url.searchParams.get("priorite"), 10);
+    const recherche = (texte(url.searchParams.get("q"), 80) ?? "").toLowerCase();
+    const selection = stockage.prospects().filter((prospect) => {
+      if (filtreStatut && prospect.statut !== filtreStatut) return false;
+      if (filtrePriorite && prospect.priorite !== filtrePriorite) return false;
+      if (!recherche) return true;
+      return [prospect.nom, prospect.enseigne, prospect.ville, prospect.code_postal,
+        prospect.email_contact, prospect.site_web, prospect.dirigeant]
+        .filter(Boolean).join(" ").toLowerCase().includes(recherche);
+    });
+    const csv = "﻿" + versCsv(selection);
     res.writeHead(200, {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="prospects.csv"`,
@@ -464,6 +526,22 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       "Content-Length": statSync(fichier).size,
     });
     createReadStream(fichier).pipe(res);
+    return;
+  }
+
+  const emailHtmlRoute = chemin.match(/^\/api\/email\/([\w-]+)$/);
+  if (emailHtmlRoute && methode === "GET") {
+    const documents = stockage.documents(emailHtmlRoute[1]);
+    if (!documents) {
+      envoieHtml(res, "<p>Aucune proposition générée pour ce prospect.</p>", 404);
+      return;
+    }
+    envoieHtml(res, `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${echappeHtml(documents.email.objet)}</title></head>
+<body style="margin:0;background:#eef0f4">
+${documents.email_html}
+</body></html>`);
     return;
   }
 

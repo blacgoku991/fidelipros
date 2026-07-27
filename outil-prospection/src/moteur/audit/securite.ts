@@ -4,7 +4,11 @@
 // L'audit reste strictement passif : lecture de pages publiques et d'enregistrements DNS,
 // aucune tentative d'exploitation, aucun contournement d'authentification.
 
-import { formulaires, generateur, ressourcesNonSecurisees, scripts, texteVisible } from "./html.ts";
+import { emailEnClair } from "./contacts.ts";
+import {
+  aBandeauConsentement, formulaires, generateur, ressourcesNonSecurisees, scripts, texteVisible,
+  traceurs,
+} from "./html.ts";
 import { constate } from "./regles.ts";
 import type { ContexteAudit, Finding } from "./types.ts";
 
@@ -160,8 +164,18 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   if (!MOTS_CONFIDENTIALITE.test(html) && !MOTS_CONFIDENTIALITE.test(texte)) {
     findings.push(constate("sec_confidentialite_absente", "Aucune mention de politique de confidentialité"));
   }
-  if (/mailto:[a-z0-9._%+-]+@/i.test(html) || /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(texte)) {
+  if (emailEnClair(html)) {
     findings.push(constate("sec_email_en_clair", "Adresse email écrite en clair dans la page"));
+  }
+
+  // Traceurs chargés dès l'arrivée alors qu'aucune solution de consentement n'est présente.
+  // On ne conclut que sur ce qui est écrit dans la page : les deux faits sont observés.
+  const traceursCharges = traceurs(html);
+  if (traceursCharges.length && !aBandeauConsentement(html)) {
+    findings.push(constate(
+      "sec_traceurs_sans_consentement",
+      `${traceursCharges.join(", ")} chargé(s) sans bandeau de consentement détecté`,
+    ));
   }
 
   return findings;

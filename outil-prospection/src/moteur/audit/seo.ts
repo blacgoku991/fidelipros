@@ -6,6 +6,7 @@ import {
   aMetaPrefixe, attributLang, canonical, compteMots, images, liens, meta,
   niveauxTitres, texteVisible, titrePage, typesJsonLd,
 } from "./html.ts";
+import { telephonesDepuisHtml } from "./contacts.ts";
 import { constate } from "./regles.ts";
 import type { ContexteAudit, Finding } from "./types.ts";
 
@@ -123,7 +124,9 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
     findings.push(constate("seo_mentions_absentes", "Aucun lien vers des mentions légales"));
   }
 
-  const aTelephone = /(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/.test(texte);
+  // Détection linéaire : le motif à quantificateur imbriqué s'effondrait sur une page
+  // contenant une longue suite de chiffres (plusieurs secondes de blocage).
+  const aTelephone = telephonesDepuisHtml(texte).length > 0;
   const aAdresse = /\b\d{5}\b/.test(texte);
   if (!aTelephone || !aAdresse) {
     findings.push(
@@ -148,6 +151,14 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
   // ── Note Lighthouse ──────────────────────────────────────────────────────
   if (ctx.lighthouse?.seo !== null && ctx.lighthouse?.seo !== undefined && ctx.lighthouse.seo < 80) {
     findings.push(constate("seo_lighthouse_faible", `Note SEO Google : ${ctx.lighthouse.seo}/100`));
+  }
+
+  // Deux adresses pour le même contenu : constat seulement si la vérification a abouti.
+  if (ctx.wwwDuplique === true) {
+    findings.push(constate(
+      "seo_www_duplique",
+      "Les adresses avec et sans « www » répondent toutes les deux sans redirection",
+    ));
   }
 
   return findings;

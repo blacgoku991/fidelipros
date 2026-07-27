@@ -4,6 +4,9 @@
 // l'audit. Un échec ajoute une ligne dans `erreurs` et laisse la donnée à `null` — les
 // règles savent traiter l'absence d'information sans inventer de défaut.
 
+import {
+  agregeContacts, CHEMINS_CONTACT, contactsVides, lienspagesContact,
+} from "./contacts.ts";
 import { liens } from "./html.ts";
 import { domaine, origine, pause, recupereHttp, USER_AGENT } from "./http.ts";
 import type {
@@ -33,6 +36,34 @@ export interface OptionsCollecte {
    * serveur.
    */
   autoriseHotesPrives?: boolean;
+}
+
+/**
+ * Chemins interdits par le robots.txt pour un robot générique.
+ * Le sondage est passif, mais rien ne justifie d'aller lire ce que le site demande de ne pas
+ * explorer : on respecte la consigne, et on le dit dans le rapport si on s'abstient.
+ */
+export function cheminsInterdits(robotsTxt: string | null | undefined): string[] {
+  if (!robotsTxt) return [];
+  const interdits: string[] = [];
+  let concerne = false;
+  for (const ligne of robotsTxt.split(/\r?\n/)) {
+    const propre = ligne.replace(/#.*$/, "").trim();
+    if (!propre) continue;
+    const [cle, ...reste] = propre.split(":");
+    const valeur = reste.join(":").trim();
+    const nom = cle.trim().toLowerCase();
+    if (nom === "user-agent") {
+      concerne = valeur === "*";
+      continue;
+    }
+    if (concerne && nom === "disallow" && valeur) interdits.push(valeur);
+  }
+  return interdits;
+}
+
+export function cheminAutorise(chemin: string, interdits: string[]): boolean {
+  return !interdits.some((interdit) => interdit === "/" || chemin.startsWith(interdit));
 }
 
 /** Fichiers publics vérifiés : liste fixe, lecture seule, aucune tentative d'exploitation. */
@@ -208,6 +239,82 @@ export async function collectePageInterne(
     });
   }
   return null;
+}
+
+/**
+ * L'adresse avec et sans « www » servent-elles la même page sans redirection ?
+ * `null` si la question n'a pas pu être tranchée (hôte alternatif injoignable, ce qui est le
+ * cas normal quand une seule des deux formes existe).
+ */
+export async function verifieDuplicationWww(
+  accueil: ReponseHttp,
+  options: OptionsCollecte,
+): Promise<boolean | null> {
+  let cible: URL;
+  try {
+    cible = new URL(accueil.urlFinale);
+  } catch {
+    return null;
+  }
+  // Les sous-domaines autres que www ne sont pas concernés (blog., boutique.…).
+  const hote = cible.hostname;
+  const alternatif = hote.startsWith("www.") ? hote.slice(4) : `www.${hote}`;
+  if (hote.split(".").length > (hote.startsWith("www.") ? 3 : 2)) return null;
+  // Même garde-fou que pour l'accueil : on ne va pas interroger un hôte non public.
+  if (!options.autoriseHotesPrives && !hotePublic(alternatif)) return null;
+  cible.hostname = alternatif;
+
+  const reponse = await recupereHttp(cible.toString(), {
+    fetchImpl: options.fetchImpl,
+    timeoutMs: options.timeoutMs ?? 8000,
+    maxOctets: 60_000,
+  });
+  if (!reponse || reponse.statut >= 400) return null;
+
+  // Redirigé vers la forme canonique : tout va bien. Servi tel quel : contenu dupliqué.
+  try {
+    return new URL(reponse.urlFinale).hostname === alternatif;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Récupère les pages qui portent les coordonnées : celles liées depuis l'accueil (« Contact »,
+ * « Mentions légales »), et à défaut les deux chemins usuels. Deux pages au maximum.
+ */
+export async function collectePagesContact(
+  accueil: ReponseHttp,
+  options: OptionsCollecte,
+  /** Pages déjà récupérées ailleurs : on ne les redemande pas. */
+  dejaLues: string[] = [],
+  robotsTxt?: string | null,
+): Promise<ReponseHttp[]> {
+  const cible = { fetchImpl: options.fetchImpl, timeoutMs: options.timeoutMs ?? 8000, maxOctets: options.maxOctets ?? 300_000 };
+  const interdits = cheminsInterdits(robotsTxt);
+  const trouvees: ReponseHttp[] = [];
+
+  for (const adresse of lienspagesContact(accueil.html, accueil.urlFinale, 3)) {
+    if (dejaLues.includes(adresse)) continue;
+    if (!cheminAutorise(new URL(adresse).pathname, interdits)) continue;
+    const reponse = await recupereHttp(adresse, cible);
+    if (reponse && reponse.statut < 400) trouvees.push(reponse);
+    if (trouvees.length >= 2) return trouvees;
+  }
+  if (trouvees.length || dejaLues.length > 1) return trouvees;
+
+  const base = origine(accueil.urlFinale);
+  if (!base) return trouvees;
+  for (const chemin of CHEMINS_CONTACT) {
+    if (dejaLues.includes(`${base}${chemin}`)) continue;
+    if (!cheminAutorise(chemin, interdits)) continue;
+    const reponse = await recupereHttp(`${base}${chemin}`, cible);
+    if (reponse && reponse.statut < 400 && reponse.html.length > 200) {
+      trouvees.push(reponse);
+      break;
+    }
+  }
+  return trouvees;
 }
 
 /** Vérifie qu'une adresse inexistante renvoie un vrai 404 avec une page personnalisée. */
@@ -391,14 +498,18 @@ export async function collecteLighthouse(
 export async function sondeFichiers(
   url: string,
   options: OptionsCollecte,
+  /** Contenu du robots.txt : les chemins qu'il interdit ne sont pas sondés. */
+  robotsTxt?: string | null,
 ): Promise<FichierExpose[]> {
   const base = origine(url);
   if (!base) return [];
   const delai = options.delaiSondeMs ?? 300;
+  const interdits = cheminsInterdits(robotsTxt);
   const exposes: FichierExpose[] = [];
 
   for (const { chemin, indice } of FICHIERS_SONDES) {
     if (expire(options.echeance)) break;
+    if (!cheminAutorise(chemin, interdits)) continue;
     const reponse = await recupereHttp(`${base}${chemin}`, {
       fetchImpl: options.fetchImpl,
       timeoutMs: Math.min(options.timeoutMs ?? 5000, 5000),
@@ -459,6 +570,9 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     robots: null,
     sitemap: null,
     pageInterne: null,
+    pagesContact: [],
+    contacts: contactsVides(),
+    wwwDuplique: null,
     page404: null,
     dns: null,
     lighthouse: null,
@@ -509,6 +623,7 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   if (urlEffective.startsWith("https://")) {
     taches.push(["redirection HTTPS", verifieRedirectionHttps(urlEffective, options)]);
   }
+  taches.push(["duplication www", verifieDuplicationWww(accueil, options)]);
   if (options.avecLighthouse) {
     taches.push(["Lighthouse (PageSpeed)", collecteLighthouse(urlEffective, options)]);
   }
@@ -536,11 +651,33 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
       case "redirection HTTPS":
         contexte.redirigeVersHttps = resultat.value as boolean | null;
         break;
+      case "duplication www":
+        contexte.wwwDuplique = resultat.value as boolean | null;
+        break;
       case "Lighthouse (PageSpeed)":
         contexte.lighthouse = resultat.value as ResultatLighthouse | null;
         break;
     }
   });
+
+  // ── Coordonnées : accueil, page interne, puis pages de contact ───────────
+  // C'est ce qui permet de démarcher : sans email ni téléphone, l'audit ne sert à rien.
+  if (!expire(options.echeance)) {
+    try {
+      contexte.pagesContact = await collectePagesContact(
+        accueil,
+        options,
+        [accueil.urlFinale, contexte.pageInterne?.urlFinale].filter(Boolean) as string[],
+        contexte.robots?.contenu,
+      );
+    } catch {
+      erreurs.push("Pages de contact : échec de lecture");
+    }
+  }
+  contexte.contacts = agregeContacts(
+    [accueil, contexte.pageInterne, ...contexte.pagesContact],
+    domaine(urlEffective),
+  );
 
   // Le sitemap dépend du robots.txt, la sonde est séquentielle : après le lot parallèle.
   if (!expire(options.echeance)) {
@@ -552,7 +689,7 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   }
   if (options.avecSonde && !expire(options.echeance)) {
     try {
-      contexte.fichiersExposes = await sondeFichiers(urlEffective, options);
+      contexte.fichiersExposes = await sondeFichiers(urlEffective, options, contexte.robots?.contenu);
     } catch {
       erreurs.push("Sondage des fichiers publics interrompu");
     }

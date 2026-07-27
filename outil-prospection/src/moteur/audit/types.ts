@@ -1,5 +1,7 @@
 // Types du moteur d'audit (SEO, design, sécurité, technique).
-// Portable Deno / Node : aucun import spécifique à un runtime.
+// Aucun import spécifique à un runtime : ce fichier doit rester portable.
+
+import type { Contacts } from "./contacts.ts";
 
 export type Pilier = "seo" | "design" | "securite" | "technique";
 export type Severite = "critique" | "majeur" | "mineur";
@@ -105,9 +107,14 @@ export interface ContexteAudit {
   resolutionDns: boolean | null;
   /** null si non testable (site déjà en HTTPS non joignable en HTTP). */
   redirigeVersHttps: boolean | null;
+  /** L'adresse avec et sans « www » servent la même page sans redirection. null = non tranché. */
+  wwwDuplique: boolean | null;
   robots: { present: boolean; contenu: string } | null;
   sitemap: { present: boolean; urls: number } | null;
   pageInterne: ReponseHttp | null;
+  /** Pages « Contact » / « Mentions légales », lues pour les coordonnées. */
+  pagesContact: ReponseHttp[];
+  contacts: Contacts;
   page404: { statut: number; personnalisee: boolean } | null;
   dns: DonneesDns | null;
   lighthouse: ResultatLighthouse | null;
@@ -132,6 +139,9 @@ export interface AuditSiteComplet {
   lighthouse: ResultatLighthouse | null;
   fichiersExposes: FichierExpose[];
   captureDataUri: string | null;
+  /** Coordonnées publiées sur le site : c'est avec ça qu'on démarche. */
+  contacts: Contacts;
+  /** Raccourcis vers le meilleur contact trouvé (compatibilité et affichage). */
   emailContact: string | null;
   telephone: string | null;
   erreurs: string[];

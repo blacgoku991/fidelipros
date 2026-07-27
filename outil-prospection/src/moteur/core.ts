@@ -3,6 +3,9 @@
 // Aucun appel réseau ici — tout est testable unitairement (voir core.test.ts).
 
 import { TRANCHES_EFFECTIF } from "./naf.ts";
+import {
+  emailsDepuisHtml, rechercheGoogleMaps, telephonesDepuisHtml,
+} from "./audit/contacts.ts";
 import type {
   AuditSite,
   CibleProspection,
@@ -308,6 +311,79 @@ const FORMES_JURIDIQUES = [
 ];
 
 /** Retire accents, ponctuation et formes juridiques d'une raison sociale. */
+/** Prospect écarté par un critère, avec la raison exacte à afficher. */
+export interface EcartFiltre {
+  siren: string;
+  nom: string;
+  raison: string;
+}
+
+/**
+ * Vérifie qu'un prospect respecte réellement les critères demandés, et retourne la raison
+ * s'il ne les respecte pas.
+ *
+ * L'API applique déjà ces filtres côté serveur, mais elle ne dit pas ce qu'elle a écarté et
+ * ses filtres financiers ne portent que sur les entreprises qui déposent leurs comptes. On
+ * revérifie donc ici : ce qui s'affiche correspond aux critères saisis, et ce qui a été
+ * écarté est comptabilisé et expliqué.
+ */
+export function respecteFiltres(prospect: Prospect, filters: ProspectionFilters): string | null {
+  const { caMin, caMax, creeApres, creeAvant, departement, codePostal, trancheEffectif } = filters;
+
+  if (typeof caMin === "number" && caMin > 0) {
+    if (prospect.chiffre_affaires === null) return "chiffre d'affaires non publié";
+    if (prospect.chiffre_affaires < caMin) {
+      return `chiffre d'affaires ${formateEuros(prospect.chiffre_affaires)} inférieur au minimum demandé`;
+    }
+  }
+  if (typeof caMax === "number" && prospect.chiffre_affaires !== null && prospect.chiffre_affaires > caMax) {
+    return `chiffre d'affaires ${formateEuros(prospect.chiffre_affaires)} supérieur au maximum demandé`;
+  }
+
+  if (creeApres || creeAvant) {
+    if (!prospect.date_creation) return "date de création inconnue";
+    if (creeApres && prospect.date_creation < creeApres) {
+      return `créée le ${prospect.date_creation}, avant la date demandée`;
+    }
+    if (creeAvant && prospect.date_creation > creeAvant) {
+      return `créée le ${prospect.date_creation}, après la date demandée`;
+    }
+  }
+
+  if (trancheEffectif?.length) {
+    if (!prospect.tranche_effectif) return "effectif non déclaré";
+    if (!trancheEffectif.includes(prospect.tranche_effectif)) return "effectif hors des tranches demandées";
+  }
+
+  if (departement && prospect.departement && prospect.departement !== departement.trim()) {
+    return `siège dans le département ${prospect.departement}`;
+  }
+  if (codePostal && prospect.code_postal && prospect.code_postal !== codePostal.trim()) {
+    return `siège au code postal ${prospect.code_postal}`;
+  }
+
+  return null;
+}
+
+function formateEuros(montant: number): string {
+  return `${new Intl.NumberFormat("fr-FR").format(Math.round(montant))} €`;
+}
+
+/** Sépare les prospects conformes aux critères de ceux à écarter, avec la raison. */
+export function appliqueFiltres(
+  prospects: Prospect[],
+  filters: ProspectionFilters,
+): { retenus: Prospect[]; ecartes: EcartFiltre[] } {
+  const retenus: Prospect[] = [];
+  const ecartes: EcartFiltre[] = [];
+  for (const prospect of prospects) {
+    const raison = respecteFiltres(prospect, filters);
+    if (raison) ecartes.push({ siren: prospect.siren, nom: prospect.nom, raison });
+    else retenus.push(prospect);
+  }
+  return { retenus, ecartes };
+}
+
 export function normaliseNom(nom: string): string {
   const sansAccents = nom
     .normalize("NFD")
@@ -507,19 +583,21 @@ export function statutDepuisScoreSite(score: number): StatutSite {
 const EMAILS_A_IGNORER = /(sentry|wixpress|example\.|@2x|\.png|\.jpg|\.jpeg|\.webp|\.gif|\.svg)/i;
 const EMAILS_GENERIQUES = ["contact@", "info@", "bonjour@", "hello@", "accueil@", "commercial@"];
 
-/** Extrait un email professionnel et un téléphone français depuis le HTML d'un site. */
+/**
+ * Extrait un email professionnel et un téléphone français depuis le HTML d'un site.
+ * Version légère utilisée pendant la détection de site (des centaines de pages à la suite) :
+ * l'audit complet passe par `audit/contacts.ts`, qui lit aussi la page contact.
+ */
 export function extraitContacts(html: string): { email: string | null; telephone: string | null } {
-  const emails = [...html.matchAll(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)]
-    .map((m) => m[0].toLowerCase())
-    .filter((e) => !EMAILS_A_IGNORER.test(e));
-  const uniques = [...new Set(emails)];
+  const uniques = emailsDepuisHtml(html).filter((e) => !EMAILS_A_IGNORER.test(e));
   const email =
     uniques.find((e) => EMAILS_GENERIQUES.some((prefixe) => e.startsWith(prefixe))) ??
     uniques[0] ??
     null;
 
-  const tel = html.match(/(?:\+33|0)\s?[1-9](?:[\s.-]?\d{2}){4}/);
-  const telephone = tel ? tel[0].replace(/[\s.-]+/g, " ").trim() : null;
+  // Extraction linéaire (voir contacts.ts) : le motif à quantificateur imbriqué pouvait
+  // bloquer plusieurs secondes sur une page contenant une longue suite de chiffres.
+  const telephone = telephonesDepuisHtml(html)[0] ?? null;
 
   return { email, telephone };
 }
@@ -528,7 +606,10 @@ export function extraitContacts(html: string): { email: string | null; telephone
 // Export
 // ─────────────────────────────────────────────────────────────────────────────
 
-const COLONNES_CSV: Array<[string, (p: Prospect) => unknown]> = [
+/** Le lien Google est présent quand le site en publie un ; sinon on exporte une recherche. */
+type ProspectExporte = Prospect & { google_maps_url?: string | null };
+
+const COLONNES_CSV: Array<[string, (p: ProspectExporte) => unknown]> = [
   ["Score", (p) => p.score],
   ["Priorité", (p) => p.priorite],
   ["Nom", (p) => p.nom],
@@ -548,6 +629,7 @@ const COLONNES_CSV: Array<[string, (p: Prospect) => unknown]> = [
   ["Signaux", (p) => p.site_signaux.join(" | ")],
   ["Email", (p) => p.email_contact],
   ["Téléphone", (p) => p.telephone],
+  ["Fiche Google", (p) => p.google_maps_url ?? rechercheGoogleMaps(p.nom, p.ville, p.code_postal)],
 ];
 
 function celluleCsv(valeur: unknown): string {
@@ -560,7 +642,7 @@ function celluleCsv(valeur: unknown): string {
 }
 
 /** Export CSV séparé par point-virgule (compatible Excel FR). */
-export function versCsv(prospects: Prospect[]): string {
+export function versCsv(prospects: ProspectExporte[]): string {
   const lignes = [COLONNES_CSV.map(([entete]) => entete).join(";")];
   for (const prospect of prospects) {
     lignes.push(COLONNES_CSV.map(([, valeur]) => celluleCsv(valeur(prospect))).join(";"));

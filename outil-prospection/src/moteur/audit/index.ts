@@ -1,8 +1,8 @@
 // Point d'entrée du moteur d'audit : collecte puis application des règles.
 // Utilisé par l'edge function `audit-prospect`, le script CLI et les tests.
 
-import { extraitContacts } from "../core.ts";
 import { collecte, normaliseUrl, type OptionsCollecte } from "./collecte.ts";
+import { contactsVides } from "./contacts.ts";
 import { evalueDesign } from "./design.ts";
 import { evalueSecurite } from "./securite.ts";
 import { evalueSeo } from "./seo.ts";
@@ -10,7 +10,10 @@ import { evalueTechnique } from "./technique.ts";
 import { calculeScores, trieFindings } from "./score.ts";
 import type { AuditSiteComplet, ContexteAudit, Finding, Profondeur } from "./types.ts";
 
-export { collecte, estBlocageParPareFeu, normaliseUrl, resoutDomaine } from "./collecte.ts";
+export {
+  cheminAutorise, cheminsInterdits, collecte, estBlocageParPareFeu, normaliseUrl, resoutDomaine,
+  verifieDuplicationWww,
+} from "./collecte.ts";
 export { evalueDesign } from "./design.ts";
 export { evalueSecurite } from "./securite.ts";
 export { evalueSeo } from "./seo.ts";
@@ -23,6 +26,11 @@ export {
   constate, LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, REGLES, reglesDuPilier,
 } from "./regles.ts";
 export { echappeHtml } from "./html.ts";
+export {
+  agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
+  formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
+  type Contacts,
+} from "./contacts.ts";
 export { domaine, nomDepuisDomaine } from "./http.ts";
 export { FICHIERS_SONDES } from "./collecte.ts";
 export type * from "./types.ts";
@@ -65,6 +73,7 @@ export async function auditeSite(
       lighthouse: null,
       fichiersExposes: [],
       captureDataUri: null,
+      contacts: contactsVides(),
       emailContact: null,
       telephone: null,
       erreurs: [`Adresse invalide : ${urlSaisie}`],
@@ -80,7 +89,6 @@ export async function auditeSite(
   });
 
   const findings = appliqueRegles(ctx);
-  const contacts = ctx.accueil ? extraitContacts(ctx.accueil.html) : { email: null, telephone: null };
 
   return {
     url,
@@ -94,8 +102,9 @@ export async function auditeSite(
     lighthouse: ctx.lighthouse,
     fichiersExposes: ctx.fichiersExposes ?? [],
     captureDataUri: ctx.lighthouse?.captureDataUri ?? null,
-    emailContact: contacts.email,
-    telephone: contacts.telephone,
+    contacts: ctx.contacts,
+    emailContact: ctx.contacts.email,
+    telephone: ctx.contacts.telephone,
     erreurs: ctx.erreurs,
     dureeMs: Date.now() - debut,
   };

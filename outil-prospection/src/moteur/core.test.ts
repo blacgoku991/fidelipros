@@ -4,6 +4,7 @@ import {
   ageEnMois,
   analyseHtml,
   appliqueAudit,
+  appliqueFiltres,
   candidatsDomaines,
   construireParamsRecherche,
   dernieresFinances,
@@ -15,6 +16,7 @@ import {
   mapEntreprise,
   normaliseNom,
   opportuniteSite,
+  respecteFiltres,
   scoreBudget,
   scoreProspect,
   statutDepuisScoreSite,
@@ -502,5 +504,89 @@ describe("detecteEtAuditeSite", () => {
 
     const audit = await detecteEtAuditeSite("SARL GARAGE MARTIN", null, { ...options, fetchImpl: fetchSimule });
     expect(audit.statut).toBe("aucun_site");
+  });
+});
+
+describe("respect des critères de recherche", () => {
+  const filtres = {
+    caMin: 100_000,
+    creeApres: "2025-01-01",
+    creeAvant: "2026-06-30",
+    trancheEffectif: ["02", "03"],
+    departement: "33",
+  };
+
+  it("laisse passer un prospect conforme à tous les critères", () => {
+    const prospect = prospectDeTest({
+      chiffre_affaires: 180_000, date_creation: "2025-09-15",
+      tranche_effectif: "02", departement: "33",
+    });
+    expect(respecteFiltres(prospect, filtres)).toBeNull();
+  });
+
+  it("écarte un chiffre d'affaires trop faible, en le citant", () => {
+    const raison = respecteFiltres(prospectDeTest({ chiffre_affaires: 45_000 }), { caMin: 100_000 });
+    // Intl insère une espace insécable étroite entre les milliers.
+    expect(raison?.replace(/\s/g, " ")).toContain("45 000 €");
+    expect(raison).toContain("inférieur");
+  });
+
+  it("écarte une entreprise sans CA publié quand un CA minimum est demandé", () => {
+    // L'API elle-même exclut ces entreprises : on le dit au lieu de laisser croire à un bug.
+    expect(respecteFiltres(prospectDeTest({ chiffre_affaires: null }), { caMin: 100_000 }))
+      .toBe("chiffre d'affaires non publié");
+    // sans critère de CA, l'absence de comptes déposés n'écarte personne
+    expect(respecteFiltres(prospectDeTest({ chiffre_affaires: null }), { departement: "33" })).toBeNull();
+  });
+
+  it("écarte une date de création hors de la période demandée", () => {
+    expect(respecteFiltres(prospectDeTest({ date_creation: "2019-04-02" }), filtres))
+      .toContain("avant la date demandée");
+    expect(respecteFiltres(prospectDeTest({ date_creation: "2026-12-01" }), filtres))
+      .toContain("après la date demandée");
+  });
+
+  it("écarte un effectif hors des tranches demandées", () => {
+    expect(respecteFiltres(prospectDeTest({ tranche_effectif: "12" }), { trancheEffectif: ["02"] }))
+      .toBe("effectif hors des tranches demandées");
+    expect(respecteFiltres(prospectDeTest({ tranche_effectif: null }), { trancheEffectif: ["02"] }))
+      .toBe("effectif non déclaré");
+  });
+
+  it("écarte un siège hors du département ou du code postal demandé", () => {
+    expect(respecteFiltres(prospectDeTest({ departement: "44" }), { departement: "33" }))
+      .toContain("département 44");
+    expect(respecteFiltres(prospectDeTest({ code_postal: "33800" }), { codePostal: "33000" }))
+      .toContain("33800");
+  });
+
+  it("sépare les prospects retenus des écartés en gardant la raison de chacun", () => {
+    const { retenus, ecartes } = appliqueFiltres(
+      [
+        prospectDeTest({ siren: "111111111", nom: "Conforme", chiffre_affaires: 200_000, date_creation: "2025-05-02", tranche_effectif: "02", departement: "33" }),
+        prospectDeTest({ siren: "222222222", nom: "Sans comptes", chiffre_affaires: null }),
+        prospectDeTest({ siren: "333333333", nom: "Trop ancienne", chiffre_affaires: 500_000, date_creation: "2009-01-01", tranche_effectif: "02", departement: "33" }),
+      ],
+      filtres,
+    );
+
+    expect(retenus.map((p) => p.nom)).toEqual(["Conforme"]);
+    expect(ecartes).toEqual([
+      { siren: "222222222", nom: "Sans comptes", raison: "chiffre d'affaires non publié" },
+      { siren: "333333333", nom: "Trop ancienne", raison: "créée le 2009-01-01, avant la date demandée" },
+    ]);
+  });
+});
+
+describe("export CSV : fiche Google", () => {
+  it("exporte le lien publié par le site, sinon une recherche Google Maps", () => {
+    const csv = versCsv([
+      { ...prospectDeTest({ nom: "Avec fiche" }), google_maps_url: "https://g.page/garage" },
+      prospectDeTest({ nom: "Sans fiche", ville: "Bordeaux", code_postal: "33000" }),
+    ]);
+    const [entetes, avec, sans] = csv.split("\n");
+    expect(entetes).toContain("Fiche Google");
+    expect(avec).toContain("https://g.page/garage");
+    expect(decodeURIComponent(sans)).toContain("maps/search/?api=1&query=Sans fiche 33000 Bordeaux");
   });
 });

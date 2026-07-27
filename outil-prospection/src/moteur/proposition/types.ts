@@ -70,6 +70,8 @@ export interface ContexteProposition {
 export interface DocumentsProposition {
   synthese: string;
   email: { objet: string; corps: string };
+  /** Même message que `email`, mis en page pour un client mail (styles en ligne). */
+  email_html: string;
   sms: string;
   script_appel: string;
   rapport_html: string;

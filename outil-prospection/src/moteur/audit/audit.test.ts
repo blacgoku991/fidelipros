@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 
 import { appliqueRegles, auditeSite } from "./index.ts";
 import {
-  collecte, collecte404, collecteDns, collecteLighthouse, collecteRobots, collecteSitemap,
-  estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl, resoutDomaine, sondeFichiers,
+  cheminAutorise, cheminsInterdits, collecte, collecte404, collecteDns, collecteLighthouse,
+  collecteRobots, collecteSitemap, estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl,
+  resoutDomaine, sondeFichiers, verifieDuplicationWww,
 } from "./collecte.ts";
 import { domaine, nomDepuisDomaine } from "./http.ts";
+import {
+  agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
+  formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
+} from "./contacts.ts";
+import { aBandeauConsentement, traceurs } from "./html.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
   niveauxTitres, ressourcesNonSecurisees, texteVisible, titrePage, typesJsonLd,
@@ -98,9 +104,12 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     accessibilite: "ok",
     resolutionDns: true,
     redirigeVersHttps: true,
+    wwwDuplique: null,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
+    pagesContact: [],
+    contacts: contactsVides(),
     page404: { statut: 404, personnalisee: true },
     dns: dns({ mx: ["10 mx.ovh.net."], spf: "v=spf1 include:mx.ovh.com ~all", dmarc: "v=DMARC1; p=quarantine" }),
     lighthouse: null,
@@ -805,11 +814,255 @@ describe("auditeSite", () => {
     expect(audit.findings.map((f) => f.regle)).toContain("tech_site_injoignable");
   });
 
+  it("signale des traceurs seulement s'il n'y a aucun bandeau de consentement", () => {
+    const avecGa = `<html><head><script src="https://www.googletagmanager.com/gtag/js?id=G-ABC"></script>
+      </head><body>Garage</body></html>`;
+    expect(traceurs(avecGa)).toContain("Google Analytics");
+    expect(aBandeauConsentement(avecGa)).toBe(false);
+
+    const ctxSansBandeau = contexte({ accueil: reponse({ html: avecGa }) });
+    expect(evalueSecurite(ctxSansBandeau).map((f) => f.regle)).toContain("sec_traceurs_sans_consentement");
+
+    // Solution de consentement présente : aucun constat, on n'a pas testé son comportement réel.
+    const avecBandeau = avecGa.replace("<body>", `<body><script src="/tarteaucitron/tarteaucitron.js"></script>`);
+    expect(aBandeauConsentement(avecBandeau)).toBe(true);
+    const ctxAvecBandeau = contexte({ accueil: reponse({ html: avecBandeau }) });
+    expect(evalueSecurite(ctxAvecBandeau).map((f) => f.regle)).not.toContain("sec_traceurs_sans_consentement");
+
+    // Aucun traceur : rien à signaler non plus.
+    const ctxSansTraceur = contexte({ accueil: reponse({ html: "<html><body>Garage</body></html>" }) });
+    expect(evalueSecurite(ctxSansTraceur).map((f) => f.regle)).not.toContain("sec_traceurs_sans_consentement");
+  });
+
+  it("détecte la duplication www / sans www, et s'abstient si l'autre adresse ne répond pas", async () => {
+    // Les deux formes servent la page : contenu dupliqué.
+    const duplique = fetchSimule({ "https://www.garage-martin.fr/": { corps: "<html>Garage</html>" } });
+    expect(await verifieDuplicationWww(reponse({ urlFinale: "https://garage-martin.fr/" }), { fetchImpl: duplique }))
+      .toBe(true);
+
+    // Redirection vers la forme canonique : rien à signaler.
+    const redirige = (async () => ({
+      ok: true, status: 200, url: "https://garage-martin.fr/",
+      headers: { get: () => "text/html" }, text: async () => "<html>Garage</html>", json: async () => ({}), body: null,
+    })) as unknown as typeof fetch;
+    expect(await verifieDuplicationWww(reponse({ urlFinale: "https://garage-martin.fr/" }), { fetchImpl: redirige }))
+      .toBe(false);
+
+    // Autre adresse injoignable : question non tranchée, donc aucun constat.
+    const injoignable = fetchSimule({});
+    expect(await verifieDuplicationWww(reponse({ urlFinale: "https://garage-martin.fr/" }), { fetchImpl: injoignable }))
+      .toBeNull();
+    expect(evalueSeo(contexte({ wwwDuplique: null })).map((f) => f.regle)).not.toContain("seo_www_duplique");
+    expect(evalueSeo(contexte({ wwwDuplique: true })).map((f) => f.regle)).toContain("seo_www_duplique");
+  });
+
+  it("ne sonde pas les chemins interdits par le robots.txt", async () => {
+    const robots = "User-agent: *\nDisallow: /.env\nDisallow: /admin\n";
+    expect(cheminsInterdits(robots)).toEqual(["/.env", "/admin"]);
+    expect(cheminAutorise("/.env", cheminsInterdits(robots))).toBe(false);
+    expect(cheminAutorise("/backup.zip", cheminsInterdits(robots))).toBe(true);
+    // Un robots.txt qui interdit tout arrête le sondage complet.
+    expect(cheminAutorise("/backup.zip", cheminsInterdits("User-agent: *\nDisallow: /"))).toBe(false);
+    // Les consignes destinées à un autre robot ne nous concernent pas.
+    expect(cheminsInterdits("User-agent: AhrefsBot\nDisallow: /")).toEqual([]);
+
+    const appels: string[] = [];
+    const impl = fetchSimule({ "https://garage-martin.fr/": { corps: "secret" } }, appels);
+    await sondeFichiers("https://garage-martin.fr/", { fetchImpl: impl, delaiSondeMs: 0 }, robots);
+    expect(appels).not.toContain("https://garage-martin.fr/.env");
+    expect(appels).toContain("https://garage-martin.fr/backup.zip");
+  });
+
   it("rejette une adresse invalide sans lancer de requête", async () => {
     const audit = await auditeSite("pas-une-url", {
       fetchImpl: (() => { throw new Error("ne doit pas être appelé"); }) as unknown as typeof fetch,
     });
     expect(audit.erreurs[0]).toContain("Adresse invalide");
     expect(audit.findings).toEqual([]);
+  });
+});
+
+describe("récupération des coordonnées", () => {
+  it("lit les emails dans les liens mailto, le texte et les adresses masquées", () => {
+    const html = `<html><body>
+      <a href="mailto:Contact@Garage-Martin.fr?subject=Devis">Écrivez-nous</a>
+      <p>Direction : marie.dupont@garage-martin.fr</p>
+      <p>Comptabilité : compta [at] garage-martin [point] fr</p>
+      <a class="__cf_email__" data-cfemail="c9a4a8b3a1e9b8a4a3adaba8b3a1e989a4a8aae7aaa6a4">[email&#160;protected]</a>
+      <img src="logo@2x.png"> <span>noreply@garage-martin.fr</span>
+    </body></html>`;
+
+    const emails = emailsDepuisHtml(html);
+    expect(emails).toContain("contact@garage-martin.fr");
+    expect(emails).toContain("marie.dupont@garage-martin.fr");
+    expect(emails).toContain("compta@garage-martin.fr");
+    // masqué par Cloudflare : décodé comme le navigateur le fait
+    expect(emails.some((e) => e.endsWith("@garage-martin.fr") && e.includes("@"))).toBe(true);
+    // technique ou inexploitable : jamais proposé comme interlocuteur
+    expect(emails).not.toContain("noreply@garage-martin.fr");
+    expect(emails.join(" ")).not.toContain("logo@2x.png");
+  });
+
+  it("décode une adresse protégée par Cloudflare", () => {
+    // « contact@site.fr » chiffré avec la clé 0x2a (XOR octet par octet)
+    const clair = "contact@site.fr";
+    const cle = 0x2a;
+    const hexa = [cle, ...[...clair].map((c) => c.charCodeAt(0) ^ cle)]
+      .map((o) => o.toString(16).padStart(2, "0")).join("");
+    expect(decodeEmailsProteges(`<a data-cfemail="${hexa}">x</a>`)).toEqual([clair]);
+  });
+
+  it("remet en forme les adresses écrites contre les robots", () => {
+    expect(deobfusqueEmails("contact (at) site (point) fr")).toContain("contact@site.fr");
+    expect(deobfusqueEmails("contact [arobase] site.fr")).toContain("contact@site.fr");
+  });
+
+  it("normalise les téléphones français et écarte les numéros surtaxés", () => {
+    const html = `<a href="tel:+33556123456">05.56.12.34.56</a>
+      <p>Standard : 08 92 70 12 34</p><p>Mobile 06-12-34-56-78</p>`;
+    const telephones = telephonesDepuisHtml(html);
+    expect(telephones).toContain("05 56 12 34 56");
+    expect(telephones).toContain("06 12 34 56 78");
+    expect(telephones.some((t) => t.startsWith("08 92"))).toBe(false);
+  });
+
+  it("formate un numéro par paires de chiffres", () => {
+    expect(formateTelephone("0556123456")).toBe("05 56 12 34 56");
+  });
+
+  it("trouve le lien de la fiche Google publié sur le site", () => {
+    expect(lienGoogleMaps(`<a href="https://maps.app.goo.gl/AbCdEf123">Nous trouver</a>`))
+      .toBe("https://maps.app.goo.gl/AbCdEf123");
+    expect(lienGoogleMaps(`<iframe src="https://www.google.com/maps/embed?pb=!1m18!2sfr"></iframe>`))
+      .toContain("google.com/maps");
+    expect(lienGoogleMaps(`<a href="https://g.page/garage-martin">Avis</a>`)).toBe("https://g.page/garage-martin");
+    // aucune fiche publiée : on n'en invente pas
+    expect(lienGoogleMaps("<html><body>Garage Martin</body></html>")).toBeNull();
+  });
+
+  it("repère les réseaux sociaux", () => {
+    const reseaux = reseauxSociaux(`
+      <a href="https://www.facebook.com/garagemartin">fb</a>
+      <a href="https://instagram.com/garagemartin">insta</a>`);
+    expect(reseaux.facebook).toContain("facebook.com/garagemartin");
+    expect(reseaux.instagram).toContain("instagram.com/garagemartin");
+    expect(reseaux.linkedin).toBeNull();
+  });
+
+  it("classe l'adresse du domaine et l'adresse générique en premier", () => {
+    const page = (url: string, html: string): ReponseHttp => ({
+      url, urlFinale: url, statut: 200, html, entetes: {}, cookies: [], dureeMs: 10, octets: html.length,
+    });
+    const contacts = agregeContacts(
+      [
+        page("https://garage-martin.fr/", "<p>garagemartin33@gmail.com</p>"),
+        page("https://garage-martin.fr/contact", `<a href="mailto:contact@garage-martin.fr">nous</a>
+          <p>marie.dupont@garage-martin.fr</p><a href="tel:0556123456">tel</a>`),
+      ],
+      "garage-martin.fr",
+    );
+
+    expect(contacts.email).toBe("contact@garage-martin.fr");
+    expect(contacts.emails).toEqual([
+      "contact@garage-martin.fr",
+      "marie.dupont@garage-martin.fr",
+      "garagemartin33@gmail.com",
+    ]);
+    expect(contacts.telephone).toBe("05 56 12 34 56");
+    expect(contacts.sources).toEqual(["https://garage-martin.fr/", "https://garage-martin.fr/contact"]);
+  });
+
+  it("propose une recherche Google Maps quand le site n'en publie pas", () => {
+    const lien = rechercheGoogleMaps("Garage Martin", "Bordeaux", "33000");
+    expect(lien).toContain("google.com/maps/search");
+    expect(decodeURIComponent(lien)).toContain("Garage Martin 33000 Bordeaux");
+  });
+
+  it("ne relit pas une page déjà récupérée comme page interne", async () => {
+    const accueil = `<html><head><title>Garage Martin, mécanique générale</title></head><body>
+      <h1>Garage Martin</h1><a href="/contact">Contact</a>
+      ${"Entretien, réparation, pneus à Bordeaux. ".repeat(20)}</body></html>`;
+    const appels: string[] = [];
+    const impl = fetchSimule({
+      "https://garage-martin.fr/contact": { corps: `<a href="mailto:contact@garage-martin.fr">Écrire</a>` },
+      "https://garage-martin.fr/": { corps: accueil },
+    }, appels);
+
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    expect(audit.emailContact).toBe("contact@garage-martin.fr");
+    // la page contact est aussi la première page interne : une seule requête, une seule source
+    expect(appels.filter((a) => a === "https://garage-martin.fr/contact")).toHaveLength(1);
+    expect(audit.contacts.sources).toEqual(["https://garage-martin.fr/contact"]);
+  });
+
+  it("lit la page contact liée depuis l'accueil pour compléter les coordonnées", async () => {
+    const accueil = `<html><head><title>Garage Martin, mécanique</title></head><body>
+      <h1>Garage Martin</h1><a href="/nous-contacter">Contact</a>
+      ${"Entretien, réparation, pneus à Bordeaux. ".repeat(20)}</body></html>`;
+    // Les routes sont testées par préfixe : la plus spécifique d'abord.
+    const impl = fetchSimule({
+      "https://garage-martin.fr/nous-contacter": {
+        corps: `<html><body><a href="mailto:contact@garage-martin.fr">Écrire</a>
+          <a href="https://maps.app.goo.gl/ZzZ">Voir sur Google Maps</a>
+          <a href="tel:0556123456">05 56 12 34 56</a></body></html>`,
+      },
+      "https://garage-martin.fr/": { corps: accueil },
+    });
+
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    expect(audit.emailContact).toBe("contact@garage-martin.fr");
+    expect(audit.telephone).toBe("05 56 12 34 56");
+    expect(audit.contacts.googleMaps).toBe("https://maps.app.goo.gl/ZzZ");
+    expect(audit.contacts.sources).toContain("https://garage-martin.fr/nous-contacter");
+  });
+});
+
+describe("robustesse face à une page hostile", () => {
+  // Une page peut contenir n'importe quoi. Ces motifs faisaient s'effondrer les expressions
+  // régulières (12 s de blocage sur 100 000 chiffres) : l'audit doit rester quasi instantané.
+  const BUDGET_MS = 3000;
+
+  const pages: Array<[string, string]> = [
+    ["100 000 chiffres", `<html><body>${"0".repeat(100_000)}</body></html>`],
+    ["100 000 lettres", `<html><body>${"a".repeat(100_000)}</body></html>`],
+    ["domaine à tirets interminable", `<html><body>x@${"a-".repeat(5000)}!</body></html>`],
+    ["arobases en masse", `<html><body>${"a@".repeat(50_000)}</body></html>`],
+    ["lien tel démesuré", `<html><body><a href="tel:${"1".repeat(50_000)}">x</a></body></html>`],
+    ["page de 1 Mo", `<html><body>${"lorem ipsum 06 12 34 56 78 contact@site.fr ".repeat(25_000)}</body></html>`],
+  ];
+
+  it.each(pages)("applique les règles sur « %s » sans s'effondrer", (_nom, page) => {
+    const debut = Date.now();
+    const ctx = contexte({ accueil: reponse({ html: page, octets: page.length }) });
+    expect(appliqueRegles(ctx).length).toBeGreaterThan(0);
+    expect(Date.now() - debut).toBeLessThan(BUDGET_MS);
+  });
+
+  it.each(pages)("extrait les coordonnées de « %s » sans s'effondrer", (_nom, page) => {
+    const debut = Date.now();
+    emailsDepuisHtml(page);
+    telephonesDepuisHtml(page);
+    lienGoogleMaps(page);
+    expect(Date.now() - debut).toBeLessThan(BUDGET_MS);
+  });
+
+  it("trouve quand même les coordonnées dans une page très longue", () => {
+    const page = `<html><body>${"lorem ipsum ".repeat(30_000)}<p>05 56 78 12 34</p>
+      <a href="mailto:contact@garage.fr">nous écrire</a></body></html>`;
+    expect(emailsDepuisHtml(page)).toContain("contact@garage.fr");
+    expect(telephonesDepuisHtml(page)).toContain("05 56 78 12 34");
+  });
+
+  it("n'interroge pas l'hôte alternatif s'il n'est pas public", async () => {
+    const appels: string[] = [];
+    const impl = fetchSimule({ "http://": { corps: "x" } }, appels);
+    const resultat = await verifieDuplicationWww(
+      reponse({ urlFinale: "http://intranet.local/" }),
+      { fetchImpl: impl },
+    );
+    expect(resultat).toBeNull();
+    expect(appels).toEqual([]);
   });
 });
