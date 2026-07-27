@@ -534,3 +534,18 @@ iframe.apercu.court { height: 520px; }
   .indicateurs { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
   .indicateur .valeur { font-size: 20px; }
 }
+
+/* Bandeau des relances dues : signal d'action, affiché seulement quand il y a à faire. */
+.rappel-relances {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 11px 15px;
+  border-radius: var(--rayon-petit);
+  background: color-mix(in srgb, var(--violet) 14%, var(--carte));
+  border: 1px solid color-mix(in srgb, var(--violet) 45%, transparent);
+}
+.rappel-relances .aide-mini { margin: 0; }
+.rappel-relances button { margin-left: auto; }

@@ -28,6 +28,12 @@ export interface ProspectStocke extends Prospect {
   osm_id: string | null;
   statut: StatutCommercial;
   notes: string | null;
+  /**
+   * Date de la prochaine relance (YYYY-MM-DD), ou null.
+   * La prospection se gagne au suivi : sans cette date, un « rappelez-moi dans deux
+   * semaines » se perd, et c'est là que les affaires meurent.
+   */
+  relance_le: string | null;
   /** Coordonnées relevées sur le site, la meilleure d'abord. */
   emails: string[];
   telephones: string[];
@@ -306,6 +312,7 @@ export class Stockage {
       source,
       statut: "nouveau",
       notes: null,
+      relance_le: null,
       osm_id: null,
       emails: [],
       telephones: [],

@@ -13,7 +13,7 @@ let config = null;
 /** Dernière liste chargée, réutilisée par les filtres d'affichage sans rappeler le serveur. */
 let prospects = [];
 /** Filtres d'affichage de la liste, conservés entre deux rendus. */
-const tri = { texte: "", statut: "", priorite: "", contact: "" };
+const tri = { texte: "", statut: "", priorite: "", contact: "", relance: "" };
 /** Nombre de lignes dessinées : au-delà, le navigateur passe des secondes à construire le DOM. */
 const PAS_AFFICHAGE = 100;
 let limiteAffichage = PAS_AFFICHAGE;
@@ -473,6 +473,7 @@ async function vueProspects() {
   const coche = (cle, defaut = false) => ((criteres[cle] ?? defaut) ? "checked" : "");
 
   vue.innerHTML = `
+    <div id="rappel-haut"></div>
     <details class="panneau" ${localStorage.getItem(CLE_PANNEAU) === "0" ? "" : "open"} id="panneau-recherche">
       <summary>Trouver des entreprises</summary>
       <div class="corps">
@@ -633,6 +634,11 @@ async function vueProspects() {
           <select id="filtre-priorite" class="compact" aria-label="Filtrer par priorité" style="width:auto"><option value="">Toutes priorités</option>
             ${["chaud", "tiede", "froid"].map((p) => `<option value="${p}" ${tri.priorite === p ? "selected" : ""}>${p}</option>`).join("")}
           </select>
+          <select id="filtre-relance" class="compact" aria-label="Filtrer par relance" style="width:auto">
+            ${[["", "Toutes les relances"], ["du_jour", "À relancer (aujourd'hui ou en retard)"],
+               ["retard", "En retard uniquement"], ["planifiee", "Relance planifiée"], ["sans", "Sans relance prévue"]]
+              .map(([v, l]) => `<option value="${v}" ${tri.relance === v ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
           <select id="filtre-contact" class="compact" aria-label="Filtrer par moyen de contact" style="width:auto">
             ${[["", "Tous les contacts"], ["joignable", "Joignables (tél. ou email)"],
                ["telephone", "Avec téléphone"], ["email", "Avec email"], ["aucun", "Sans coordonnée"]]
@@ -699,7 +705,7 @@ async function vueProspects() {
     notifie("Critère posé : créées il y a moins de 2 mois — lancez la recherche", "info");
   });
 
-  ["texte", "statut", "priorite", "contact"].forEach((clef) => {
+  ["texte", "statut", "priorite", "contact", "relance"].forEach((clef) => {
     const champ = vue.querySelector(`#filtre-${clef}`);
     champ.addEventListener("input", () => {
       tri[clef] = champ.value;
@@ -900,16 +906,46 @@ function dessineIndicateurs() {
   const cible = vue.querySelector("#indicateurs");
   if (!cible) return;
   const compte = (predicat) => prospects.filter(predicat).length;
+  const aRelancer = compte((p) => correspondRelance(p, "du_jour"));
   const cartes = [
     ["Prospects", prospects.length, ""],
-    ["Chauds", compte((p) => p.priorite === "chaud"), "s-rouge"],
-    ["À contacter", compte((p) => p.statut === "a_contacter"), "s-ambre"],
-    ["Avec email", compte((p) => p.email_contact), "s-vert"],
+    // En tête : c'est la seule case qui représente du travail daté, à faire aujourd'hui.
+    ["À relancer", aRelancer, aRelancer ? "s-rouge" : ""],
+    ["Chauds", compte((p) => p.priorite === "chaud"), "s-ambre"],
+    ["Joignables", compte((p) => correspondContact(p, "joignable")), "s-vert"],
     ["Sans site web", compte((p) => p.site_statut === "aucun_site"), ""],
     ["Audités", compte((p) => p.audit_le), ""],
   ];
   cible.innerHTML = cartes.map(([nom, valeur, classe]) => `
     <div class="indicateur"><div class="valeur ${classe}">${valeur}</div><div class="nom">${esc(nom)}</div></div>`).join("");
+
+  const haut = vue.querySelector("#rappel-haut");
+  if (haut) haut.innerHTML = rappelRelances();
+  haut?.querySelector("#voir-relances")?.addEventListener("click", () => {
+    tri.relance = "du_jour";
+    const champ = vue.querySelector("#filtre-relance");
+    if (champ) champ.value = "du_jour";
+    limiteAffichage = PAS_AFFICHAGE;
+    dessineTableau();
+  });
+}
+
+/**
+ * Bandeau des relances dues. Il ne s'affiche que s'il y a quelque chose à faire : un rappel
+ * permanent devient un décor qu'on ne lit plus. Le bouton bascule la liste sur ces prospects
+ * plutôt que d'ouvrir un écran de plus.
+ */
+function rappelRelances() {
+  const dus = prospects.filter((p) => correspondRelance(p, "du_jour"));
+  if (!dus.length) return "";
+  const retard = dus.filter((p) => correspondRelance(p, "retard")).length;
+  const noms = dus.slice(0, 3).map((p) => p.enseigne?.trim() || p.nom);
+
+  return `<div class="rappel-relances">
+    <strong>${dus.length} relance(s) à faire${retard ? ` — dont ${retard} en retard` : ""}</strong>
+    <span class="aide-mini">${noms.map(esc).join(", ")}${dus.length > noms.length ? `, +${dus.length - noms.length}` : ""}</span>
+    <button type="button" id="voir-relances" class="petit primaire">Voir</button>
+  </div>`;
 }
 
 /** Ce que la recherche a écarté, et pourquoi : un total qui ne tombe pas juste inquiète. */
@@ -978,6 +1014,29 @@ function panneauPlusJeunes(bilan) {
   </div>`;
 }
 
+/** Date du jour en YYYY-MM-DD, heure locale — `toISOString` décalerait selon le fuseau. */
+function aujourdhui() {
+  const d = new Date();
+  return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")]
+    .join("-");
+}
+
+/**
+ * Les relances sont le nerf de la prospection : 80 % des affaires se font après plusieurs
+ * contacts. « En retard » et « aujourd'hui » sont volontairement regroupés dans un même
+ * filtre — ce qui compte, c'est ce qu'il reste à faire, pas depuis combien de temps.
+ */
+function correspondRelance(prospect, critere) {
+  const date = prospect.relance_le || null;
+  const jour = aujourdhui();
+  if (critere === "sans") return !date;
+  if (!date) return false;
+  if (critere === "retard") return date < jour;
+  if (critere === "du_jour") return date <= jour;
+  if (critere === "planifiee") return date > jour;
+  return true;
+}
+
 /**
  * Miroir de `correspondContact` de src/moteur/core.ts : la liste affichée et le CSV exporté
  * doivent trancher exactement pareil, sinon l'export ne correspond plus à l'écran.
@@ -999,6 +1058,7 @@ function prospectsAffiches() {
     if (tri.statut && p.statut !== tri.statut) return false;
     if (tri.priorite && p.priorite !== tri.priorite) return false;
     if (tri.contact && !correspondContact(p, tri.contact)) return false;
+    if (tri.relance && !correspondRelance(p, tri.relance)) return false;
     if (!recherche) return true;
     return [p.nom, p.enseigne, p.ville, p.domaine, p.site_web, p.code_postal, p.email_contact, p.dirigeant]
       .filter(Boolean).join(" ").toLowerCase().includes(recherche);
@@ -1316,8 +1376,19 @@ async function vueProspect(id) {
             </select>
           </div>
           <div style="margin-top:12px">
+            <label for="relance_le">Rappeler le</label>
+            <input type="date" id="relance_le" value="${esc(prospect.relance_le ?? "")}">
+            <div class="ligne" style="margin-top:6px">
+              ${[["Demain", 1], ["Dans 3 j", 3], ["1 semaine", 7], ["2 semaines", 14], ["1 mois", 30]]
+                .map(([libelle, jours]) => `<button type="button" class="petit discret" data-relance="${jours}">${libelle}</button>`).join("")}
+              <button type="button" class="petit discret" data-relance="">Effacer</button>
+            </div>
+            <p class="aide-mini">« Rappelez-moi dans deux semaines » ne se retient pas de tête :
+              posez la date, le prospect remonte tout seul dans « À relancer ».</p>
+          </div>
+          <div style="margin-top:12px">
             <label for="notes">Notes</label>
-            <textarea id="notes" placeholder="Compte rendu d'appel, objection, date de rappel…">${esc(prospect.notes ?? "")}</textarea>
+            <textarea id="notes" placeholder="Compte rendu d'appel, objection, ce qui a été dit…">${esc(prospect.notes ?? "")}</textarea>
           </div>
           <div class="ligne ligne-fin" style="margin-top:12px">
             <button id="enregistrer-suivi" class="primaire">Enregistrer</button>
@@ -1336,12 +1407,32 @@ async function vueProspect(id) {
       await pendant(evenement.currentTarget, "Enregistrement…", () =>
         api(`/api/prospects/${encodeURIComponent(prospect.id)}`, {
           methode: "PATCH",
-          corps: { statut: vue.querySelector("#statut").value, notes: vue.querySelector("#notes").value },
+          corps: {
+            statut: vue.querySelector("#statut").value,
+            notes: vue.querySelector("#notes").value,
+            relance_le: vue.querySelector("#relance_le").value,
+          },
         }));
       notifie("Suivi enregistré", "succes");
     } catch (erreur) {
       notifie(erreur.message, "erreur");
     }
+  });
+
+  vue.querySelectorAll("[data-relance]").forEach((bouton) => {
+    bouton.addEventListener("click", () => {
+      const jours = bouton.dataset.relance;
+      const champ = vue.querySelector("#relance_le");
+      if (jours === "") {
+        champ.value = "";
+        return;
+      }
+      const date = new Date();
+      date.setDate(date.getDate() + Number(jours));
+      // Format YYYY-MM-DD en heure locale : toISOString décalerait d'un jour selon le fuseau.
+      champ.value = [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+        .map((n, i) => (i ? String(n).padStart(2, "0") : String(n))).join("-");
+    });
   });
 
   vue.querySelector("#enregistrer-site").addEventListener("click", async (evenement) => {

@@ -282,6 +282,7 @@ function vueListe(prospect: ProspectStocke) {
     score: prospect.score,
     priorite: prospect.priorite,
     statut: prospect.statut,
+    relance_le: prospect.relance_le ?? null,
     score_audit: prospect.score_audit,
     audit_le: prospect.audit_le,
     /** null si jamais audité : le tableau distingue « non audité » et « non concluant ». */
@@ -862,6 +863,15 @@ ${corpsHtml}
         patch.statut = statut as StatutCommercial;
       }
       if ("notes" in corps) patch.notes = texte(corps.notes, 5000);
+      // Date de relance : une chaîne vide efface le rappel, une date bancale est refusée
+      // plutôt que d'enterrer silencieusement un rappel à une date fantaisiste.
+      if ("relance_le" in corps) {
+        const saisie = texte(corps.relance_le, 10);
+        if (saisie && !/^\d{4}-\d{2}-\d{2}$/.test(saisie)) {
+          throw new Error(`Date de relance invalide : ${saisie}`);
+        }
+        patch.relance_le = saisie;
+      }
 
       // Correction manuelle du site : la détection se trompe quand le domaine n'a rien à voir
       // avec la raison sociale. On revalide l'adresse comme pour un audit.

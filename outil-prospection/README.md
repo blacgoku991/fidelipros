@@ -434,6 +434,27 @@ Deux rendus, parce que les contraintes diffèrent :
   `data:` ; le logo y est donc dessiné en bordures et en texte, le seul habillage qui
   s'affiche à l'identique dans Gmail, Outlook et Apple Mail sans image distante.
 
+## Les relances : ce qui transforme une liste en pipeline
+
+Une liste de prospects ne vaut rien sans suivi : la plupart des affaires se concluent après
+plusieurs contacts, et un « rappelez-moi dans deux semaines » noté nulle part est une affaire
+perdue. Chaque fiche porte donc une **date de rappel**, posée en un clic (*demain*, *dans 3
+jours*, *1 semaine*, *2 semaines*, *1 mois*) ou saisie à la main.
+
+Ce qui en découle :
+
+- un **bandeau en haut de l'écran Prospects** dès qu'il y a des relances dues, avec le nombre
+  en retard et les premiers noms. Il n'apparaît que s'il y a à faire — un rappel permanent
+  devient un décor qu'on ne lit plus ;
+- le bouton **Voir** bascule la liste sur ces prospects, sans ouvrir un écran de plus ;
+- un **filtre relance** : à relancer (aujourd'hui ou en retard), en retard uniquement,
+  planifiée, sans relance prévue. « En retard » et « aujourd'hui » sont regroupés par défaut :
+  ce qui compte est ce qu'il reste à faire, pas depuis combien de temps ;
+- un **indicateur « À relancer »** en tête des compteurs, en rouge tant qu'il en reste.
+
+Une date mal formée est refusée plutôt qu'enregistrée au hasard : un rappel silencieusement
+posé à une date fantaisiste ne vaut pas mieux que pas de rappel.
+
 ## Le script d'appel (pour un commercial qui débute)
 
 Chaque fiche produit un script à donner tel quel à quelqu'un qui n'a jamais prospecté. Il est
