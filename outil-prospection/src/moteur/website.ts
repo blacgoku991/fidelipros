@@ -96,9 +96,12 @@ async function enParallele<T, R>(
   limite: number,
   traitement: (element: T) => Promise<R>,
   echeance?: number,
+  /** Appelé après chaque élément traité : sert à afficher l'avancement. */
+  onProgres?: (faits: number, total: number) => void,
 ): Promise<Array<R | null>> {
   const resultats: Array<R | null> = new Array(elements.length).fill(null);
   let index = 0;
+  let faits = 0;
 
   const ouvrier = async () => {
     while (index < elements.length) {
@@ -109,6 +112,7 @@ async function enParallele<T, R>(
       } catch {
         resultats[courant] = null;
       }
+      onProgres?.(++faits, elements.length);
     }
   };
 
@@ -119,12 +123,17 @@ async function enParallele<T, R>(
 /** Audite une liste de prospects (détection de site incluse) avec concurrence bornée. */
 export async function auditeProspects(
   prospects: Prospect[],
-  options: OptionsAudit & { concurrence?: number; echeance?: number } = {},
+  options: OptionsAudit & {
+    concurrence?: number;
+    echeance?: number;
+    onProgres?: (faits: number, total: number) => void;
+  } = {},
 ): Promise<Array<AuditSite | null>> {
   return enParallele(
     prospects,
     options.concurrence ?? 4,
     (prospect) => detecteEtAuditeSite(prospect.nom, prospect.enseigne, options),
     options.echeance,
+    options.onProgres,
   );
 }

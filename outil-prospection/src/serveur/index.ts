@@ -9,18 +9,20 @@
 // aucune authentification — il ne doit pas être exposé sur le réseau.
 
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
 import {
-  appliqueAudit, appliqueFiltres, dateIlYaNMois, filtreSelonCible, scoreProspect, versCsv,
+  appliqueAudit, appliqueFiltres, dateIlYaNMois, filtreSelonCible, filtresValides, MAX_PER_PAGE,
+  scoreProspect, versCsv,
 } from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
 import { rechercheEntreprises } from "../moteur/sirene.ts";
 import { auditeProspects, detecteEtAuditeSite } from "../moteur/website.ts";
-import type { CibleProspection, ProspectionFilters } from "../moteur/types.ts";
+import type { CibleProspection, ProspectionFilters, StatutSite } from "../moteur/types.ts";
 import { auditeSite, normaliseUrl } from "../moteur/audit/index.ts";
 import { domaine as domaineDe, nomDepuisDomaine } from "../moteur/audit/http.ts";
 import { echappeHtml } from "../moteur/audit/html.ts";
@@ -40,9 +42,26 @@ const AUTORISE_LOCAL = process.env.AUTORISE_LOCAL === "1";
 const RACINE_PUBLIQUE = resolve(import.meta.dirname, "..", "..", "public");
 const TAILLE_MAX_CORPS = 1_000_000;
 
+const nombreFr = (valeur: number) => new Intl.NumberFormat("fr-FR").format(valeur);
+
 const STATUTS: StatutCommercial[] = [
   "nouveau", "a_contacter", "contacte", "rdv", "gagne", "perdu", "ignore",
 ];
+
+/** États de site corrigeables à la main depuis la fiche. */
+const STATUTS_SITE: StatutSite[] = [
+  "non_verifie", "aucun_site", "site_injoignable", "site_obsolete", "site_a_rafraichir", "site_recent",
+];
+
+/** Opportunité commerciale associée à un état déclaré à la main. */
+const OPPORTUNITE_PAR_STATUT: Record<StatutSite, number> = {
+  non_verifie: 50,
+  aucun_site: 100,
+  site_injoignable: 90,
+  site_obsolete: 75,
+  site_a_rafraichir: 45,
+  site_recent: 15,
+};
 
 const stockage = new Stockage(
   process.env.DONNEES ? resolve(process.env.DONNEES) : undefined,
@@ -165,6 +184,56 @@ function dateIso(valeur: unknown): string | undefined {
   return brut && /^\d{4}-\d{2}-\d{2}$/.test(brut) ? brut : undefined;
 }
 
+// ── Traitements longs ───────────────────────────────────────────────────────
+// Une recherche sur dix pages, ou l'audit de vingt sites, dure des minutes. Plutôt qu'une
+// requête qui semble figée, le travail tourne en tâche de fond et l'interface interroge son
+// avancement. En mémoire volontairement : au redémarrage, il n'y a rien à reprendre.
+
+interface Travail {
+  id: string;
+  genre: "prospection" | "audits";
+  etape: string;
+  faits: number;
+  total: number;
+  fini: boolean;
+  erreur: string | null;
+  resultat: unknown;
+  debut: number;
+}
+
+const travaux = new Map<string, Travail>();
+const MAX_TRAVAUX_CONSERVES = 20;
+
+function creeTravail(genre: Travail["genre"], etape: string): Travail {
+  const travail: Travail = {
+    id: randomUUID(), genre, etape, faits: 0, total: 0, fini: false,
+    erreur: null, resultat: null, debut: Date.now(),
+  };
+  travaux.set(travail.id, travail);
+  // On ne garde que les derniers : l'historique n'a pas d'intérêt après lecture.
+  for (const cle of [...travaux.keys()].slice(0, Math.max(0, travaux.size - MAX_TRAVAUX_CONSERVES))) {
+    travaux.delete(cle);
+  }
+  return travail;
+}
+
+/** Lance le travail sans attendre, en consignant l'échec plutôt qu'en le perdant. */
+function lance(travail: Travail, execution: (travail: Travail) => Promise<unknown>): void {
+  execution(travail)
+    .then((resultat) => {
+      travail.resultat = resultat;
+      travail.etape = "terminé";
+    })
+    .catch((erreur) => {
+      travail.erreur = erreur instanceof Error ? erreur.message : String(erreur);
+      travail.etape = "échec";
+      console.error(`[travail ${travail.genre}] ${travail.erreur}`);
+    })
+    .finally(() => {
+      travail.fini = true;
+    });
+}
+
 // ── Vue d'un prospect renvoyée à l'interface ────────────────────────────────
 
 function vueProspect(prospect: ProspectStocke) {
@@ -188,15 +257,38 @@ function vueProspect(prospect: ProspectStocke) {
 // ── Actions ─────────────────────────────────────────────────────────────────
 
 /** Recherche Sirene, audit rapide des sites, puis enregistrement. */
-async function lanceProspection(corps: Record<string, unknown>) {
+async function lanceProspection(corps: Record<string, unknown>, travail: Travail) {
   const filtres = litFiltres(corps);
+  // L'API refuse une recherche sans critère discriminant : on le dit avant de l'appeler.
+  if (!filtresValides(filtres)) {
+    throw new Error(
+      "Précisez au moins un critère de localisation ou d'activité : département, code postal, " +
+        "secteur, ou recherche libre.",
+    );
+  }
   const debut = Date.now();
 
-  const recherche = await rechercheEntreprises(filtres);
+  travail.etape = "recherche des entreprises";
+  travail.total = (filtres.pages ?? 2) * MAX_PER_PAGE;
+  const recherche = await rechercheEntreprises(filtres, {
+    onPage: (page, total) => {
+      travail.faits = Math.min(travail.total, page * MAX_PER_PAGE);
+      travail.etape = `page ${page} — ${nombreFr(total)} entreprise(s) correspondent aux critères`;
+    },
+  });
   let prospects = recherche.prospects;
 
   if (filtres.auditSites && prospects.length) {
-    const audits = await auditeProspects(prospects, { concurrence: 6 });
+    travail.etape = `analyse des sites (${prospects.length} entreprises)`;
+    travail.faits = 0;
+    travail.total = prospects.length;
+    const audits = await auditeProspects(prospects, {
+      concurrence: 6,
+      onProgres: (faits, total) => {
+        travail.faits = faits;
+        travail.etape = `analyse des sites ${faits} / ${total}`;
+      },
+    });
     prospects = prospects.map((prospect, i) => (audits[i] ? appliqueAudit(prospect, audits[i]!) : prospect));
   }
 
@@ -332,6 +424,38 @@ async function lanceAudit(corps: Record<string, unknown>) {
     concluant: true,
     site_redecouvert: siteRedecouvert,
   };
+}
+
+/** Un audit d'il y a plus d'un mois ne dit plus rien du site : il redevient candidat. */
+const AGE_AUDIT_PERIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+function candidatsAudit(limite: number): string[] {
+  const maintenant = Date.now();
+  const jamais = stockage.prospects().filter((p) => !p.audit_le);
+  const perimes = stockage.prospects()
+    .filter((p) => p.audit_le && maintenant - Date.parse(p.audit_le) > AGE_AUDIT_PERIME_MS)
+    .sort((a, b) => (a.audit_le ?? "").localeCompare(b.audit_le ?? ""));
+  return [...jamais, ...perimes].slice(0, limite).map((p) => p.id);
+}
+
+/** Audite plusieurs prospects à la suite : un seul à la fois, pour rester poli avec les sites. */
+async function auditeEnLot(ids: string[], travail: Travail) {
+  const bilan = { audites: 0, non_concluants: 0, sans_site: 0, echecs: [] as string[] };
+
+  for (const id of ids) {
+    const prospect = stockage.prospect(id);
+    travail.etape = `audit de ${prospect?.nom ?? id}`;
+    try {
+      const resultat = await lanceAudit({ prospect_id: id });
+      if (resultat.sans_site) bilan.sans_site++;
+      else if (resultat.concluant === false) bilan.non_concluants++;
+      else bilan.audites++;
+    } catch (erreur) {
+      bilan.echecs.push(`${prospect?.nom ?? id} : ${erreur instanceof Error ? erreur.message : erreur}`);
+    }
+    travail.faits++;
+  }
+  return bilan;
 }
 
 /** Devis, rapport, email, SMS et script d'appel depuis le dernier audit du prospect. */
@@ -474,6 +598,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
           codeA === "NN" ? 1 : codeB === "NN" ? -1 : a.moyenne - b.moyenne)
         .map(([code, t]) => ({ code, label: t.label })),
       statuts: STATUTS,
+      statuts_site: STATUTS_SITE,
       piliers: LIBELLES_PILIERS,
       severites: LIBELLES_SEVERITE,
       efforts: LIBELLES_EFFORT,
@@ -570,6 +695,7 @@ ${documents.email_html}
     }
     if (methode === "PATCH") {
       const corps = await litCorps(req);
+      const prospectExistant = stockage.prospect(id);
       const patch: Partial<ProspectStocke> = {};
       const statut = texte(corps.statut, 20);
       if (statut) {
@@ -577,6 +703,38 @@ ${documents.email_html}
         patch.statut = statut as StatutCommercial;
       }
       if ("notes" in corps) patch.notes = texte(corps.notes, 5000);
+
+      // Correction manuelle du site : la détection se trompe quand le domaine n'a rien à voir
+      // avec la raison sociale. On revalide l'adresse comme pour un audit.
+      if ("site_web" in corps) {
+        const saisie = texte(corps.site_web, 500);
+        if (!saisie) {
+          patch.site_web = null;
+        } else {
+          const normalisee = normaliseUrl(saisie, AUTORISE_LOCAL);
+          if (!normalisee) throw new Error(`Adresse invalide : ${saisie}`);
+          patch.site_web = normalisee;
+          patch.domaine = domaineDe(normalisee) ?? prospectExistant?.domaine ?? null;
+        }
+      }
+      if ("site_statut" in corps) {
+        const statutSite = texte(corps.site_statut, 30);
+        if (!statutSite || !STATUTS_SITE.includes(statutSite as StatutSite)) {
+          throw new Error(`État de site inconnu : ${statutSite}`);
+        }
+        patch.site_statut = statutSite as StatutSite;
+        // L'opportunité suit l'état déclaré : « aucun site » vaut 100, un site récent vaut peu.
+        patch.site_score = OPPORTUNITE_PAR_STATUT[statutSite as StatutSite];
+        patch.site_verifie_le = new Date().toISOString();
+        const { score, priorite } = scoreProspect({
+          site_statut: patch.site_statut,
+          site_score: patch.site_score,
+          budget_score: prospectExistant?.budget_score ?? 50,
+        });
+        patch.score = score;
+        patch.priorite = priorite;
+      }
+
       const maj = stockage.majProspect(id, patch);
       if (!maj) {
         envoieJson(res, { error: "Prospect introuvable" }, 404);
@@ -592,7 +750,56 @@ ${documents.email_html}
   }
 
   if (methode === "POST" && chemin === "/api/prospection") {
-    envoieJson(res, await lanceProspection(await litCorps(req)));
+    const corps = await litCorps(req);
+    // Les critères sont validés tout de suite : une erreur de saisie ne part pas en tâche de fond.
+    const filtres = litFiltres(corps);
+    if (!filtresValides(filtres)) {
+      envoieJson(res, {
+        error: "Précisez au moins un critère de localisation ou d'activité : département, " +
+          "code postal, secteur, ou recherche libre.",
+      }, 400);
+      return;
+    }
+    const travail = creeTravail("prospection", "démarrage");
+    lance(travail, (t) => lanceProspection(corps, t));
+    envoieJson(res, { travail: travail.id }, 202);
+    return;
+  }
+
+  // Audit en lot : soit une liste explicite (ce que l'interface envoie), soit les prospects
+  // jamais audités puis ceux dont l'audit a plus d'un mois.
+  if (methode === "POST" && chemin === "/api/audits") {
+    const corps = await litCorps(req);
+    const limite = Math.min(Math.max(nombre(corps.limite) ?? 10, 1), 50);
+    const ids = Array.isArray(corps.ids)
+      ? corps.ids.map(String).filter((id) => stockage.prospect(id)).slice(0, 50)
+      : candidatsAudit(limite);
+
+    if (!ids.length) {
+      envoieJson(res, {
+        error: "Aucun prospect à auditer : tous ont été analysés il y a moins d'un mois. " +
+          "Utilisez le bouton « Auditer » d'une ligne pour en relancer un.",
+      }, 400);
+      return;
+    }
+    const travail = creeTravail("audits", `audit de ${ids.length} site(s)`);
+    travail.total = ids.length;
+    lance(travail, (t) => auditeEnLot(ids, t));
+    envoieJson(res, { travail: travail.id }, 202);
+    return;
+  }
+
+  const suivi = chemin.match(/^\/api\/travaux\/([\w-]+)$/);
+  if (suivi && methode === "GET") {
+    const travail = travaux.get(suivi[1]);
+    if (!travail) {
+      envoieJson(res, { error: "Traitement inconnu (le serveur a peut-être redémarré)" }, 404);
+      return;
+    }
+    envoieJson(res, {
+      ...travail,
+      duree_ms: Date.now() - travail.debut,
+    });
     return;
   }
 

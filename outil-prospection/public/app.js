@@ -175,6 +175,38 @@ function telecharge(nomFichier, contenu, type = "text/html;charset=utf-8") {
   setTimeout(() => URL.revokeObjectURL(lien.href), 2000);
 }
 
+/**
+ * Suit un traitement lancé en tâche de fond (recherche, audits par lot) et rend compte de son
+ * avancement : sans cela, l'interface paraît figée pendant plusieurs minutes.
+ */
+async function suit(travailId, surAvancement) {
+  for (;;) {
+    const etat = await api(`/api/travaux/${encodeURIComponent(travailId)}`);
+    surAvancement(etat);
+    if (etat.fini) {
+      if (etat.erreur) throw new Error(etat.erreur);
+      return etat.resultat;
+    }
+    await new Promise((resolu) => setTimeout(resolu, 1200));
+  }
+}
+
+/** Barre d'avancement d'un traitement : étape en cours et compteur. */
+function afficheAvancement(cible, etat, titre) {
+  const pourcentage = etat.total ? Math.min(100, Math.round((etat.faits / etat.total) * 100)) : null;
+  cible.innerHTML = `
+    <div class="carte serree">
+      <div class="entre-deux">
+        <strong style="font-size:14px">${esc(titre)}</strong>
+        <span class="aide-mini" style="margin:0">${esc(etat.etape)}${
+          etat.total ? ` — ${etat.faits} / ${etat.total}` : ""}</span>
+      </div>
+      ${pourcentage === null
+        ? `<div class="progression"></div>`
+        : `<div class="jauge" style="height:5px"><span style="width:${pourcentage}%;background:var(--accent)"></span></div>`}
+    </div>`;
+}
+
 /** Bloc de texte avec bouton « copier ». */
 function blocCopiable(titre, texte, cle) {
   return `<div class="copiable">
@@ -499,9 +531,11 @@ async function vueProspects() {
           <select id="filtre-priorite" class="compact" aria-label="Filtrer par priorité" style="width:auto"><option value="">Toutes priorités</option>
             ${["chaud", "tiede", "froid"].map((p) => `<option value="${p}" ${tri.priorite === p ? "selected" : ""}>${p}</option>`).join("")}
           </select>
+          <button type="button" id="auditer-lot">Auditer 10 prospects</button>
           <button type="button" id="exporter">Exporter en CSV</button>
         </div>
       </div>
+      <div id="progression-audits"></div>
       <div class="deroule" id="tableau"><p class="attente">Chargement…</p></div>
       <div id="bilan"></div>
     </div>`;
@@ -525,6 +559,41 @@ async function vueProspects() {
       tri[clef] = champ.value;
       dessineTableau();
     });
+  });
+
+  // Audit en lot : sur ce qui est affiché, jamais audités d'abord. Traitement le plus long,
+  // donc suivi pas à pas.
+  vue.querySelector("#auditer-lot").addEventListener("click", async (evenement) => {
+    const affiches = prospectsAffiches();
+    const ids = [
+      ...affiches.filter((p) => !p.audit_le),
+      ...affiches.filter((p) => p.audit_le).sort((a, b) => (a.audit_le ?? "").localeCompare(b.audit_le ?? "")),
+    ].slice(0, 10).map((p) => p.id);
+    if (!ids.length) {
+      notifie("Aucun prospect affiché à auditer", "erreur");
+      return;
+    }
+    const progression = vue.querySelector("#progression-audits");
+    progression.innerHTML = `<div class="carte serree"><p class="aide" style="margin:0">Démarrage…</p>
+      <div class="progression"></div></div>`;
+    try {
+      const bilan = await pendant(evenement.currentTarget, "Audits en cours…", async () => {
+        const { travail } = await api("/api/audits", { methode: "POST", corps: { ids } });
+        return suit(travail, (etat) => afficheAvancement(progression, etat, "Audit des sites"));
+      });
+      notifie(
+        `${bilan.audites} site(s) audité(s)` +
+          (bilan.non_concluants ? `, ${bilan.non_concluants} non concluant(s)` : "") +
+          (bilan.sans_site ? `, ${bilan.sans_site} sans site` : "") +
+          (bilan.echecs.length ? `, ${bilan.echecs.length} échec(s)` : ""),
+        "succes",
+      );
+      await chargeEtAffiche();
+    } catch (erreur) {
+      notifie(erreur.message, "erreur");
+    } finally {
+      progression.innerHTML = "";
+    }
   });
 
   // L'export reprend les filtres d'affichage : on exporte ce qu'on voit.
@@ -560,13 +629,16 @@ async function lanceRecherche(formulaire) {
   localStorage.setItem(CLE_CRITERES, JSON.stringify(corps));
 
   const progression = vue.querySelector("#progression-recherche");
-  progression.innerHTML = `<p class="aide" style="margin-top:14px">Recherche en cours — quelques
-    secondes par page, plus le temps d'analyse des sites détectés.</p><div class="progression"></div>`;
+  progression.innerHTML = `<div class="carte serree"><p class="aide" style="margin:0">Démarrage…</p>
+    <div class="progression"></div></div>`;
   try {
     const resultat = await pendant(
       formulaire.querySelector("button[type=submit]"),
       "Recherche…",
-      () => api("/api/prospection", { methode: "POST", corps }),
+      async () => {
+        const { travail } = await api("/api/prospection", { methode: "POST", corps });
+        return suit(travail, (etat) => afficheAvancement(progression, etat, "Recherche en cours"));
+      },
     );
     dernierBilan = resultat;
     notifie(
@@ -636,18 +708,23 @@ function dessineBilan() {
       <ul style="margin:4px 0 0 18px">${raisons}</ul></div>` : ""}`;
 }
 
-function dessineTableau() {
-  const cible = vue.querySelector("#tableau");
-  if (!cible) return;
-
+/** Les prospects effectivement listés, après les filtres d'affichage. */
+function prospectsAffiches() {
   const recherche = tri.texte.trim().toLowerCase();
-  const retenus = prospects.filter((p) => {
+  return prospects.filter((p) => {
     if (tri.statut && p.statut !== tri.statut) return false;
     if (tri.priorite && p.priorite !== tri.priorite) return false;
     if (!recherche) return true;
     return [p.nom, p.enseigne, p.ville, p.domaine, p.site_web, p.code_postal, p.email_contact, p.dirigeant]
       .filter(Boolean).join(" ").toLowerCase().includes(recherche);
   });
+}
+
+function dessineTableau() {
+  const cible = vue.querySelector("#tableau");
+  if (!cible) return;
+
+  const retenus = prospectsAffiches();
 
   vue.querySelector("#compte").textContent = `${retenus.length} / ${prospects.length}`;
 
@@ -905,6 +982,25 @@ async function vueProspect(id) {
       <div class="colonne-aside">
         ${blocCoordonnees(prospect)}
         <div class="carte">
+          <h2>Corriger le site</h2>
+          <p class="aide">La détection se trompe quand le nom de domaine n'a rien à voir avec la
+            raison sociale. Corrigez ici : le score d'opportunité est recalculé.</p>
+          <div>
+            <label for="site_web">Adresse du site</label>
+            <input type="text" id="site_web" placeholder="aucun site connu" value="${esc(prospect.site_web ?? "")}">
+          </div>
+          <div style="margin-top:12px">
+            <label for="site_statut">État constaté</label>
+            <select id="site_statut">
+              ${(config.statuts_site ?? []).map((valeur) => `<option value="${esc(valeur)}" ${valeur === prospect.site_statut ? "selected" : ""}>${esc(LIBELLES_SITE[valeur] ?? valeur)}</option>`).join("")}
+            </select>
+          </div>
+          <div class="ligne ligne-fin" style="margin-top:12px">
+            <button id="enregistrer-site">Enregistrer le site</button>
+          </div>
+        </div>
+
+        <div class="carte">
           <h2>Suivi commercial</h2>
           <div>
             <label for="statut">Statut</label>
@@ -936,6 +1032,23 @@ async function vueProspect(id) {
           corps: { statut: vue.querySelector("#statut").value, notes: vue.querySelector("#notes").value },
         }));
       notifie("Suivi enregistré", "succes");
+    } catch (erreur) {
+      notifie(erreur.message, "erreur");
+    }
+  });
+
+  vue.querySelector("#enregistrer-site").addEventListener("click", async (evenement) => {
+    try {
+      await pendant(evenement.currentTarget, "Enregistrement…", () =>
+        api(`/api/prospects/${encodeURIComponent(prospect.id)}`, {
+          methode: "PATCH",
+          corps: {
+            site_web: vue.querySelector("#site_web").value,
+            site_statut: vue.querySelector("#site_statut").value,
+          },
+        }));
+      notifie("Site corrigé — relancez l'audit pour le mesurer", "succes");
+      await vueProspect(prospect.id);
     } catch (erreur) {
       notifie(erreur.message, "erreur");
     }

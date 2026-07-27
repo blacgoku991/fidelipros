@@ -47,9 +47,9 @@ donc pas être exposé sur le réseau.
 
 | Écran | À quoi ça sert |
 |---|---|
-| **Prospects** | Rechercher des entreprises (secteur, département, dates de création, effectif, CA), liste classée par opportunité, statut commercial, export CSV de ce qui est affiché |
+| **Prospects** | Rechercher des entreprises (secteur, département, dates de création, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
 | **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
-| **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, devis, email HTML prêt à envoyer, SMS, script d'appel, rapport client imprimable |
+| **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, devis, email HTML prêt à envoyer, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
 | **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails |
 
 ## Comment un prospect est trouvé
@@ -65,7 +65,9 @@ puis HTTP, et retenus seulement si la page répond, n'est pas une page parking, 
 l'entreprise.
 
 > Conséquence à connaître : une entreprise dont le domaine n'a aucun rapport avec sa raison
-> sociale sera classée « aucun site » à tort. Le statut se corrige à la main depuis la fiche.
+> sociale sera classée « aucun site » à tort. Le bloc **Corriger le site** de la fiche permet
+> de saisir la bonne adresse et l'état constaté ; le score d'opportunité est recalculé, et un
+> nouvel audit part sur la bonne adresse.
 
 ### Les coordonnées et la fiche Google
 
@@ -109,6 +111,20 @@ respecte pas est écarté, et le bilan sous le tableau dit combien et pourquoi
 Le cas à connaître : l'API ne connaît le **chiffre d'affaires** que des entreprises qui
 déposent leurs comptes. Filtrer sur un CA minimum écarte donc toutes les autres — l'interface
 le rappelle sous le champ, et le bilan le compte à part.
+
+### Les traitements longs sont suivis pas à pas
+
+Une recherche sur dix pages, ou l'audit de dix sites à la suite, prend des minutes. Ces
+traitements tournent en tâche de fond et l'interface affiche l'étape en cours
+(« page 3 — 412 entreprises correspondent aux critères », « analyse des sites 24 / 50 »,
+« audit de Garage Dupont — 4 / 10 ») plutôt qu'une page figée.
+
+Le bouton **Auditer 10 prospects** porte sur ce qui est affiché, filtres compris, et commence
+par ceux qui n'ont jamais été audités. Un audit dure 15 à 45 s : comptez quelques minutes pour
+dix, et laissez l'onglet ouvert.
+
+Une recherche sans aucun critère de localisation ou d'activité est refusée avec un message
+clair : l'API la rejetterait de toute façon.
 
 ## Comment un site est audité
 
