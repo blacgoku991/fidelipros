@@ -8,6 +8,40 @@ export interface OptionsHttp {
   timeoutMs?: number;
   maxOctets?: number;
   methode?: "GET" | "HEAD";
+  /** Appelé quand la requête échoue, avec la cause (code Node ou message). */
+  onEchec?: (cause: CauseEchec) => void;
+}
+
+/** Pourquoi une requête n'a pas abouti : ce qui distingue un site cassé d'un site injoignable. */
+export interface CauseEchec {
+  code: string;
+  message: string;
+  /** Erreur de certificat TLS : le navigateur d'un visiteur afficherait un avertissement. */
+  certificat: boolean;
+}
+
+/**
+ * Codes TLS renvoyés par Node quand la poignée de main échoue. Un certificat expiré n'est pas
+ * un site injoignable : c'est un site que les visiteurs voient barré d'un avertissement rouge.
+ */
+const CODES_CERTIFICAT: Record<string, string> = {
+  CERT_HAS_EXPIRED: "certificat expiré",
+  ERR_TLS_CERT_ALTNAME_INVALID: "certificat délivré pour un autre domaine",
+  UNABLE_TO_VERIFY_LEAF_SIGNATURE: "autorité de certification inconnue",
+  DEPTH_ZERO_SELF_SIGNED_CERT: "certificat auto-signé",
+  SELF_SIGNED_CERT_IN_CHAIN: "certificat auto-signé dans la chaîne",
+  CERT_NOT_YET_VALID: "certificat pas encore valide",
+  ERR_SSL_WRONG_VERSION_NUMBER: "réponse non chiffrée sur le port HTTPS",
+  ERR_TLS_HANDSHAKE_TIMEOUT: "poignée de main TLS interrompue",
+};
+
+/** Traduit une erreur de fetch en cause exploitable par les règles. */
+export function causeEchec(erreur: unknown): CauseEchec {
+  const cause = (erreur as { cause?: { code?: string; message?: string } } | undefined)?.cause;
+  const code = String(cause?.code ?? (erreur as { code?: string } | undefined)?.code ?? "");
+  const message = cause?.message ?? (erreur instanceof Error ? erreur.message : String(erreur));
+  const libelle = CODES_CERTIFICAT[code];
+  return { code: code || "ECHEC", message: libelle ?? message, certificat: Boolean(libelle) };
 }
 
 export const USER_AGENT =
@@ -111,7 +145,8 @@ export async function recupereHttp(
       dureeMs: Date.now() - debut,
       octets,
     };
-  } catch {
+  } catch (erreur) {
+    options.onEchec?.(causeEchec(erreur));
     return null;
   } finally {
     clearTimeout(minuteur);

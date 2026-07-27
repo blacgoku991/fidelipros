@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 188 tests (moteur + stockage)
+npm test                   # 193 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -89,6 +89,11 @@ quelle page** les coordonnées ont été lues, pour pouvoir le justifier.
 
 Le `robots.txt` du site est respecté : un chemin qu'il interdit n'est ni sondé, ni lu.
 
+La **plateforme** est également identifiée quand elle se déclare (Wix, WordPress, Shopify,
+Squarespace, Webflow, PrestaShop…). Ce n'est pas un défaut, c'est un angle de discussion : un
+site fait sur un éditeur en ligne ne s'exporte pas, un WordPress demande un suivi. Elle
+apparaît sur la fiche et dans le script d'appel.
+
 ### Le score
 
 `score = 55 % × opportunité site + 45 % × capacité budgétaire`, de 0 à 100.
@@ -132,7 +137,7 @@ clair : l'API la rejetterait de toute façon.
 |---|---|---|
 | **Référencement** | 30 % | title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
 | **Design & mobile** | 25 % | viewport, débordement horizontal, taille des textes, cibles tactiles, contrastes, formats d'images, nombre de polices, technologies datées, favicon, contact cliquable, copyright ancien, LCP, CLS, note d'accessibilité Lighthouse |
-| **Sécurité** | 25 % | HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
+| **Sécurité** | 25 % | **certificat HTTPS invalide** (expiré, mauvais domaine, auto-signé), HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
 | **Performance** | 20 % | disponibilité, code HTTP, note de performance, poids et nombre de requêtes, compression, cache, HTTP/3, temps de réponse, erreurs console |
 
 Note d'un volet = `100 − somme des poids des défauts constatés`. L'urgence découle du nombre
@@ -150,6 +155,12 @@ technique 100/100 » ne veut rien dire, et le dire est plus utile que de le cach
 
 La page d'accueil bénéficie d'une **seconde tentative** avant tout verdict : un incident réseau
 isolé ne doit pas transformer un site vivant en « analyse impossible ».
+
+Un **certificat HTTPS invalide** n'est pas non plus un site injoignable : c'est un site que
+tout visiteur voit barré d'un avertissement plein écran. Le motif exact est nommé (expiré,
+délivré pour un autre domaine, auto-signé), le contenu est lu en HTTP quand c'est possible, et
+le défaut part en tête du devis. Sans cette distinction, ces sites ressortaient « non
+analysables » et sortaient du fichier — alors que ce sont les meilleurs prospects.
 
 ### Audit non concluant
 
@@ -280,7 +291,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-188 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+193 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

@@ -375,6 +375,7 @@ function blocAudit(audit) {
     <div class="entre-deux">
       <h2>Audit du site</h2>
       <div class="ligne">
+        ${audit.technologie ? `<span class="etiquette et-accent" title="Plateforme repérée dans le code de la page">${esc(audit.technologie)}</span>` : ""}
         <span class="etiquette ${classeAcces}">${esc(libelleAcces)}</span>
         <span class="etiquette ${classeUrgence}">${esc(libelleUrgence)}</span>
       </div>

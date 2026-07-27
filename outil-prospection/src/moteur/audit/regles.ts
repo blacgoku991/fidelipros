@@ -402,6 +402,13 @@ export const REGLES: Record<string, Regle> = {
     effort: "faible", prestations: ["seo_technique"],
   },
 
+  sec_certificat_invalide: {
+    pilier: "securite", severite: "critique", poids: 35,
+    titre: "Certificat de sécurité invalide",
+    impact: "Chrome et Safari affichent un avertissement plein écran avant d'ouvrir le site : la quasi-totalité des visiteurs rebrousse chemin.",
+    effort: "faible", prestations: ["mise_https", "maintenance"],
+  },
+
   sec_traceurs_sans_consentement: {
     pilier: "securite", severite: "majeur", poids: 12,
     titre: "Traceurs déposés sans consentement",

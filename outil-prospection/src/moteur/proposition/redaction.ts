@@ -178,7 +178,12 @@ export function scriptAppel(ctx: ContexteProposition): string {
   const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
   const lignes: string[] = [];
 
-  lignes.push(`SCRIPT D'APPEL — ${nom}${ctx.prospect.ville ? ` (${ctx.prospect.ville})` : ""}`);
+  lignes.push(`SCRIPT D'APPEL — ${nom}${ctx.prospect.ville ? ` (${villeLisible(ctx.prospect.ville)})` : ""}`);
+  // La plateforme n'est pas un défaut, mais elle oriente l'échange : un site fait sur un
+  // éditeur en ligne ne s'exporte pas, un WordPress demande un suivi.
+  if (ctx.audit?.technologie) {
+    lignes.push(`Plateforme repérée : ${ctx.audit.technologie}. À garder en tête pour la discussion technique.`);
+  }
   lignes.push("");
   lignes.push("1. ACCROCHE (15 secondes)");
   lignes.push(

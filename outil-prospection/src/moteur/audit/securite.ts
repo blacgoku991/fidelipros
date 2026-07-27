@@ -26,6 +26,11 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   const findings: Finding[] = [];
   const accueil = ctx.accueil;
 
+  // Constat indépendant du contenu : la poignée de main TLS a échoué pour un motif précis.
+  if (ctx.erreurCertificat) {
+    findings.push(constate("sec_certificat_invalide", `HTTPS refusé : ${ctx.erreurCertificat}`));
+  }
+
   // ── Protection email : vérifiable même si le site est en panne ─────────────
   // Un enregistrement non vérifié (résolveur injoignable) ne produit aucun constat.
   if (ctx.dns) {

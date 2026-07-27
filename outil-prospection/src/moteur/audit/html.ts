@@ -166,6 +166,38 @@ export function generateur(html: string): string | null {
   return meta(html, "generator");
 }
 
+/**
+ * Technologie derrière le site, quand elle se déclare franchement (balise generator, CDN,
+ * en-têtes propres à la plateforme). Ce n'est pas un défaut : c'est un argument de vente
+ * (« un site Wix ne s'exporte pas », « votre WordPress demande des mises à jour »).
+ */
+const TECHNOLOGIES: Array<{ nom: string; html?: RegExp; entete?: string }> = [
+  { nom: "Wix", html: /wixstatic\.com|static\.parastorage\.com|X-Wix-/i, entete: "x-wix-request-id" },
+  { nom: "Squarespace", html: /static1\.squarespace\.com|squarespace\.com\/universal/i },
+  { nom: "Shopify", html: /cdn\.shopify\.com|shopify\.theme/i, entete: "x-shopid" },
+  { nom: "Webflow", html: /webflow\.(js|css)|assets\.website-files\.com|uploads-ssl\.webflow\.com/i },
+  { nom: "Jimdo", html: /jimdo(-storage|cdn)?\.com|assets\.jimstatic\.com/i },
+  { nom: "IONOS MyWebsite", html: /mywebsite-editor|1and1\.com\/mywebsite/i },
+  { nom: "Weebly", html: /weebly\.com\/(uploads|editor)|weeblycloud/i },
+  { nom: "Google Sites", html: /sites\.google\.com|gstatic\.com\/atari/i },
+  { nom: "WordPress", html: /wp-content\/|wp-includes\/|generator" content="WordPress/i },
+  { nom: "PrestaShop", html: /prestashop|\/modules\/ps_/i },
+  { nom: "Joomla", html: /\/media\/jui\/|joomla/i },
+  { nom: "Drupal", html: /\/sites\/default\/files\/|drupal/i },
+  { nom: "Odoo", html: /odoo|\/web\/assets\//i },
+  { nom: "SPIP", html: /spip\.php|generator" content="SPIP/i },
+  { nom: "Shopware", html: /shopware/i },
+  { nom: "Magento", html: /mage\/|magento/i },
+];
+
+export function technologie(html: string, entetes: Record<string, string> = {}): string | null {
+  for (const { nom, html: motifHtml, entete } of TECHNOLOGIES) {
+    if (entete && entetes[entete]) return nom;
+    if (motifHtml?.test(html)) return nom;
+  }
+  return null;
+}
+
 /** Familles de polices distinctes déclarées dans le HTML (Google Fonts, @font-face, font-family). */
 export function comptePolices(html: string): number {
   const familles = new Set<string>();

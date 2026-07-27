@@ -3,6 +3,7 @@
 
 import { collecte, normaliseUrl, type OptionsCollecte } from "./collecte.ts";
 import { contactsVides } from "./contacts.ts";
+import { technologie } from "./html.ts";
 import { evalueDesign } from "./design.ts";
 import { evalueSecurite } from "./securite.ts";
 import { evalueSeo } from "./seo.ts";
@@ -25,7 +26,7 @@ export {
 export {
   constate, LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, REGLES, reglesDuPilier,
 } from "./regles.ts";
-export { echappeHtml } from "./html.ts";
+export { echappeHtml, technologie } from "./html.ts";
 export {
   agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
   formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
@@ -73,6 +74,7 @@ export async function auditeSite(
       lighthouse: null,
       fichiersExposes: [],
       captureDataUri: null,
+      technologie: null,
       contacts: contactsVides(),
       emailContact: null,
       telephone: null,
@@ -102,6 +104,7 @@ export async function auditeSite(
     lighthouse: ctx.lighthouse,
     fichiersExposes: ctx.fichiersExposes ?? [],
     captureDataUri: ctx.lighthouse?.captureDataUri ?? null,
+    technologie: ctx.accueil ? technologie(ctx.accueil.html, ctx.accueil.entetes) : null,
     contacts: ctx.contacts,
     emailContact: ctx.contacts.email,
     telephone: ctx.contacts.telephone,

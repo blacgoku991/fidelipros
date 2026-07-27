@@ -53,6 +53,7 @@ function audit(findings: Finding[], surcharge: Partial<AuditSiteComplet> = {}): 
     lighthouse: null,
     fichiersExposes: [],
     captureDataUri: null,
+    technologie: null,
     contacts: {
       ...contactsVides(),
       emails: ["contact@garagemartin.fr"],

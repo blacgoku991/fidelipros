@@ -6,7 +6,7 @@ import {
   collecteRobots, collecteSitemap, estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl,
   resoutDomaine, sondeFichiers, verifieDuplicationWww,
 } from "./collecte.ts";
-import { domaine, nomDepuisDomaine } from "./http.ts";
+import { causeEchec, domaine, nomDepuisDomaine } from "./http.ts";
 import {
   agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
   formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
@@ -14,7 +14,7 @@ import {
 import { aBandeauConsentement, traceurs } from "./html.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
-  niveauxTitres, ressourcesNonSecurisees, texteVisible, titrePage, typesJsonLd,
+  niveauxTitres, ressourcesNonSecurisees, technologie, texteVisible, titrePage, typesJsonLd,
 } from "./html.ts";
 import { REGLES, constate, reglesDuPilier } from "./regles.ts";
 import {
@@ -107,6 +107,7 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     resolutionDns: true,
     redirigeVersHttps: true,
     wwwDuplique: null,
+    erreurCertificat: null,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
@@ -1148,5 +1149,85 @@ describe("seconde chance sur la page d'accueil", () => {
     const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
     expect(audit.concluant).toBe(false);
     expect(audit.findings).toEqual([]);
+  });
+});
+
+describe("certificat HTTPS invalide", () => {
+  /** Erreur de fetch telle que Node la remonte quand la poignée de main TLS échoue. */
+  function echecTls(code: string) {
+    const erreur = new TypeError("fetch failed");
+    (erreur as unknown as { cause: { code: string; message: string } }).cause =
+      { code, message: `certificate error: ${code}` };
+    return erreur;
+  }
+
+  it("traduit les codes TLS en motif lisible", () => {
+    expect(causeEchec(echecTls("CERT_HAS_EXPIRED"))).toEqual({
+      code: "CERT_HAS_EXPIRED", message: "certificat expiré", certificat: true,
+    });
+    expect(causeEchec(echecTls("ERR_TLS_CERT_ALTNAME_INVALID")).message)
+      .toBe("certificat délivré pour un autre domaine");
+    // Une panne réseau ordinaire n'est pas un problème de certificat.
+    expect(causeEchec(echecTls("ECONNREFUSED")).certificat).toBe(false);
+  });
+
+  it("audite le contenu en HTTP et constate le certificat cassé", async () => {
+    const appels: string[] = [];
+    const impl = (async (url: string) => {
+      appels.push(String(url));
+      if (String(url).startsWith("https://")) throw echecTls("CERT_HAS_EXPIRED");
+      return {
+        ok: true, status: 200, url: String(url),
+        headers: { get: (nom: string) => (nom.toLowerCase() === "content-type" ? "text/html" : null) },
+        text: async () => `<html><head><title>Garage Martin, mécanique à Bordeaux</title></head>
+          <body><h1>Garage Martin</h1>${"Entretien et réparation. ".repeat(30)}</body></html>`,
+        json: async () => ({}), body: null,
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    // Le site est analysé (contenu lu en HTTP) et le défaut est nommé précisément.
+    expect(audit.concluant).toBe(true);
+    const certificat = audit.findings.find((f) => f.regle === "sec_certificat_invalide");
+    expect(certificat?.constat).toContain("certificat expiré");
+    expect(certificat?.severite).toBe("critique");
+    // Une seule tentative HTTPS : inutile de réessayer, le certificat ne va pas changer.
+    expect(appels.filter((a) => a.startsWith("https://garage-martin.fr/")).length).toBe(1);
+  });
+
+  it("reste concluant quand même le HTTP ne répond pas, au lieu de dire « analyse impossible »", async () => {
+    const impl = (async (url: string) => { throw echecTls(String(url).startsWith("https") ? "CERT_HAS_EXPIRED" : "ECONNREFUSED"); }) as unknown as typeof fetch;
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    expect(audit.accessibilite).toBe("erreur_serveur");
+    expect(audit.concluant).toBe(true);
+    expect(audit.findings.map((f) => f.regle)).toContain("sec_certificat_invalide");
+    expect(audit.erreurs.join(" ")).toContain("certificat expiré");
+    // Les notes sont annoncées comme partielles : rien du contenu n'a pu être mesuré.
+    expect(audit.scores.partiels).toEqual(["seo", "design", "securite", "technique"]);
+  });
+});
+
+describe("plateforme du site", () => {
+  it("reconnaît les plateformes qui se déclarent", () => {
+    expect(technologie(`<img src="https://static.wixstatic.com/media/x.jpg">`)).toBe("Wix");
+    expect(technologie(`<link href="/wp-content/themes/x/style.css">`)).toBe("WordPress");
+    expect(technologie(`<script src="https://cdn.shopify.com/s/files/x.js">`)).toBe("Shopify");
+    expect(technologie("<html><body>site sur mesure</body></html>", {})).toBeNull();
+    // Un en-tête propre à la plateforme suffit, même sans indice dans le HTML.
+    expect(technologie("<html></html>", { "x-shopid": "12345" })).toBe("Shopify");
+  });
+
+  it("porte la plateforme dans le résultat de l'audit et dans le script d'appel", async () => {
+    const impl = fetchSimule({
+      "https://boutique.fr/": {
+        corps: `<html><head><title>Boutique en ligne de créateurs à Bordeaux</title>
+          <meta name="generator" content="WordPress 6.5"></head>
+          <body><h1>Boutique</h1><link href="/wp-content/x.css">${"Vente de créations. ".repeat(30)}</body></html>`,
+      },
+    });
+    const audit = await auditeSite("https://boutique.fr/", { fetchImpl: impl, profondeur: "rapide" });
+    expect(audit.technologie).toBe("WordPress");
   });
 });

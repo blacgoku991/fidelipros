@@ -40,7 +40,7 @@ function auditFictif(surcharge: Partial<AuditSiteComplet> = {}): AuditSiteComple
     profondeur: "complet", accessibilite: "ok", concluant: true,
     scores: { global: 42, seo: 30, design: 40, securite: 50, technique: 60, urgence: "elevee" },
     findings: [], lighthouse: null, fichiersExposes: [],
-    captureDataUri: null, contacts: contactsVides(),
+    captureDataUri: null, technologie: null, contacts: contactsVides(),
     emailContact: null, telephone: null, erreurs: [], dureeMs: 1200,
     ...surcharge,
   };

@@ -114,6 +114,8 @@ export interface ContexteAudit {
   redirigeVersHttps: boolean | null;
   /** L'adresse avec et sans « www » servent la même page sans redirection. null = non tranché. */
   wwwDuplique: boolean | null;
+  /** Motif d'échec TLS (« certificat expiré »…), null si la connexion HTTPS a abouti. */
+  erreurCertificat: string | null;
   robots: { present: boolean; contenu: string } | null;
   sitemap: { present: boolean; urls: number } | null;
   pageInterne: ReponseHttp | null;
@@ -144,6 +146,8 @@ export interface AuditSiteComplet {
   lighthouse: ResultatLighthouse | null;
   fichiersExposes: FichierExpose[];
   captureDataUri: string | null;
+  /** Plateforme identifiée (Wix, WordPress, Shopify…) : un argument, pas un défaut. */
+  technologie: string | null;
   /** Coordonnées publiées sur le site : c'est avec ça qu'on démarche. */
   contacts: Contacts;
   /** Raccourcis vers le meilleur contact trouvé (compatibilité et affichage). */

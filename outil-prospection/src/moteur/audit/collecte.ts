@@ -8,7 +8,7 @@ import {
   agregeContacts, CHEMINS_CONTACT, contactsVides, lienspagesContact,
 } from "./contacts.ts";
 import { liens } from "./html.ts";
-import { domaine, origine, pause, recupereHttp, USER_AGENT } from "./http.ts";
+import { domaine, origine, pause, recupereHttp, USER_AGENT, type CauseEchec } from "./http.ts";
 import type {
   ContexteAudit,
   DonneesDns,
@@ -548,17 +548,31 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   const erreurs: string[] = [];
   const anneeCourante = options.anneeCourante ?? new Date().getFullYear();
 
+  // Renseignée par le callback d'échec ci-dessous (TypeScript ne suit pas l'affectation
+  // faite dans une closure : on passe par un objet).
+  const echec: { cause: CauseEchec | null } = { cause: null };
   const optionsAccueil = {
     fetchImpl: options.fetchImpl,
     timeoutMs: options.timeoutMs ?? 10_000,
     maxOctets: options.maxOctets ?? 500_000,
+    onEchec: (cause: CauseEchec) => { echec.cause = cause; },
   };
   let accueil = await recupereHttp(url, optionsAccueil);
   // Deuxième tentative : un incident réseau isolé rendrait l'audit « non concluant » à tort,
   // et le prospect ressortirait comme non analysable alors que son site fonctionne.
-  if (!accueil && !expire(options.echeance)) {
+  if (!accueil && !expire(options.echeance) && !echec.cause?.certificat) {
     await pause(500);
     accueil = await recupereHttp(url, { ...optionsAccueil, timeoutMs: (options.timeoutMs ?? 10_000) + 5000 });
+  }
+
+  // Certificat invalide : le site existe, mais tout visiteur voit un avertissement de sécurité
+  // plein écran. On le constate, et on va lire le contenu en HTTP pour auditer quand même.
+  const echecCertificat = echec.cause?.certificat ? echec.cause.message : null;
+  if (!accueil && echecCertificat && url.startsWith("https://")) {
+    accueil = await recupereHttp(url.replace(/^https:/, "http:"), {
+      ...optionsAccueil,
+      onEchec: undefined,
+    });
   }
 
   // Une redirection peut mener ailleurs que l'hôte demandé : on refuse d'auditer (et donc
@@ -580,6 +594,7 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     pagesContact: [],
     contacts: contactsVides(),
     wwwDuplique: null,
+    erreurCertificat: echecCertificat,
     page404: null,
     dns: null,
     lighthouse: null,
@@ -602,6 +617,13 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
 
   if (!accueil) {
     contexte.resolutionDns = await resoutDomaine(url, options).catch(() => null);
+    // Un certificat invalide est un défaut mesuré, pas une impossibilité d'analyser : le
+    // serveur a répondu, c'est sa configuration TLS qui refuse la connexion.
+    if (echecCertificat) {
+      contexte.accessibilite = "erreur_serveur";
+      erreurs.push(`Page non lue : ${echecCertificat}`);
+      return contexte;
+    }
     if (contexte.resolutionDns === false) {
       contexte.accessibilite = "injoignable";
       erreurs.push("Le domaine ne résout pas : site réellement hors ligne");
