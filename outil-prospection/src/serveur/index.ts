@@ -16,7 +16,8 @@ import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
 import {
-  ageEnMois, appliqueAudit, appliqueFiltres, categorieEcart, dateIlYaNMois, filtreSelonCible, filtresValides,
+  ageEnMois, appliqueAudit, appliqueFiltres, categorieEcart, correspondContact, dateIlYaNMois,
+  filtreSelonCible, filtresValides,
   respecteFiltres, scoreProspect, versCsv,
 } from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
@@ -767,13 +768,17 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
 
   if (chemin === "/api/export.csv" && methode === "GET") {
+    // Le CSV doit correspondre à ce que l'écran affiche, filtre de contact compris : un
+    // export qui contient des lignes sans téléphone n'est pas une liste d'appels.
     // On exporte ce qui est affiché : les filtres de la liste sont passés en paramètres.
     const filtreStatut = texte(url.searchParams.get("statut"), 20);
     const filtrePriorite = texte(url.searchParams.get("priorite"), 10);
+    const filtreContact = texte(url.searchParams.get("contact"), 12);
     const recherche = (texte(url.searchParams.get("q"), 80) ?? "").toLowerCase();
     const selection = stockage.prospects().filter((prospect) => {
       if (filtreStatut && prospect.statut !== filtreStatut) return false;
       if (filtrePriorite && prospect.priorite !== filtrePriorite) return false;
+      if (filtreContact && !correspondContact(prospect, filtreContact)) return false;
       if (!recherche) return true;
       return [prospect.nom, prospect.enseigne, prospect.ville, prospect.code_postal,
         prospect.email_contact, prospect.site_web, prospect.dirigeant]

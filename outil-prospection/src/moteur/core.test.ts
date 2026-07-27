@@ -24,6 +24,7 @@ import {
   versCsv,
 } from "./core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES } from "./naf.ts";
+import { correspondContact } from "./core.ts";
 import { rechercheEntreprises } from "./sirene.ts";
 import { detecteEtAuditeSite } from "./website.ts";
 import type { EntrepriseApi, Prospect } from "./types.ts";
@@ -422,6 +423,35 @@ function reponseHtml(url: string, html: string, status = 200) {
     body: null,
   } as unknown as Response;
 }
+
+describe("correspondContact", () => {
+  const avecTel = { telephone: "05 56 12 34 56", email_contact: null };
+  const avecMail = { telephone: null, email_contact: "contact@x.fr" };
+  const muet = { telephone: null, email_contact: null };
+
+  it("sépare la liste exploitable de celle qui demande encore un audit", () => {
+    expect(correspondContact(avecTel, "joignable")).toBe(true);
+    expect(correspondContact(avecMail, "joignable")).toBe(true);
+    expect(correspondContact(muet, "joignable")).toBe(false);
+
+    expect(correspondContact(avecTel, "telephone")).toBe(true);
+    expect(correspondContact(avecMail, "telephone")).toBe(false);
+    expect(correspondContact(avecMail, "email")).toBe(true);
+
+    // « Sans coordonnée » sert à repérer ce qu'il reste à auditer.
+    expect(correspondContact(muet, "aucun")).toBe(true);
+    expect(correspondContact(avecTel, "aucun")).toBe(false);
+  });
+
+  it("ne filtre rien sur un critère inconnu plutôt que de vider l'écran", () => {
+    expect(correspondContact(muet, "")).toBe(true);
+    expect(correspondContact(muet, "n_importe_quoi")).toBe(true);
+  });
+
+  it("traite une chaîne vide comme une absence de coordonnée", () => {
+    expect(correspondContact({ telephone: "", email_contact: "" }, "joignable")).toBe(false);
+  });
+});
 
 describe("rechercheEntreprises", () => {
   it("pagine, dédoublonne et remonte le total disponible", async () => {

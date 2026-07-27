@@ -67,6 +67,29 @@ export function construireParamsRecherche(
   return params;
 }
 
+/** Moyens de contact servant à filtrer une liste de prospects. */
+export type FiltreContact = "joignable" | "telephone" | "email" | "aucun";
+
+/**
+ * Un prospect sans coordonnée ne se démarche pas : ce filtre sépare la liste exploitable
+ * (à appeler ou à écrire aujourd'hui) de celle qui demande encore un audit.
+ * Un critère inconnu ne filtre rien, plutôt que de vider l'écran sans explication.
+ */
+export function correspondContact(
+  prospect: { telephone?: string | null; email_contact?: string | null },
+  critere: string,
+): boolean {
+  const tel = Boolean(prospect.telephone);
+  const mail = Boolean(prospect.email_contact);
+  switch (critere) {
+    case "telephone": return tel;
+    case "email": return mail;
+    case "joignable": return tel || mail;
+    case "aucun": return !tel && !mail;
+    default: return true;
+  }
+}
+
 /** Vérifie qu'au moins un critère discriminant est fourni (l'API refuse une requête vide). */
 export function filtresValides(filters: ProspectionFilters): boolean {
   return Boolean(

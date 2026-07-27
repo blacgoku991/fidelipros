@@ -11,6 +11,7 @@
     "start": "node src/serveur/index.ts",
     "prospect": "node src/cli/prospect.ts",
     "audit": "node src/cli/audit.ts",
+    "reset": "node src/cli/reset.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "verif": "tsc --noEmit"

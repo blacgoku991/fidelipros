@@ -36,7 +36,8 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 255 tests (moteur + stockage)
+npm test                   # 260 tests (moteur + stockage)
+npm run reset              # vide la base (prospects, audits, documents)
 npm run verif              # vérification des types
 ```
 
@@ -47,7 +48,7 @@ donc pas être exposé sur le réseau.
 
 | Écran | À quoi ça sert |
 |---|---|
-| **Prospects** | Rechercher des entreprises (secteur, département, **ancienneté à partir d'1 mois**, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
+| **Prospects** | Filtrer la liste par **moyen de contact** (joignables, avec téléphone, avec email, sans coordonnée) — l'export CSV suit le même filtre. Rechercher des entreprises (secteur, département, **ancienneté à partir d'1 mois**, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
 | **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
 | **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, **email d'approche HTML sans devis** (rapport en PDF joint), devis, email HTML de relance, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
 | **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails (raison sociale, **site web**, email, téléphone…) |
@@ -524,7 +525,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-255 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+260 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

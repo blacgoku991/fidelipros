@@ -13,7 +13,7 @@ let config = null;
 /** Dernière liste chargée, réutilisée par les filtres d'affichage sans rappeler le serveur. */
 let prospects = [];
 /** Filtres d'affichage de la liste, conservés entre deux rendus. */
-const tri = { texte: "", statut: "", priorite: "" };
+const tri = { texte: "", statut: "", priorite: "", contact: "" };
 /** Nombre de lignes dessinées : au-delà, le navigateur passe des secondes à construire le DOM. */
 const PAS_AFFICHAGE = 100;
 let limiteAffichage = PAS_AFFICHAGE;
@@ -633,6 +633,11 @@ async function vueProspects() {
           <select id="filtre-priorite" class="compact" aria-label="Filtrer par priorité" style="width:auto"><option value="">Toutes priorités</option>
             ${["chaud", "tiede", "froid"].map((p) => `<option value="${p}" ${tri.priorite === p ? "selected" : ""}>${p}</option>`).join("")}
           </select>
+          <select id="filtre-contact" class="compact" aria-label="Filtrer par moyen de contact" style="width:auto">
+            ${[["", "Tous les contacts"], ["joignable", "Joignables (tél. ou email)"],
+               ["telephone", "Avec téléphone"], ["email", "Avec email"], ["aucun", "Sans coordonnée"]]
+              .map(([v, l]) => `<option value="${v}" ${tri.contact === v ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
           <button type="button" id="auditer-lot">Auditer 10 prospects</button>
           <button type="button" id="exporter">Exporter en CSV</button>
           <button type="button" id="vider-prospects" class="discret">Tout supprimer</button>
@@ -694,7 +699,7 @@ async function vueProspects() {
     notifie("Critère posé : créées il y a moins de 2 mois — lancez la recherche", "info");
   });
 
-  ["texte", "statut", "priorite"].forEach((clef) => {
+  ["texte", "statut", "priorite", "contact"].forEach((clef) => {
     const champ = vue.querySelector(`#filtre-${clef}`);
     champ.addEventListener("input", () => {
       tri[clef] = champ.value;
@@ -745,6 +750,7 @@ async function vueProspects() {
     if (tri.texte.trim()) parametres.set("q", tri.texte.trim());
     if (tri.statut) parametres.set("statut", tri.statut);
     if (tri.priorite) parametres.set("priorite", tri.priorite);
+    if (tri.contact) parametres.set("contact", tri.contact);
     location.href = `/api/export.csv${parametres.size ? `?${parametres}` : ""}`;
   });
 
@@ -972,12 +978,27 @@ function panneauPlusJeunes(bilan) {
   </div>`;
 }
 
+/**
+ * Miroir de `correspondContact` de src/moteur/core.ts : la liste affichée et le CSV exporté
+ * doivent trancher exactement pareil, sinon l'export ne correspond plus à l'écran.
+ */
+function correspondContact(prospect, critere) {
+  const tel = Boolean(prospect.telephone);
+  const mail = Boolean(prospect.email_contact);
+  if (critere === "telephone") return tel;
+  if (critere === "email") return mail;
+  if (critere === "joignable") return tel || mail;
+  if (critere === "aucun") return !tel && !mail;
+  return true;
+}
+
 /** Les prospects effectivement listés, après les filtres d'affichage. */
 function prospectsAffiches() {
   const recherche = tri.texte.trim().toLowerCase();
   return prospects.filter((p) => {
     if (tri.statut && p.statut !== tri.statut) return false;
     if (tri.priorite && p.priorite !== tri.priorite) return false;
+    if (tri.contact && !correspondContact(p, tri.contact)) return false;
     if (!recherche) return true;
     return [p.nom, p.enseigne, p.ville, p.domaine, p.site_web, p.code_postal, p.email_contact, p.dirigeant]
       .filter(Boolean).join(" ").toLowerCase().includes(recherche);
