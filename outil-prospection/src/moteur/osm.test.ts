@@ -46,7 +46,7 @@ describe("recherche OpenStreetMap", () => {
 
   it("refuse une recherche sans zone : Overpass n'est pas un moteur mondial", () => {
     expect(() => construitRequeteOsm({ categories: ["commerce"] }))
-      .toThrow(/commune ou un code postal/);
+      .toThrow(/commune, un code postal ou un département/);
   });
 
   it("neutralise les guillemets d'un nom de commune", () => {
@@ -57,6 +57,15 @@ describe("recherche OpenStreetMap", () => {
   it("accepte une recherche par code postal", () => {
     expect(construitRequeteOsm({ codePostal: "33000", categories: ["beaute"] }))
       .toContain('["postal_code"="33000"]');
+  });
+
+  it("couvre un département entier : niveau administratif 6, repéré par son numéro", () => {
+    const requete = construitRequeteOsm({ departement: "92", categories: ["btp"], limite: 3000 });
+    expect(requete).toContain('["admin_level"="6"]');
+    expect(requete).toContain('["ref"="92"]');
+    // Une zone aussi large demande plus de temps qu'une commune.
+    expect(requete).toContain("[timeout:180]");
+    expect(requete).toContain("out center tags 3000;");
   });
 
   it("transforme un élément Overpass en commerce exploitable", () => {

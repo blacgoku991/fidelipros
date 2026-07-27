@@ -629,8 +629,13 @@ async function vueProspects() {
               <input type="text" id="osm-cp" placeholder="33000" maxlength="5" value="${valeur("osmCodePostal")}">
             </div>
             <div>
+              <label for="osm-departement">…ou département entier</label>
+              <input type="text" id="osm-departement" placeholder="92" maxlength="3" value="${valeur("osmDepartement")}">
+              <p class="aide-mini">Tout le département d'un coup — aucun plafond de 60 comme chez Google.</p>
+            </div>
+            <div>
               <label for="osm-limite">Nombre maximum de commerces</label>
-              <input type="number" id="osm-limite" value="${valeur("osmLimite", "200")}" min="10" max="500" step="1">
+              <input type="number" id="osm-limite" value="${valeur("osmLimite", "200")}" min="10" max="3000" step="1">
             </div>
           </div>
 
@@ -895,19 +900,21 @@ async function lanceRechercheOsm(formulaire) {
   const corps = {
     ville: lire("osm-ville"),
     codePostal: lire("osm-cp"),
+    departement: lire("osm-departement"),
     limite: Number(lire("osm-limite")) || 200,
     categories: [...vue.querySelectorAll("#osm-categories input:checked")].map((c) => c.value),
     sansSiteSeulement: vue.querySelector("#osm-sans-site").checked,
   };
-  if (!corps.ville && !corps.codePostal) {
-    notifie("Précisez une commune ou un code postal", "erreur");
+  if (!corps.ville && !corps.codePostal && !corps.departement) {
+    notifie("Précisez une commune, un code postal ou un département", "erreur");
     return;
   }
   // On mémorise ces critères à côté de ceux de la recherche Sirene.
   const memoire = criteresSauvegardes();
   localStorage.setItem(CLE_CRITERES, JSON.stringify({
     ...memoire,
-    osmVille: corps.ville, osmCodePostal: corps.codePostal, osmLimite: corps.limite,
+    osmVille: corps.ville, osmCodePostal: corps.codePostal, osmDepartement: corps.departement,
+    osmLimite: corps.limite,
     osmCategories: corps.categories, osmSansSite: corps.sansSiteSeulement,
   }));
 

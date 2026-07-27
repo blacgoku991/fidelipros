@@ -563,9 +563,10 @@ async function lanceProspectionOsm(corps: Record<string, unknown>, travail: Trav
   const filtres: FiltresOsm = {
     ville: texte(corps.ville, 80) ?? undefined,
     codePostal: texte(corps.codePostal, 5) ?? undefined,
+    departement: texte(corps.departement, 3) ?? undefined,
     categories: Array.isArray(corps.categories) ? corps.categories.map(String) : undefined,
     sansSiteSeulement: corps.sansSiteSeulement === true,
-    limite: Math.min(Math.max(nombre(corps.limite) ?? 200, 1), 500),
+    limite: Math.min(Math.max(nombre(corps.limite) ?? 200, 1), 3000),
   };
   const debut = Date.now();
 
@@ -1091,8 +1092,8 @@ ${corpsHtml}
 
   if (methode === "POST" && chemin === "/api/prospection-osm") {
     const corps = await litCorps(req);
-    if (!texte(corps.ville, 80) && !texte(corps.codePostal, 5)) {
-      envoieJson(res, { error: "Précisez une commune ou un code postal." }, 400);
+    if (!texte(corps.ville, 80) && !texte(corps.codePostal, 5) && !texte(corps.departement, 3)) {
+      envoieJson(res, { error: "Précisez une commune, un code postal ou un département." }, 400);
       return;
     }
     const travail = creeTravail("prospection", "démarrage");

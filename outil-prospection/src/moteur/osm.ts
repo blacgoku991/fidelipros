@@ -31,6 +31,11 @@ export interface FiltresOsm {
   /** Commune recherchée (nom exact de la commune OpenStreetMap). */
   ville?: string;
   codePostal?: string;
+  /**
+   * Numéro de département français (« 92 », « 2A »). Couvre tout le département d'un coup,
+   * là où Google Places plafonne à 60 résultats par recherche.
+   */
+  departement?: string;
   /** Identifiants de `CATEGORIES_OSM`. */
   categories?: string[];
   /** Ne garder que les commerces sans étiquette `website`. */
@@ -79,7 +84,10 @@ function echappe(valeur: string): string {
  * balaierait la planète, ce qu'Overpass refuse (et à raison).
  */
 export function construitRequeteOsm(filtres: FiltresOsm): string {
-  const limite = Math.min(Math.max(filtres.limite ?? 200, 1), 500);
+  // 3 000 : un département entier tient largement dedans pour un métier donné, et Overpass
+  // reste dans son délai. Le plafond protège d'une requête « tous commerces de Paris » qui
+  // ferait tomber le serveur bénévole.
+  const limite = Math.min(Math.max(filtres.limite ?? 200, 1), 3000);
   const categories = (filtres.categories?.length ? filtres.categories : CATEGORIES_OSM.map((c) => c.id))
     .flatMap((id) => CATEGORIES_OSM.find((c) => c.id === id)?.filtres ?? []);
   if (!categories.length) throw new Error("Aucune catégorie reconnue pour la recherche OpenStreetMap");
@@ -89,12 +97,15 @@ export function construitRequeteOsm(filtres: FiltresOsm): string {
     zones.push(`area["boundary"="administrative"]["admin_level"~"8|9"]["name"="${echappe(filtres.ville)}"]->.zone;`);
   } else if (filtres.codePostal) {
     zones.push(`area["postal_code"="${echappe(filtres.codePostal)}"]->.zone;`);
+  } else if (filtres.departement) {
+    // En France, le département est le niveau administratif 6, identifié par son numéro.
+    zones.push(`area["boundary"="administrative"]["admin_level"="6"]["ref"="${echappe(filtres.departement)}"]->.zone;`);
   } else {
-    throw new Error("Précisez une commune ou un code postal pour chercher dans OpenStreetMap");
+    throw new Error("Précisez une commune, un code postal ou un département pour chercher dans OpenStreetMap");
   }
 
   const corps = categories.map((filtre) => `  nwr${filtre}["name"](area.zone);`).join("\n");
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:${filtres.departement ? 180 : 60}];
 ${zones.join("\n")}
 (
 ${corps}
