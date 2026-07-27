@@ -26,6 +26,7 @@ import { rechercheEntreprises } from "../moteur/sirene.ts";
 import {
   CATEGORIES_OSM, chercheCommerces, prospectDepuisCommerce, type FiltresOsm,
 } from "../moteur/osm.ts";
+import { chercheEtablissements, prospectDepuisEtablissement } from "../moteur/places.ts";
 import { auditeProspects, detecteEtAuditeSite } from "../moteur/website.ts";
 import type { CibleProspection, ProspectionFilters, StatutSite } from "../moteur/types.ts";
 import { auditeSite, normaliseUrl } from "../moteur/audit/index.ts";
@@ -482,6 +483,74 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
     retenus: retenus.length,
     nouveaux,
     tronque: recherche.tronque,
+    duree_ms: Date.now() - debut,
+  };
+}
+
+/**
+ * Recherche d'établissements via l'API Google Places, en texte libre (« plombier Asnières »).
+ *
+ * Google plafonne à 60 résultats par requête : une région entière ne rentre pas dans une seule
+ * recherche. On accepte donc plusieurs zones séparées par des virgules et on interroge chacune,
+ * ce qui est aussi la façon d'obtenir une couverture réelle plutôt qu'un échantillon.
+ */
+async function lanceProspectionPlaces(corps: Record<string, unknown>, travail: Travail) {
+  const cle = process.env.GOOGLE_MAPS_API_KEY?.trim();
+  if (!cle) {
+    throw new Error(
+      "Source Google Places indisponible : la variable GOOGLE_MAPS_API_KEY n'est pas définie. " +
+        "Créez une clé sur console.cloud.google.com (API « Places API (New) »), puis relancez " +
+        "avec cette clé. Sans elle, utilisez la recherche par commerces (OpenStreetMap).",
+    );
+  }
+  const metier = texte(corps.metier, 80);
+  if (!metier) throw new Error("Précisez le métier recherché (par exemple « plombier »).");
+
+  const zones = (texte(corps.zones, 400) ?? "")
+    .split(",").map((zone) => zone.trim()).filter(Boolean).slice(0, 20);
+  if (!zones.length) throw new Error("Précisez au moins une ville ou une zone.");
+
+  const sansSiteSeulement = corps.sansSiteSeulement === true;
+  const debut = Date.now();
+  const parPlaceId = new Map<string, ReturnType<typeof prospectDepuisEtablissement>>();
+  const fiches = new Map<string, string | null>();
+  travail.total = zones.length;
+
+  for (const [index, zone] of zones.entries()) {
+    travail.etape = `Google Places — « ${metier} » à ${zone} (${index + 1}/${zones.length})`;
+    const etablissements = await chercheEtablissements(`${metier} ${zone}`, {
+      cle,
+      sansSiteSeulement,
+      onPage: (page, cumul) => {
+        travail.etape = `${zone} — page ${page}, ${cumul} établissement(s)`;
+      },
+    });
+    for (const etablissement of etablissements) {
+      // Une même fiche peut ressortir sur deux zones limitrophes.
+      if (parPlaceId.has(etablissement.placeId)) continue;
+      parPlaceId.set(etablissement.placeId, prospectDepuisEtablissement(etablissement));
+      fiches.set(etablissement.placeId, etablissement.ficheGoogle);
+    }
+    travail.faits = index + 1;
+  }
+
+  const trouves = [...parPlaceId.entries()];
+  const { nouveaux } = stockage.enregistreCommerces(
+    trouves.map(([placeId, prospect]) => ({
+      prospect, osmId: `places/${placeId}`, ficheGoogle: fiches.get(placeId) ?? null,
+    })),
+    "google-places",
+  );
+
+  return {
+    trouves: trouves.length,
+    nouveaux,
+    zones: zones.length,
+    sans_site: trouves.filter(([, p]) => !p.site_web).length,
+    avec_telephone: trouves.filter(([, p]) => p.telephone).length,
+    // 60 résultats par zone est le plafond de Google : le dire évite de croire à une couverture
+    // exhaustive alors qu'une grande ville en compte davantage.
+    plafond_atteint: zones.some((_, i) => i >= 0) && trouves.length >= 60 * zones.length,
     duree_ms: Date.now() - debut,
   };
 }
@@ -1008,6 +1077,14 @@ ${corpsHtml}
     }
     const travail = creeTravail("prospection", "démarrage");
     lance(travail, (t) => lanceProspection(corps, t));
+    envoieJson(res, { travail: travail.id }, 202);
+    return;
+  }
+
+  if (methode === "POST" && chemin === "/api/prospection-places") {
+    const corps = await litCorps(req);
+    const travail = creeTravail("prospection", "démarrage");
+    lance(travail, (t) => lanceProspectionPlaces(corps, t));
     envoieJson(res, { travail: travail.id }, 202);
     return;
   }

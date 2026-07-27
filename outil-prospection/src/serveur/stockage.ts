@@ -23,7 +23,7 @@ export interface ProspectStocke extends Prospect {
   id: string;
   /** Domaine pour les prospects ajoutés à la main (dédoublonnage). */
   domaine: string | null;
-  source: "recherche-entreprises" | "manuel" | "openstreetmap";
+  source: "recherche-entreprises" | "manuel" | "openstreetmap" | "google-places";
   /** Identifiant OpenStreetMap (`node/123`), pour ne pas réimporter deux fois le même commerce. */
   osm_id: string | null;
   statut: StatutCommercial;
@@ -235,9 +235,17 @@ export class Stockage {
    * Dédoublonnage sur l'identifiant OSM d'abord (stable), puis sur le couple nom + code postal :
    * un commerce déjà présent via Sirene ne doit pas réapparaître en double.
    */
-  enregistreCommerces(commerces: Array<{ prospect: Prospect; osmId: string }>): { nouveaux: number; total: number } {
+  /**
+   * Enregistre des établissements venus d'une carte (OpenStreetMap ou Google Places).
+   * `osmId` sert de clé de dédoublonnage propre à la source ; `ficheGoogle` n'est renseignée
+   * que par Google Places, où le lien de fiche est certain (jamais une recherche devinée).
+   */
+  enregistreCommerces(
+    commerces: Array<{ prospect: Prospect; osmId: string; ficheGoogle?: string | null }>,
+    source: "openstreetmap" | "google-places" = "openstreetmap",
+  ): { nouveaux: number; total: number } {
     let nouveaux = 0;
-    for (const { prospect, osmId } of commerces) {
+    for (const { prospect, osmId, ficheGoogle } of commerces) {
       const existant = this.base.prospects.find((p) =>
         p.osm_id === osmId ||
         (p.nom.toLowerCase() === prospect.nom.toLowerCase() &&
@@ -251,10 +259,12 @@ export class Stockage {
         existant.latitude ??= prospect.latitude;
         existant.longitude ??= prospect.longitude;
         if (!existant.site_web && prospect.site_web) existant.site_web = prospect.site_web;
+        if (ficheGoogle) existant.google_maps_url ??= ficheGoogle;
         continue;
       }
-      const cree = this.neuf(prospect, "openstreetmap", null);
+      const cree = this.neuf(prospect, source, null);
       cree.osm_id = osmId;
+      if (ficheGoogle) cree.google_maps_url = ficheGoogle;
       this.base.prospects.push(cree);
       nouveaux++;
     }

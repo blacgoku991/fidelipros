@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 260 tests (moteur + stockage)
+npm test                   # 270 tests (moteur + stockage)
 npm run reset              # vide la base (prospects, audits, documents)
 npm run verif              # vérification des types
 ```
@@ -99,6 +99,7 @@ $env:HOTE="0.0.0.0"; $env:CLE_ACCES="ma-cle-a-moi"; npm start
 |---|---|---|
 | [API Recherche d'entreprises](https://recherche-entreprises.api.gouv.fr/docs/) (Sirene) | Toutes les entreprises françaises : activité, effectif, CA déposé, dirigeant, date de création | aucune |
 | [OpenStreetMap / Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API) | Les commerces tels qu'ils existent sur le terrain : adresse exacte, téléphone, site quand il y en a un | aucune |
+| [Google Places (Text Search)](https://developers.google.com/maps/documentation/places/web-service/text-search) | Les fiches Google : nom, adresse, téléphone, site web et **lien direct vers la fiche** | `GOOGLE_MAPS_API_KEY` |
 | [PageSpeed Insights](https://developers.google.com/speed/docs/insights/v5/get-started) | Lighthouse **et** les mesures des visiteurs réels (Chrome UX Report) | facultative |
 | [Internet Archive](https://archive.org/help/wayback_api.php) | Depuis quand le site existe, et depuis quand il n'a pas changé | aucune |
 | DNS-over-HTTPS (Cloudflare) | MX, SPF, DMARC : usurpation d'email | aucune |
@@ -121,6 +122,41 @@ c'est l'audit qui cherchera réellement un site avant de conclure.
 
 Les deux sources se complètent et se rejoignent : un commerce déjà connu par Sirene n'est pas
 dupliqué, sa fiche gagne simplement le téléphone et l'adresse relevés sur le terrain.
+
+### Chercher sur Google Maps
+
+C'est la source la plus directe : vous tapez un métier et des villes, vous récupérez les fiches
+Google avec **téléphone, site web et lien vers la fiche** — la vraie, pas une recherche devinée.
+
+```powershell
+$env:GOOGLE_MAPS_API_KEY="votre-cle"; npm start
+```
+
+Puis, dans l'écran Prospects, le panneau *Chercher sur Google Maps* :
+
+| Champ | Exemple |
+|---|---|
+| Métier | `plombier` |
+| Villes | `Asnières-sur-Seine, Colombes, Courbevoie, Nanterre` |
+
+**Trois choses à savoir avant de vous lancer :**
+
+1. **Google plafonne à 60 fiches par recherche.** « Plombier Île-de-France » ne rendra jamais
+   tous les plombiers de la région : il en rendra 60. C'est pourquoi le champ attend une
+   **liste de villes** (jusqu'à 20) plutôt qu'une région — chacune est interrogée séparément.
+   Quand le plafond est atteint, l'outil le dit, au lieu de vous laisser croire à une liste
+   complète.
+2. **La clé exige un compte de facturation Google**, même si votre usage reste dans le crédit
+   mensuel offert. C'est la seule source de cet outil dans ce cas — toutes les autres sont
+   gratuites et sans compte. Sans clé, le panneau explique quoi faire et la recherche par
+   commerces (OpenStreetMap) reste disponible.
+3. **Les conditions de Google limitent la conservation** des données de fiche à 30 jours
+   (l'identifiant de fiche, lui, peut être gardé). Pensez à retravailler vos listes plutôt
+   qu'à les laisser dormir un an.
+
+Ce qui est extrait de la page Google Maps elle-même — par un navigateur automatisé — reste
+exclu : c'est interdit par les conditions d'utilisation, activement bloqué (captcha, blocage
+d'IP), et l'outil casserait sans prévenir. L'API fait le même travail, en étant prévue pour.
 
 ### La chasse aux leads, pas à pas
 
@@ -586,7 +622,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-260 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+270 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

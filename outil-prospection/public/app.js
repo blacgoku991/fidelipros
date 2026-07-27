@@ -575,6 +575,41 @@ async function vueProspects() {
       </div>
     </details>
 
+    <details class="panneau" id="panneau-places">
+      <summary>Chercher sur Google Maps (fiches Google)</summary>
+      <div class="corps">
+        <p class="aide">Interroge l'API officielle Google Places : nom, adresse, téléphone, site
+          web et <strong>lien direct vers la fiche Google</strong> — la vraie, pas une recherche
+          devinée. Tapez un métier et une ou plusieurs villes.</p>
+        <p class="aide-mini" style="margin-bottom:12px">Demande une clé
+          <code>GOOGLE_MAPS_API_KEY</code> (compte Google Cloud, crédit mensuel offert).
+          Google plafonne à <strong>60 résultats par ville</strong> : pour couvrir une région,
+          listez les villes plutôt que d'écrire « Île-de-France ».</p>
+        <form id="recherche-places">
+          <div class="grille">
+            <div>
+              <label for="places-metier">Métier recherché</label>
+              <input type="text" id="places-metier" placeholder="plombier" value="${valeur("placesMetier")}">
+            </div>
+            <div class="pleine-largeur">
+              <label for="places-zones">Villes (séparées par des virgules)</label>
+              <input type="text" id="places-zones" placeholder="Asnières-sur-Seine, Colombes, Courbevoie, Nanterre"
+                     value="${valeur("placesZones")}">
+              <p class="aide-mini">Jusqu'à 20 villes par recherche, 60 fiches chacune.</p>
+            </div>
+          </div>
+          <div class="ligne" style="margin-top:12px">
+            <label class="case"><input type="checkbox" id="places-sans-site" ${coche("placesSansSite")}>
+              Seulement les établissements sans site web sur leur fiche</label>
+          </div>
+          <div class="ligne ligne-fin" style="margin-top:14px">
+            <button type="submit" class="primaire">Chercher sur Google Maps</button>
+          </div>
+        </form>
+        <div id="progression-places"></div>
+      </div>
+    </details>
+
     <details class="panneau" id="panneau-osm">
       <summary>Chercher des commerces sur le terrain (OpenStreetMap)</summary>
       <div class="corps">
@@ -656,6 +691,13 @@ async function vueProspects() {
 
   const panneau = vue.querySelector("#panneau-recherche");
   panneau.addEventListener("toggle", () => localStorage.setItem(CLE_PANNEAU, panneau.open ? "1" : "0"));
+
+  const formulairePlaces = vue.querySelector("#recherche-places");
+  brancheValidation(formulairePlaces);
+  formulairePlaces.addEventListener("submit", (evenement) => {
+    evenement.preventDefault();
+    lanceRecherchePlaces(formulairePlaces);
+  });
 
   const formulaireOsm = vue.querySelector("#recherche-osm");
   brancheValidation(formulaireOsm);
@@ -761,6 +803,46 @@ async function vueProspects() {
   });
 
   await chargeEtAffiche();
+}
+
+/** Recherche Google Places : un métier, une liste de villes, et les fiches Google qui vont avec. */
+async function lanceRecherchePlaces(formulaire) {
+  const progression = vue.querySelector("#progression-places");
+  const corps = {
+    metier: formulaire.querySelector("#places-metier").value.trim(),
+    zones: formulaire.querySelector("#places-zones").value.trim(),
+    sansSiteSeulement: formulaire.querySelector("#places-sans-site").checked,
+  };
+  memoriseCriteres({
+    placesMetier: corps.metier, placesZones: corps.zones, placesSansSite: corps.sansSiteSeulement,
+  });
+
+  try {
+    const resultat = await pendant(
+      formulaire.querySelector("button[type=submit]"),
+      "Recherche…",
+      async () => {
+        const { travail } = await api("/api/prospection-places", { methode: "POST", corps });
+        return suit(travail, (etat) => afficheAvancement(progression, etat, "Google Places"));
+      },
+    );
+    notifie(
+      `${resultat.trouves} fiche(s) trouvée(s) sur ${resultat.zones} ville(s), ` +
+        `${resultat.nouveaux} nouveau(x) — ${resultat.sans_site} sans site, ` +
+        `${resultat.avec_telephone} avec téléphone`,
+      "succes",
+    );
+    // Le plafond de Google est silencieux : sans ce message, on croit avoir tout ramassé.
+    if (resultat.plafond_atteint) {
+      notifie("Plafond de 60 fiches par ville atteint : découpez en villes plus petites pour tout couvrir", "info");
+    }
+    vue.querySelector("#panneau-places").open = false;
+    await chargeEtAffiche();
+  } catch (erreur) {
+    notifie(erreur.message, "erreur");
+  } finally {
+    progression.innerHTML = "";
+  }
 }
 
 /** Lit le formulaire, lance la recherche, puis rend compte de ce qui a été écarté. */
