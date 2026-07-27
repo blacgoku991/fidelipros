@@ -234,7 +234,45 @@ function lance(travail: Travail, execution: (travail: Travail) => Promise<unknow
     });
 }
 
-// ── Vue d'un prospect renvoyée à l'interface ────────────────────────────────
+// ── Vues d'un prospect renvoyées à l'interface ──────────────────────────────
+
+/**
+ * Vue allégée pour le tableau : uniquement ce qu'il affiche. La vue complète embarque tous les
+ * défauts de l'audit et les documents générés — sur mille prospects, cela représentait près de
+ * cinq mégaoctets à charger pour dessiner une liste.
+ */
+function vueListe(prospect: ProspectStocke) {
+  const audit = stockage.dernierAudit(prospect.id);
+  return {
+    id: prospect.id,
+    nom: prospect.nom,
+    enseigne: prospect.enseigne,
+    siren: prospect.siren,
+    ville: prospect.ville,
+    code_postal: prospect.code_postal,
+    departement: prospect.departement,
+    activite_code: prospect.activite_code,
+    date_creation: prospect.date_creation,
+    effectif_estime: prospect.effectif_estime,
+    chiffre_affaires: prospect.chiffre_affaires,
+    dirigeant: prospect.dirigeant,
+    domaine: prospect.domaine,
+    site_web: prospect.site_web,
+    site_statut: prospect.site_statut,
+    email_contact: prospect.email_contact,
+    telephone: prospect.telephone,
+    google_maps_url: prospect.google_maps_url,
+    google_recherche: rechercheGoogleMaps(prospect.nom, prospect.ville, prospect.code_postal),
+    score: prospect.score,
+    priorite: prospect.priorite,
+    statut: prospect.statut,
+    score_audit: prospect.score_audit,
+    audit_le: prospect.audit_le,
+    /** null si jamais audité : le tableau distingue « non audité » et « non concluant ». */
+    audit_concluant: audit ? audit.audit.concluant : null,
+    proposition_prete: Boolean(stockage.documents(prospect.id)),
+  };
+}
 
 function vueProspect(prospect: ProspectStocke) {
   const audit = stockage.dernierAudit(prospect.id);
@@ -612,7 +650,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   }
 
   if (methode === "GET" && chemin === "/api/prospects") {
-    envoieJson(res, { prospects: stockage.prospects().map(vueProspect) });
+    envoieJson(res, { prospects: stockage.prospects().map(vueListe) });
     return;
   }
 

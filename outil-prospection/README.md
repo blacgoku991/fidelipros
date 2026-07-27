@@ -315,6 +315,15 @@ scoring et de chiffrage n'existe qu'une fois, et elle est couverte par des tests
 - L'audit est un **constat externe** en lecture seule : ce n'est pas un test d'intrusion, et
   le rapport client le précise.
 
+## À l'échelle
+
+Mesuré sur un millier de prospects, chacun avec un audit complet (fichier de 6,9 Mo) :
+relecture au démarrage 55 ms, une modification (statut, notes) 31 ms, liste chargée en 0,03 s,
+export CSV 0,02 s, premier affichage du tableau 0,3 s. Le tableau dessine 100 lignes à la fois
+— « Afficher 100 de plus » ou « Tout afficher » en dessous — parce qu'un millier de lignes
+d'un coup coûtait deux secondes de construction au navigateur pour rien : on travaille le haut
+de la liste, celui qui a le meilleur score d'opportunité.
+
 ## Limites connues
 
 - Un audit complet prend 15 à 45 s, dont l'attente de PageSpeed.

@@ -14,6 +14,9 @@ let config = null;
 let prospects = [];
 /** Filtres d'affichage de la liste, conservés entre deux rendus. */
 const tri = { texte: "", statut: "", priorite: "" };
+/** Nombre de lignes dessinées : au-delà, le navigateur passe des secondes à construire le DOM. */
+const PAS_AFFICHAGE = 100;
+let limiteAffichage = PAS_AFFICHAGE;
 /** Dernier bilan de recherche, affiché sous le tableau. */
 let dernierBilan = null;
 
@@ -565,6 +568,8 @@ async function vueProspects() {
     const champ = vue.querySelector(`#filtre-${clef}`);
     champ.addEventListener("input", () => {
       tri[clef] = champ.value;
+      // Un nouveau filtre repart du début de la liste.
+      limiteAffichage = PAS_AFFICHAGE;
       dessineTableau();
     });
   });
@@ -733,6 +738,7 @@ function dessineTableau() {
   if (!cible) return;
 
   const retenus = prospectsAffiches();
+  const affiches = retenus.slice(0, limiteAffichage);
 
   vue.querySelector("#compte").textContent = `${retenus.length} / ${prospects.length}`;
 
@@ -748,7 +754,7 @@ function dessineTableau() {
       <th class="nombre">Oppor.</th><th>Entreprise</th><th>Contact</th><th>Site web</th>
       <th class="nombre">Audit</th><th>Statut</th><th></th>
     </tr></thead>
-    <tbody>${retenus.map((p) => `
+    <tbody>${affiches.map((p) => `
       <tr>
         <td class="nombre" data-libelle="Opportunité">
           <strong class="${classeOpportunite(p.score)}" style="font-size:15px">${p.score}</strong>
@@ -784,7 +790,7 @@ function dessineTableau() {
                <div class="sous">${esc(LIBELLES_SITE[p.site_statut] ?? p.site_statut)}</div>`
             : `<span class="etiquette et-rouge">${esc(LIBELLES_SITE[p.site_statut] ?? p.site_statut)}</span>`}
         </td>
-        <td class="nombre" data-libelle="Audit">${p.audit && !p.audit.concluant
+        <td class="nombre" data-libelle="Audit">${p.audit_concluant === false
           ? `<span class="etiquette">non concluant</span>`
           : p.site_statut === "aucun_site"
             ? `<span class="etiquette">sans objet</span>`
@@ -796,7 +802,7 @@ function dessineTableau() {
           <select data-statut="${esc(p.id)}" class="compact" aria-label="Statut de ${esc(p.nom)}">
             ${config.statuts.map((s) => `<option value="${esc(s)}" ${s === p.statut ? "selected" : ""}>${esc(LIBELLES_STATUT[s] ?? s)}</option>`).join("")}
           </select>
-          ${p.documents ? `<div class="sous">proposition prête</div>` : ""}
+          ${p.proposition_prete ? `<div class="sous">proposition prête</div>` : ""}
         </td>
         <td class="actions">
           <div class="ligne">
@@ -805,7 +811,22 @@ function dessineTableau() {
           </div>
         </td>
       </tr>`).join("")}
-    </tbody></table>`;
+    </tbody></table>
+    ${retenus.length > affiches.length ? `
+      <div class="ligne" style="justify-content:center;margin-top:14px">
+        <span class="aide-mini" style="margin:0">${affiches.length} lignes affichées sur ${nombre(retenus.length)}</span>
+        <button class="petit" id="afficher-plus">Afficher ${Math.min(PAS_AFFICHAGE, retenus.length - affiches.length)} de plus</button>
+        <button class="petit discret" id="afficher-tout">Tout afficher</button>
+      </div>` : ""}`;
+
+  cible.querySelector("#afficher-plus")?.addEventListener("click", () => {
+    limiteAffichage += PAS_AFFICHAGE;
+    dessineTableau();
+  });
+  cible.querySelector("#afficher-tout")?.addEventListener("click", () => {
+    limiteAffichage = Number.MAX_SAFE_INTEGER;
+    dessineTableau();
+  });
 
   cible.querySelectorAll("[data-statut]").forEach((select) => {
     select.addEventListener("change", async () => {
