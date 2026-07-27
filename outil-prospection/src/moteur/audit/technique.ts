@@ -62,5 +62,18 @@ export function evalueTechnique(ctx: ContexteAudit): Finding[] {
     findings.push(constate("tech_erreurs_console", "Google relève des erreurs JavaScript au chargement"));
   }
 
+  // Mesure terrain : ce que subissent les visiteurs, plus défendable qu'un test en laboratoire.
+  const terrain = ctx.lighthouse?.terrain;
+  if (terrain?.categorie === "SLOW") {
+    const details = [
+      terrain.lcpMs ? `affichage principal en ${(terrain.lcpMs / 1000).toFixed(1).replace(".", ",")} s` : null,
+      terrain.inpMs ? `réaction au clic en ${terrain.inpMs} ms` : null,
+    ].filter(Boolean).join(", ");
+    findings.push(constate(
+      "tech_terrain_lent",
+      `Sur les 28 derniers jours${details ? ` : ${details}` : ""} (données Google, visiteurs réels)`,
+    ));
+  }
+
   return findings;
 }

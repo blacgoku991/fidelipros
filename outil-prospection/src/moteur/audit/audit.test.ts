@@ -4,9 +4,11 @@ import { appliqueRegles, auditeSite } from "./index.ts";
 import {
   cheminAutorise, cheminsInterdits, collecte, collecte404, collecteDns, collecteLighthouse,
   collecteRobots, collecteSitemap, estBlocageParPareFeu, FICHIERS_SONDES, hotePublic, normaliseUrl,
-  resoutDomaine, sondeFichiers, verifieDuplicationWww,
+  mesureImages, resoutDomaine, sondeFichiers, verifieDuplicationWww, verifieLiens,
 } from "./collecte.ts";
 import { causeEchec, domaine, nomDepuisDomaine } from "./http.ts";
+import { collecteArchive, dateDepuisHorodatage } from "./archive.ts";
+import { litCertificat } from "./certificat.ts";
 import {
   agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
   formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
@@ -108,6 +110,10 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     redirigeVersHttps: true,
     wwwDuplique: null,
     erreurCertificat: null,
+    liens: null,
+    imagesMesurees: null,
+    archive: null,
+    certificat: null,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
@@ -139,7 +145,7 @@ function lighthouse(surcharge: Partial<ResultatLighthouse> = {}): ResultatLighth
   return {
     performance: 92, seo: 95, accessibilite: 96, bonnesPratiques: 92,
     lcpMs: 1800, cls: 0.02, tbtMs: 120, octets: 800_000, requetes: 30,
-    audits: {}, captureDataUri: null,
+    audits: {}, terrain: null, captureDataUri: null,
     ...surcharge,
   };
 }
@@ -1096,9 +1102,11 @@ describe("volets partiellement mesurés", () => {
       lighthouse: {
         performance: 40, seo: 70, accessibilite: 60, bonnesPratiques: 70,
         lcpMs: 3000, cls: 0.05, tbtMs: 200, octets: 900_000, requetes: 40,
-        audits: {}, captureDataUri: null,
+        audits: {}, terrain: null, captureDataUri: null,
       },
       fichiersExposes: [],
+      liens: { verifies: 12, casses: [] },
+      imagesMesurees: [],
     });
     expect(piliersPartiels(complet)).toEqual([]);
   });
@@ -1229,5 +1237,202 @@ describe("plateforme du site", () => {
     });
     const audit = await auditeSite("https://boutique.fr/", { fetchImpl: impl, profondeur: "rapide" });
     expect(audit.technologie).toBe("WordPress");
+  });
+});
+
+describe("historique Internet Archive", () => {
+  const reponseCdx = (lignes: string[][]) => ({
+    corps: JSON.stringify([["timestamp", "digest"], ...lignes]),
+  });
+
+  it("lit la date d'apparition du contenu actuel et la première capture", async () => {
+    const impl = (async (url: string) => {
+      // `limit=1` → première capture ; `limit=-40` → dernières versions.
+      const premiere = String(url).includes("limit=1&") || String(url).endsWith("limit=1");
+      const corps = premiere
+        ? reponseCdx([["20090412120000", "AAA"]]).corps
+        : reponseCdx([
+          ["20090412120000", "AAA"],
+          ["20120310090000", "BBB"],
+          ["20150620143000", "CCC"],
+        ]).corps;
+      return {
+        ok: true, status: 200, url: String(url),
+        headers: { get: () => "application/json" },
+        text: async () => corps, json: async () => JSON.parse(corps), body: null,
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const archive = await collecteArchive("https://garage-martin.fr/", { fetchImpl: impl });
+    expect(archive).toEqual({
+      premiereCapture: "2009-04-12",
+      derniereCapture: "2015-06-20",
+      inchangeDepuis: "2015-06-20",
+      versions: 3,
+    });
+  });
+
+  it("ne conclut rien quand l'archive ne connaît pas le site", async () => {
+    const vide = fetchSimule({ "https://web.archive.org/": { corps: "[]" } });
+    expect(await collecteArchive("https://tout-neuf.fr/", { fetchImpl: vide })).toBeNull();
+    // Pas d'archive : aucun constat « site figé ».
+    expect(evalueSeo(contexte({ archive: null })).map((f) => f.regle)).not.toContain("seo_site_fige");
+  });
+
+  it("constate un site figé au-delà de trois ans, en citant la date", () => {
+    const findings = evalueSeo(contexte({
+      anneeCourante: 2026,
+      archive: { premiereCapture: "2009-04-12", derniereCapture: "2015-06-20", inchangeDepuis: "2015-06-20", versions: 3 },
+    }));
+    const fige = findings.find((f) => f.regle === "seo_site_fige");
+    expect(fige?.constat).toContain("2015-06-20");
+    expect(fige?.constat).toContain("11 ans");
+
+    // Un site retouché l'an dernier n'est pas figé.
+    expect(evalueSeo(contexte({
+      anneeCourante: 2026,
+      archive: { premiereCapture: "2009-04-12", derniereCapture: "2025-11-02", inchangeDepuis: "2025-11-02", versions: 12 },
+    })).map((f) => f.regle)).not.toContain("seo_site_fige");
+  });
+
+  it("convertit les horodatages de l'archive", () => {
+    expect(dateDepuisHorodatage("20150620143000")).toBe("2015-06-20");
+    expect(dateDepuisHorodatage("bidon")).toBeNull();
+  });
+});
+
+describe("liens et images vérifiés sur le site", () => {
+  it("cite les liens cassés, et retente en GET quand HEAD est refusé", async () => {
+    const appels: string[] = [];
+    const impl = (async (url: string, init?: RequestInit) => {
+      const adresse = String(url);
+      appels.push(`${init?.method ?? "GET"} ${adresse}`);
+      const statut = adresse.endsWith("/devis") ? 404
+        : adresse.endsWith("/services") && init?.method === "HEAD" ? 405
+        : 200;
+      return {
+        ok: statut < 400, status: statut, url: adresse,
+        headers: { get: () => "text/html" }, text: async () => "<html></html>",
+        json: async () => ({}), body: null,
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const accueil = reponse({
+      html: `<a href="/services">Services</a><a href="/devis">Devis</a><a href="/contact">Contact</a>`,
+    });
+    const resultat = await verifieLiens(accueil, { fetchImpl: impl, delaiSondeMs: 0 });
+
+    expect(resultat.verifies).toBe(3);
+    expect(resultat.casses.map((c) => c.url)).toEqual(["https://garagemartin.fr/devis"]);
+    // HEAD refusé sur /services : une seconde tentative en GET avant de conclure.
+    expect(appels).toContain("HEAD https://garagemartin.fr/services");
+    expect(appels).toContain("GET https://garagemartin.fr/services");
+
+    const findings = evalueSeo(contexte({ liens: resultat }));
+    const morts = findings.find((f) => f.regle === "seo_liens_morts");
+    expect(morts?.constat).toContain("/devis (404)");
+    expect(morts?.constat).toContain("sur 3 vérifié");
+  });
+
+  it("mesure le poids réel des images et nomme la plus lourde", async () => {
+    const tailles: Record<string, string> = {
+      "https://garagemartin.fr/banniere.jpg": "4200000",
+      "https://garagemartin.fr/atelier.jpg": "150000",
+    };
+    const impl = (async (url: string) => ({
+      ok: true, status: 200, url: String(url),
+      headers: { get: (nom: string) => (nom.toLowerCase() === "content-length" ? tailles[String(url)] ?? null : null) },
+      text: async () => "", json: async () => ({}), body: null,
+    })) as unknown as typeof fetch;
+
+    const accueil = reponse({
+      html: `<img src="/banniere.jpg"><img src="/atelier.jpg"><img src="data:image/gif;base64,R0lGOD">`,
+    });
+    const mesurees = await mesureImages(accueil, { fetchImpl: impl, delaiSondeMs: 0 });
+
+    expect(mesurees.map((i) => i.octets)).toEqual([4_200_000, 150_000]);
+    const finding = evalueDesign(contexte({ imagesMesurees: mesurees }))
+      .find((f) => f.regle === "design_image_lourde");
+    expect(finding?.constat).toContain("banniere.jpg");
+    expect(finding?.constat).toContain("4,2 Mo");
+  });
+
+  it("ne signale rien quand les images sont légères", () => {
+    const findings = evalueDesign(contexte({
+      imagesMesurees: [{ url: "https://garagemartin.fr/logo.webp", octets: 40_000 }],
+    }));
+    expect(findings.map((f) => f.regle)).not.toContain("design_image_lourde");
+  });
+});
+
+describe("certificat TLS", () => {
+  const certificat = (surcharge = {}) => ({
+    emetteur: "Let's Encrypt", expireLe: "2026-09-12", joursRestants: 60,
+    protocole: "TLSv1.3", domaineCouvert: true, ...surcharge,
+  });
+
+  it("lit le certificat via le lecteur injecté, et ignore les sites en HTTP", async () => {
+    const lecteur = async () => certificat();
+    expect(await litCertificat("https://garage-martin.fr/", { lecteur })).toEqual(certificat());
+    expect(await litCertificat("http://garage-martin.fr/", { lecteur })).toBeNull();
+    expect(await litCertificat("pas-une-url", { lecteur })).toBeNull();
+  });
+
+  it("alerte sur une expiration proche et sur un protocole dépassé", () => {
+    const proche = evalueSecurite(contexte({ certificat: certificat({ joursRestants: 9 }) }));
+    const alerte = proche.find((f) => f.regle === "sec_certificat_bientot_expire");
+    expect(alerte?.constat).toContain("9 jour(s)");
+    expect(alerte?.constat).toContain("Let's Encrypt");
+
+    const vieux = evalueSecurite(contexte({ certificat: certificat({ protocole: "TLSv1" }) }));
+    expect(vieux.find((f) => f.regle === "sec_tls_obsolete")?.constat).toContain("TLSv1");
+
+    // Certificat sain : aucun constat.
+    const sain = evalueSecurite(contexte({ certificat: certificat() })).map((f) => f.regle);
+    expect(sain).not.toContain("sec_certificat_bientot_expire");
+    expect(sain).not.toContain("sec_tls_obsolete");
+  });
+
+  it("dit depuis combien de jours un certificat est expiré", () => {
+    const finding = evalueSecurite(contexte({ certificat: certificat({ joursRestants: -4 }) }))
+      .find((f) => f.regle === "sec_certificat_bientot_expire");
+    expect(finding?.constat).toContain("expiré depuis 4 jour(s)");
+  });
+});
+
+describe("mesures des visiteurs réels (données terrain)", () => {
+  it("extrait les données terrain de la réponse PageSpeed", async () => {
+    const corps = JSON.stringify({
+      loadingExperience: {
+        overall_category: "SLOW",
+        metrics: {
+          LARGEST_CONTENTFUL_PAINT_MS: { percentile: 4200, category: "SLOW" },
+          INTERACTION_TO_NEXT_PAINT: { percentile: 310, category: "AVERAGE" },
+          CUMULATIVE_LAYOUT_SHIFT_SCORE: { percentile: 18, category: "AVERAGE" },
+        },
+      },
+      lighthouseResult: { categories: { performance: { score: 0.3 } }, audits: {} },
+    });
+    const impl = (async () => ({
+      ok: true, status: 200, url: "https://psi",
+      headers: { get: () => "application/json" },
+      text: async () => corps, json: async () => JSON.parse(corps), body: null,
+    })) as unknown as typeof fetch;
+
+    const resultat = await collecteLighthouse("https://garage-martin.fr/", { fetchImpl: impl });
+    expect(resultat?.terrain).toEqual({ lcpMs: 4200, inpMs: 310, cls: 0.18, categorie: "SLOW" });
+  });
+
+  it("constate la lenteur vécue par les visiteurs, pas seulement le test de laboratoire", () => {
+    const lent = evalueTechnique(contexte({
+      lighthouse: lighthouse({ terrain: { lcpMs: 4200, inpMs: 310, cls: 0.18, categorie: "SLOW" } }),
+    }));
+    const finding = lent.find((f) => f.regle === "tech_terrain_lent");
+    expect(finding?.constat).toContain("4,2 s");
+    expect(finding?.constat).toContain("visiteurs réels");
+
+    // Trafic insuffisant pour des données terrain : aucun constat inventé.
+    expect(evalueTechnique(contexte({ lighthouse: lighthouse({ terrain: null }) }))
+      .map((f) => f.regle)).not.toContain("tech_terrain_lent");
   });
 });

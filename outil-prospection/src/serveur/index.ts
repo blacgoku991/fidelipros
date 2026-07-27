@@ -21,6 +21,9 @@ import {
 } from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
 import { rechercheEntreprises } from "../moteur/sirene.ts";
+import {
+  CATEGORIES_OSM, chercheCommerces, prospectDepuisCommerce, type FiltresOsm,
+} from "../moteur/osm.ts";
 import { auditeProspects, detecteEtAuditeSite } from "../moteur/website.ts";
 import type { CibleProspection, ProspectionFilters, StatutSite } from "../moteur/types.ts";
 import { auditeSite, normaliseUrl } from "../moteur/audit/index.ts";
@@ -356,6 +359,43 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
 }
 
 /**
+ * Recherche de commerces dans OpenStreetMap : source complémentaire de Sirene, qui apporte
+ * l'adresse exacte, le téléphone et — quand il existe — le site web.
+ */
+async function lanceProspectionOsm(corps: Record<string, unknown>, travail: Travail) {
+  const filtres: FiltresOsm = {
+    ville: texte(corps.ville, 80) ?? undefined,
+    codePostal: texte(corps.codePostal, 5) ?? undefined,
+    categories: Array.isArray(corps.categories) ? corps.categories.map(String) : undefined,
+    sansSiteSeulement: corps.sansSiteSeulement === true,
+    limite: Math.min(Math.max(nombre(corps.limite) ?? 200, 1), 500),
+  };
+  const debut = Date.now();
+
+  travail.etape = `interrogation d'OpenStreetMap (${filtres.ville ?? filtres.codePostal ?? "zone"})`;
+  const commerces = await chercheCommerces(filtres, {
+    timeoutMs: 90_000,
+    // Overpass a plusieurs miroirs : celui par défaut sature aux heures pleines.
+    endpoint: process.env.OVERPASS_URL || undefined,
+  });
+
+  travail.total = commerces.length;
+  travail.etape = `${commerces.length} commerce(s) trouvé(s)`;
+  const { nouveaux } = stockage.enregistreCommerces(
+    commerces.map((commerce) => ({ prospect: prospectDepuisCommerce(commerce), osmId: commerce.osmId })),
+  );
+  travail.faits = commerces.length;
+
+  return {
+    trouves: commerces.length,
+    nouveaux,
+    sans_site: commerces.filter((commerce) => !commerce.siteWeb).length,
+    avec_telephone: commerces.filter((commerce) => commerce.telephone).length,
+    duree_ms: Date.now() - debut,
+  };
+}
+
+/**
  * Audite un site, l'enregistre et reporte les notes sur la fiche prospect.
  * Accepte `{url, nom}` (le site devient un prospect, dédoublonné sur le domaine) ou
  * `{prospect_id}` (site connu, ou détecté depuis la raison sociale).
@@ -637,6 +677,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
         .map(([code, t]) => ({ code, label: t.label })),
       statuts: STATUTS,
       statuts_site: STATUTS_SITE,
+      categories_osm: CATEGORIES_OSM.map(({ id, label }) => ({ id, label })),
       piliers: LIBELLES_PILIERS,
       severites: LIBELLES_SEVERITE,
       efforts: LIBELLES_EFFORT,
@@ -800,6 +841,18 @@ ${documents.email_html}
     }
     const travail = creeTravail("prospection", "démarrage");
     lance(travail, (t) => lanceProspection(corps, t));
+    envoieJson(res, { travail: travail.id }, 202);
+    return;
+  }
+
+  if (methode === "POST" && chemin === "/api/prospection-osm") {
+    const corps = await litCorps(req);
+    if (!texte(corps.ville, 80) && !texte(corps.codePostal, 5)) {
+      envoieJson(res, { error: "Précisez une commune ou un code postal." }, 400);
+      return;
+    }
+    const travail = creeTravail("prospection", "démarrage");
+    lance(travail, (t) => lanceProspectionOsm(corps, t));
     envoieJson(res, { travail: travail.id }, 202);
     return;
   }

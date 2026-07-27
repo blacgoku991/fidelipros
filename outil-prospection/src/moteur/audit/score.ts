@@ -72,6 +72,9 @@ export function piliersPartiels(ctx: ContexteAudit): Pilier[] {
   if (ctx.fichiersExposes === null) partiels.add("securite");
   // Pages annexes non lues : robots.txt, sitemap et page 404 pèsent sur le référencement.
   if (!ctx.robots || !ctx.sitemap || !ctx.page404) partiels.add("seo");
+  // Liens non vérifiés et poids des images non mesuré (audit rapide).
+  if (ctx.liens === null) partiels.add("seo");
+  if (ctx.imagesMesurees === null) partiels.add("design");
 
   return (["seo", "design", "securite", "technique"] as Pilier[]).filter((p) => partiels.has(p));
 }

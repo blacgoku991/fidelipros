@@ -115,5 +115,30 @@ export function evalueDesign(ctx: ContexteAudit): Finding[] {
     findings.push(constate("design_debordement_mobile", "Aucune règle d'adaptation d'écran trouvée dans la page"));
   }
 
+  // Poids réel mesuré image par image : indépendant de Lighthouse, et très concret.
+  const lourdes = (ctx.imagesMesurees ?? []).filter((image) => image.octets > 700_000);
+  if (lourdes.length) {
+    const total = (ctx.imagesMesurees ?? []).reduce((somme, image) => somme + image.octets, 0);
+    const plusLourde = lourdes[0];
+    findings.push(constate(
+      "design_image_lourde",
+      `${nomFichier(plusLourde.url)} pèse ${enMo(plusLourde.octets)} Mo` +
+        (lourdes.length > 1 ? ` (${lourdes.length} images de plus de 0,7 Mo)` : "") +
+        ` — ${enMo(total)} Mo d'images sur la page d'accueil`,
+    ));
+  }
+
   return findings;
+}
+
+function enMo(octets: number): string {
+  return (octets / 1_000_000).toFixed(1).replace(".", ",");
+}
+
+function nomFichier(url: string): string {
+  try {
+    return new URL(url).pathname.split("/").filter(Boolean).pop() ?? url;
+  } catch {
+    return url;
+  }
 }

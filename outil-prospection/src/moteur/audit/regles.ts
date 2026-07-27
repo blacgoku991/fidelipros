@@ -144,6 +144,20 @@ export const REGLES: Record<string, Regle> = {
     impact: "Téléphone et adresse invisibles : perte directe d'appels, et référencement local pénalisé.",
     effort: "faible", prestations: ["seo_local"],
   },
+  seo_liens_morts: {
+    pilier: "seo", severite: "majeur", poids: 10,
+    titre: "Des liens de votre site ne mènent nulle part",
+    impact: "Un visiteur qui tombe sur une page d'erreur repart, et Google dégrade la note du site entier.",
+    effort: "faible", prestations: ["seo_technique"],
+  },
+
+  seo_site_fige: {
+    pilier: "seo", severite: "majeur", poids: 12,
+    titre: "Site inchangé depuis des années",
+    impact: "Google privilégie les sites vivants, et un visiteur qui voit des informations périmées doute que l'entreprise soit encore active.",
+    effort: "moyen", prestations: ["redaction_contenu", "refonte_site"],
+  },
+
   seo_www_duplique: {
     pilier: "seo", severite: "majeur", poids: 8,
     titre: "Le site répond sur deux adresses différentes",
@@ -195,6 +209,13 @@ export const REGLES: Record<string, Regle> = {
     impact: "Textes illisibles en plein soleil ou pour une personne malvoyante : information perdue, et non-conformité.",
     effort: "faible", prestations: ["accessibilite"],
   },
+  design_image_lourde: {
+    pilier: "design", severite: "majeur", poids: 12,
+    titre: "Images trop lourdes pour un téléphone",
+    impact: "En 4G, chaque méga-octet ajoute environ une seconde d'attente : la moitié des visiteurs partent avant l'affichage.",
+    effort: "faible", prestations: ["optimisation_perf"],
+  },
+
   design_images_non_optimisees: {
     pilier: "design", severite: "mineur", poids: 6,
     titre: "Images dans un format dépassé",
@@ -409,6 +430,20 @@ export const REGLES: Record<string, Regle> = {
     effort: "faible", prestations: ["mise_https", "maintenance"],
   },
 
+  sec_certificat_bientot_expire: {
+    pilier: "securite", severite: "majeur", poids: 15,
+    titre: "Certificat de sécurité bientôt expiré",
+    impact: "Le jour de l'expiration, le site devient inaccessible derrière un avertissement rouge : c'est la panne la plus fréquente et la plus évitable.",
+    effort: "faible", prestations: ["maintenance"],
+  },
+
+  sec_tls_obsolete: {
+    pilier: "securite", severite: "majeur", poids: 12,
+    titre: "Chiffrement dans une version dépassée",
+    impact: "Les navigateurs récents refusent progressivement ces versions, et un audit de sécurité client le relève immédiatement.",
+    effort: "moyen", prestations: ["securisation_entetes", "hebergement"],
+  },
+
   sec_traceurs_sans_consentement: {
     pilier: "securite", severite: "majeur", poids: 12,
     titre: "Traceurs déposés sans consentement",
@@ -429,6 +464,13 @@ export const REGLES: Record<string, Regle> = {
     impact: "Les visiteurs et Google tombent sur une erreur au lieu de votre site.",
     effort: "moyen", prestations: ["maintenance", "refonte_site"],
   },
+  tech_terrain_lent: {
+    pilier: "technique", severite: "majeur", poids: 15,
+    titre: "Vos visiteurs réels attendent trop longtemps",
+    impact: "Ce n'est pas un test de laboratoire : ce sont les temps mesurés chez vos vrais visiteurs par Google, sur leurs téléphones et leurs réseaux.",
+    effort: "moyen", prestations: ["optimisation_perf"],
+  },
+
   tech_perf_faible: {
     pilier: "technique", severite: "majeur", poids: 15,
     titre: "Note de performance Google très basse",

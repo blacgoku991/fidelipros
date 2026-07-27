@@ -6,6 +6,7 @@ import {
   aMetaPrefixe, attributLang, canonical, compteMots, images, liens, meta,
   niveauxTitres, texteVisible, titrePage, typesJsonLd,
 } from "./html.ts";
+import { anneesDepuis } from "./archive.ts";
 import { telephonesDepuisHtml } from "./contacts.ts";
 import { constate } from "./regles.ts";
 import type { ContexteAudit, Finding } from "./types.ts";
@@ -151,6 +152,26 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
   // ── Note Lighthouse ──────────────────────────────────────────────────────
   if (ctx.lighthouse?.seo !== null && ctx.lighthouse?.seo !== undefined && ctx.lighthouse.seo < 80) {
     findings.push(constate("seo_lighthouse_faible", `Note SEO Google : ${ctx.lighthouse.seo}/100`));
+  }
+
+  // Liens vérifiés un par un : on cite les adresses, le prospect vérifie en un clic.
+  if (ctx.liens && ctx.liens.casses.length) {
+    const exemples = ctx.liens.casses.slice(0, 3)
+      .map((lien) => `${new URL(lien.url).pathname} (${lien.statut})`)
+      .join(", ");
+    findings.push(constate(
+      "seo_liens_morts",
+      `${ctx.liens.casses.length} lien(s) cassé(s) sur ${ctx.liens.verifies} vérifié(s) : ${exemples}`,
+    ));
+  }
+
+  // Historique public : le prospect peut ouvrir l'archive et constater lui-même.
+  const anneesFige = anneesDepuis(ctx.archive?.inchangeDepuis ?? null, new Date(ctx.anneeCourante, 6, 1));
+  if (anneesFige !== null && anneesFige >= 3) {
+    findings.push(constate(
+      "seo_site_fige",
+      `Page d'accueil inchangée depuis ${ctx.archive!.inchangeDepuis} (${Math.floor(anneesFige)} ans), d'après l'Internet Archive`,
+    ));
   }
 
   // Deux adresses pour le même contenu : constat seulement si la vérification a abouti.

@@ -12,8 +12,8 @@ import { calculeScores, piliersPartiels, trieFindings } from "./score.ts";
 import type { AuditSiteComplet, ContexteAudit, Finding, Profondeur } from "./types.ts";
 
 export {
-  cheminAutorise, cheminsInterdits, collecte, estBlocageParPareFeu, normaliseUrl, resoutDomaine,
-  verifieDuplicationWww,
+  cheminAutorise, cheminsInterdits, collecte, estBlocageParPareFeu, mesureImages, normaliseUrl,
+  resoutDomaine, verifieDuplicationWww, verifieLiens,
 } from "./collecte.ts";
 export { evalueDesign } from "./design.ts";
 export { evalueSecurite } from "./securite.ts";
@@ -27,6 +27,8 @@ export {
   constate, LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, REGLES, reglesDuPilier,
 } from "./regles.ts";
 export { echappeHtml, technologie } from "./html.ts";
+export { anneesDepuis, collecteArchive, dateDepuisHorodatage, type ArchiveSite } from "./archive.ts";
+export { litCertificat, PROTOCOLES_SURS, type CertificatTls } from "./certificat.ts";
 export {
   agregeContacts, contactsVides, decodeEmailsProteges, deobfusqueEmails, emailsDepuisHtml,
   formateTelephone, lienGoogleMaps, rechercheGoogleMaps, reseauxSociaux, telephonesDepuisHtml,
@@ -75,6 +77,8 @@ export async function auditeSite(
       fichiersExposes: [],
       captureDataUri: null,
       technologie: null,
+      archive: null,
+      certificat: null,
       contacts: contactsVides(),
       emailContact: null,
       telephone: null,
@@ -105,6 +109,8 @@ export async function auditeSite(
     fichiersExposes: ctx.fichiersExposes ?? [],
     captureDataUri: ctx.lighthouse?.captureDataUri ?? null,
     technologie: ctx.accueil ? technologie(ctx.accueil.html, ctx.accueil.entetes) : null,
+    archive: ctx.archive,
+    certificat: ctx.certificat,
     contacts: ctx.contacts,
     emailContact: ctx.contacts.email,
     telephone: ctx.contacts.telephone,

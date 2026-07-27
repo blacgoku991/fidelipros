@@ -4,15 +4,20 @@
 // l'audit. Un échec ajoute une ligne dans `erreurs` et laisse la donnée à `null` — les
 // règles savent traiter l'absence d'information sans inventer de défaut.
 
+import { collecteArchive } from "./archive.ts";
+import { litCertificat, type OptionsCertificat } from "./certificat.ts";
 import {
   agregeContacts, CHEMINS_CONTACT, contactsVides, lienspagesContact,
 } from "./contacts.ts";
-import { liens } from "./html.ts";
+import { images, liens } from "./html.ts";
 import { domaine, origine, pause, recupereHttp, USER_AGENT, type CauseEchec } from "./http.ts";
 import type {
   ContexteAudit,
   DonneesDns,
   FichierExpose,
+  ImageMesuree,
+  LienCasse,
+  MesuresTerrain,
   ReponseHttp,
   ResultatLighthouse,
 } from "./types.ts";
@@ -26,6 +31,14 @@ export interface OptionsCollecte {
   clePageSpeed?: string;
   /** Sondage des fichiers publics classiquement laissés en ligne par erreur. */
   avecSonde?: boolean;
+  /** Vérification des liens internes (défaut : comme le sondage). */
+  avecLiens?: boolean;
+  /** Mesure du poids réel des images (défaut : comme le sondage). */
+  avecImages?: boolean;
+  /** Historique Internet Archive (défaut : comme Lighthouse). */
+  avecArchive?: boolean;
+  /** Lecture du certificat TLS (injectable pour les tests). */
+  lecteurCertificat?: OptionsCertificat["lecteur"];
   delaiSondeMs?: number;
   /** Timestamp (ms) au-delà duquel on arrête de collecter. */
   echeance?: number;
@@ -241,6 +254,103 @@ export async function collectePageInterne(
   return null;
 }
 
+/** Extensions qu'on ne va pas chercher pour vérifier un lien (téléchargements). */
+const EXTENSIONS_FICHIERS = /\.(pdf|zip|docx?|xlsx?|pptx?|mp4|mp3|avi|dmg|exe|apk)$/i;
+
+/**
+ * Vérifie que les liens du menu et du corps de page mènent quelque part.
+ * Un lien mort est un constat que le prospect vérifie en un clic : c'est l'argument le plus
+ * simple à faire admettre, et il ne dépend d'aucune API.
+ */
+export async function verifieLiens(
+  accueil: ReponseHttp,
+  options: OptionsCollecte,
+  max = 12,
+): Promise<{ verifies: number; casses: LienCasse[] }> {
+  const base = origine(accueil.urlFinale);
+  if (!base) return { verifies: 0, casses: [] };
+
+  const candidats: Array<{ url: string; texte: string }> = [];
+  for (const lien of liens(accueil.html)) {
+    if (/^(mailto:|tel:|javascript:|#|data:)/i.test(lien.href)) continue;
+    let absolue: URL;
+    try {
+      absolue = new URL(lien.href, accueil.urlFinale);
+    } catch {
+      continue;
+    }
+    if (absolue.origin !== base) continue;
+    if (EXTENSIONS_FICHIERS.test(absolue.pathname)) continue;
+    absolue.hash = "";
+    const adresse = absolue.toString();
+    if (adresse === accueil.urlFinale) continue;
+    if (!candidats.some((c) => c.url === adresse)) candidats.push({ url: adresse, texte: lien.texte });
+    if (candidats.length >= max) break;
+  }
+
+  const casses: LienCasse[] = [];
+  let verifies = 0;
+  for (const candidat of candidats) {
+    if (expire(options.echeance)) break;
+    const commun = { fetchImpl: options.fetchImpl, timeoutMs: Math.min(options.timeoutMs ?? 6000, 6000), maxOctets: 2_000 };
+    let reponse = await recupereHttp(candidat.url, { ...commun, methode: "HEAD" });
+    // Beaucoup de serveurs refusent HEAD : on retente en GET avant de conclure.
+    if (!reponse || reponse.statut === 405 || reponse.statut === 501) {
+      reponse = await recupereHttp(candidat.url, commun);
+    }
+    await pause(options.delaiSondeMs ?? 200);
+    if (!reponse) continue;
+    verifies++;
+    if (reponse.statut >= 400) {
+      casses.push({ url: candidat.url, statut: reponse.statut, texte: candidat.texte.slice(0, 60) });
+    }
+  }
+  return { verifies, casses };
+}
+
+/**
+ * Poids réel des images de la page d'accueil, mesuré en lisant leur en-tête `content-length`.
+ * Sans Lighthouse, c'est la seule mesure de performance vraiment parlante — et la plus
+ * concrète pour le prospect : « votre photo d'accueil pèse 4,2 Mo ».
+ */
+export async function mesureImages(
+  accueil: ReponseHttp,
+  options: OptionsCollecte,
+  max = 8,
+): Promise<ImageMesuree[]> {
+  const adresses: string[] = [];
+  for (const image of images(accueil.html)) {
+    if (!image.src || /^data:/i.test(image.src)) continue;
+    let absolue: URL;
+    try {
+      absolue = new URL(image.src, accueil.urlFinale);
+    } catch {
+      continue;
+    }
+    if (!/^https?:$/.test(absolue.protocol)) continue;
+    if (!options.autoriseHotesPrives && !hotePublic(absolue.hostname)) continue;
+    const adresse = absolue.toString();
+    if (!adresses.includes(adresse)) adresses.push(adresse);
+    if (adresses.length >= max) break;
+  }
+
+  const mesurees: ImageMesuree[] = [];
+  for (const adresse of adresses) {
+    if (expire(options.echeance)) break;
+    const reponse = await recupereHttp(adresse, {
+      fetchImpl: options.fetchImpl,
+      timeoutMs: Math.min(options.timeoutMs ?? 6000, 6000),
+      maxOctets: 2_000,
+      methode: "HEAD",
+    });
+    await pause(options.delaiSondeMs ?? 150);
+    const taille = Number(reponse?.entetes["content-length"]);
+    if (!reponse || reponse.statut >= 400 || !Number.isFinite(taille) || taille <= 0) continue;
+    mesurees.push({ url: adresse, octets: taille });
+  }
+  return mesurees.sort((a, b) => b.octets - a.octets);
+}
+
 /**
  * L'adresse avec et sans « www » servent-elles la même page sans redirection ?
  * `null` si la question n'a pas pu être tranchée (hôte alternatif injoignable, ce qui est le
@@ -436,6 +546,10 @@ export async function collecteLighthouse(
     });
     if (!res.ok) throw new Error(`PageSpeed ${res.status}`);
     const data = (await res.json()) as {
+      loadingExperience?: {
+        metrics?: Record<string, { percentile?: number; category?: string }>;
+        overall_category?: string;
+      };
       lighthouseResult?: {
         categories?: Record<string, { score?: number | null }>;
         audits?: Record<string, {
@@ -470,6 +584,26 @@ export async function collecteLighthouse(
       };
     }
 
+    // Mesures terrain : présentes seulement si le site a assez de trafic réel.
+    const terrainBrut = data.loadingExperience?.metrics;
+    const percentile = (cle: string) => {
+      const valeur = terrainBrut?.[cle]?.percentile;
+      return typeof valeur === "number" ? valeur : null;
+    };
+    const clsBrut = percentile("CUMULATIVE_LAYOUT_SHIFT_SCORE");
+    const brute = data.loadingExperience?.overall_category;
+    const categorie: MesuresTerrain["categorie"] =
+      brute === "FAST" || brute === "AVERAGE" || brute === "SLOW" ? brute : null;
+    const terrain = terrainBrut && Object.keys(terrainBrut).length
+      ? {
+        lcpMs: percentile("LARGEST_CONTENTFUL_PAINT_MS"),
+        inpMs: percentile("INTERACTION_TO_NEXT_PAINT"),
+        // Le CLS terrain est renvoyé multiplié par cent.
+        cls: clsBrut === null ? null : clsBrut / 100,
+        categorie,
+      }
+      : null;
+
     return {
       performance: note("performance"),
       seo: note("seo"),
@@ -481,6 +615,7 @@ export async function collecteLighthouse(
       octets: valeur("total-byte-weight"),
       requetes: audits["network-requests"]?.details?.items?.length ?? null,
       audits: retenus,
+      terrain,
       captureDataUri: audits["final-screenshot"]?.details?.data ?? null,
     };
   } catch (erreur) {
@@ -595,6 +730,10 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     contacts: contactsVides(),
     wwwDuplique: null,
     erreurCertificat: echecCertificat,
+    liens: null,
+    imagesMesurees: null,
+    archive: null,
+    certificat: null,
     page404: null,
     dns: null,
     lighthouse: null,
@@ -653,8 +792,14 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     taches.push(["redirection HTTPS", verifieRedirectionHttps(urlEffective, options)]);
   }
   taches.push(["duplication www", verifieDuplicationWww(accueil, options)]);
+  if (urlEffective.startsWith("https://")) {
+    taches.push(["certificat TLS", litCertificat(urlEffective, { lecteur: options.lecteurCertificat })]);
+  }
   if (options.avecLighthouse) {
     taches.push(["Lighthouse (PageSpeed)", collecteLighthouse(urlEffective, options)]);
+  }
+  if (options.avecArchive ?? options.avecLighthouse) {
+    taches.push(["Internet Archive", collecteArchive(urlEffective, options)]);
   }
 
   const resultats = await Promise.allSettled(taches.map(([, promesse]) => promesse));
@@ -685,6 +830,12 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
         break;
       case "Lighthouse (PageSpeed)":
         contexte.lighthouse = resultat.value as ResultatLighthouse | null;
+        break;
+      case "Internet Archive":
+        contexte.archive = resultat.value as ContexteAudit["archive"];
+        break;
+      case "certificat TLS":
+        contexte.certificat = resultat.value as ContexteAudit["certificat"];
         break;
     }
   });
@@ -721,6 +872,22 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
       contexte.fichiersExposes = await sondeFichiers(urlEffective, options, contexte.robots?.contenu);
     } catch {
       erreurs.push("Sondage des fichiers publics interrompu");
+    }
+  }
+
+  // Liens et images : une requête à la fois, espacées — on reste un visiteur poli.
+  if ((options.avecLiens ?? options.avecSonde) && !expire(options.echeance)) {
+    try {
+      contexte.liens = await verifieLiens(accueil, options);
+    } catch {
+      erreurs.push("Vérification des liens interrompue");
+    }
+  }
+  if ((options.avecImages ?? options.avecSonde) && !expire(options.echeance)) {
+    try {
+      contexte.imagesMesurees = await mesureImages(accueil, options);
+    } catch {
+      erreurs.push("Mesure du poids des images interrompue");
     }
   }
 

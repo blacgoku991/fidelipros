@@ -388,6 +388,7 @@ function blocAudit(audit) {
         audit.profondeur === "rapide" ? " (audit rapide : sans Lighthouse ni sondage des fichiers)" : ""}
     </p>
     ${notes}
+    ${blocMesures(audit)}
     ${capture ? `<div class="capture" style="margin-top:16px"><img src="${esc(capture)}" alt="Aperçu mobile du site"></div>` : ""}
     ${nonVerifie}
     ${fichiers}
@@ -395,6 +396,34 @@ function blocAudit(audit) {
     <div class="onglets">${onglets}</div>
     ${sections}
   </div>`;
+}
+
+/**
+ * Faits mesurés qui ne sont pas des défauts mais qui appuient l'argumentaire : depuis quand le
+ * site existe, quand il a changé pour la dernière fois, son certificat, et ce que vivent ses
+ * visiteurs réels.
+ */
+function blocMesures(audit) {
+  const faits = [];
+  if (audit.archive?.premiereCapture) {
+    faits.push(`<strong>En ligne depuis ${dateCourte(audit.archive.premiereCapture)}</strong>` +
+      (audit.archive.inchangeDepuis
+        ? ` · page d'accueil inchangée depuis le ${dateCourte(audit.archive.inchangeDepuis)}`
+        : "") +
+      ` <span class="aide-mini" style="margin:0">(Internet Archive)</span>`);
+  }
+  if (audit.certificat?.expireLe) {
+    faits.push(`Certificat ${esc(audit.certificat.emetteur ?? "inconnu")}, expire le ${dateCourte(audit.certificat.expireLe)}` +
+      (audit.certificat.protocole ? ` · ${esc(audit.certificat.protocole)}` : ""));
+  }
+  const terrain = audit.lighthouse?.terrain;
+  if (terrain?.lcpMs) {
+    faits.push(`Visiteurs réels : affichage en ${(terrain.lcpMs / 1000).toFixed(1).replace(".", ",")} s` +
+      (terrain.inpMs ? ` · réaction au clic ${terrain.inpMs} ms` : "") +
+      ` <span class="aide-mini" style="margin:0">(mesure Google sur 28 jours)</span>`);
+  }
+  if (!faits.length) return "";
+  return `<div class="mesures">${faits.map((fait) => `<div>${fait}</div>`).join("")}</div>`;
 }
 
 /** Onglets : un groupe de boutons `data-volet-cible` pilote les `data-volet` voisins. */
@@ -528,6 +557,51 @@ async function vueProspects() {
       </div>
     </details>
 
+    <details class="panneau" id="panneau-osm">
+      <summary>Chercher des commerces sur le terrain (OpenStreetMap)</summary>
+      <div class="corps">
+        <p class="aide">Source complémentaire et gratuite : OpenStreetMap décrit les commerces
+          tels qu'ils existent — nom, adresse exacte, téléphone, et site web quand il y en a un.
+          Un commerce cartographié sans site, c'est exactement le prospect recherché. Sirene, à
+          l'inverse, connaît toutes les entreprises mais ni leur téléphone ni leur site.</p>
+        <form id="recherche-osm">
+          <div class="grille">
+            <div>
+              <label for="osm-ville">Commune</label>
+              <input type="text" id="osm-ville" placeholder="Bordeaux" value="${valeur("osmVille")}">
+              <p class="aide-mini">Nom exact de la commune.</p>
+            </div>
+            <div>
+              <label for="osm-cp">…ou code postal</label>
+              <input type="text" id="osm-cp" placeholder="33000" maxlength="5" value="${valeur("osmCodePostal")}">
+            </div>
+            <div>
+              <label for="osm-limite">Nombre maximum de commerces</label>
+              <input type="number" id="osm-limite" value="${valeur("osmLimite", "200")}" min="10" max="500" step="10">
+            </div>
+          </div>
+
+          <h3>Types de commerces</h3>
+          <div class="cases" id="osm-categories">
+            ${(config.categories_osm ?? []).map((c) => `
+              <label class="case"><input type="checkbox" value="${esc(c.id)}"
+                ${(criteres.osmCategories ?? []).includes(c.id) ? "checked" : ""}> ${esc(c.label)}</label>`).join("")}
+          </div>
+
+          <div class="ligne" style="margin-top:16px">
+            <label class="case"><input type="checkbox" id="osm-sans-site" ${coche("osmSansSite", true)}>
+              Seulement les commerces sans site web déclaré (l'audit vérifiera ensuite pour de vrai)</label>
+          </div>
+          <div class="ligne ligne-fin" style="margin-top:16px">
+            <button type="submit" class="primaire">Chercher sur OpenStreetMap</button>
+          </div>
+          <p class="aide-mini">Données © les contributeurs OpenStreetMap, sous licence ODbL.
+            Service bénévole : une requête par recherche, soyez patient si elle est saturée.</p>
+          <div id="progression-osm"></div>
+        </form>
+      </div>
+    </details>
+
     <div id="indicateurs" class="indicateurs"></div>
 
     <div class="carte">
@@ -553,6 +627,12 @@ async function vueProspects() {
 
   const panneau = vue.querySelector("#panneau-recherche");
   panneau.addEventListener("toggle", () => localStorage.setItem(CLE_PANNEAU, panneau.open ? "1" : "0"));
+
+  const formulaireOsm = vue.querySelector("#recherche-osm");
+  formulaireOsm.addEventListener("submit", (evenement) => {
+    evenement.preventDefault();
+    lanceRechercheOsm(formulaireOsm);
+  });
 
   const formulaire = vue.querySelector("#recherche");
   formulaire.addEventListener("submit", (evenement) => {
@@ -661,6 +741,55 @@ async function lanceRecherche(formulaire) {
     );
     vue.querySelector("#panneau-recherche").open = false;
     localStorage.setItem(CLE_PANNEAU, "0");
+    await chargeEtAffiche();
+  } catch (erreur) {
+    notifie(erreur.message, "erreur");
+  } finally {
+    progression.innerHTML = "";
+  }
+}
+
+/** Recherche OpenStreetMap : même mécanique de suivi que la recherche Sirene. */
+async function lanceRechercheOsm(formulaire) {
+  const lire = (id) => vue.querySelector(`#${id}`).value.trim();
+  const corps = {
+    ville: lire("osm-ville"),
+    codePostal: lire("osm-cp"),
+    limite: Number(lire("osm-limite")) || 200,
+    categories: [...vue.querySelectorAll("#osm-categories input:checked")].map((c) => c.value),
+    sansSiteSeulement: vue.querySelector("#osm-sans-site").checked,
+  };
+  if (!corps.ville && !corps.codePostal) {
+    notifie("Précisez une commune ou un code postal", "erreur");
+    return;
+  }
+  // On mémorise ces critères à côté de ceux de la recherche Sirene.
+  const memoire = criteresSauvegardes();
+  localStorage.setItem(CLE_CRITERES, JSON.stringify({
+    ...memoire,
+    osmVille: corps.ville, osmCodePostal: corps.codePostal, osmLimite: corps.limite,
+    osmCategories: corps.categories, osmSansSite: corps.sansSiteSeulement,
+  }));
+
+  const progression = vue.querySelector("#progression-osm");
+  progression.innerHTML = `<div class="carte serree"><p class="aide" style="margin:0">Interrogation
+    d'OpenStreetMap — le service peut mettre une trentaine de secondes.</p>
+    <div class="progression"></div></div>`;
+  try {
+    const resultat = await pendant(
+      formulaire.querySelector("button[type=submit]"),
+      "Recherche…",
+      async () => {
+        const { travail } = await api("/api/prospection-osm", { methode: "POST", corps });
+        return suit(travail, (etat) => afficheAvancement(progression, etat, "OpenStreetMap"));
+      },
+    );
+    notifie(
+      `${resultat.trouves} commerce(s) trouvé(s), ${resultat.nouveaux} nouveau(x) — ` +
+        `${resultat.sans_site} sans site déclaré, ${resultat.avec_telephone} avec téléphone`,
+      "succes",
+    );
+    vue.querySelector("#panneau-osm").open = false;
     await chargeEtAffiche();
   } catch (erreur) {
     notifie(erreur.message, "erreur");
@@ -966,7 +1095,9 @@ async function vueProspect(id) {
     ["Chiffre d'affaires", prospect.chiffre_affaires
       ? `${euros(prospect.chiffre_affaires)}${prospect.annee_finances ? ` (${prospect.annee_finances})` : ""}`
       : null],
-    ["Source", prospect.source === "manuel" ? "ajouté à la main" : "recherche Sirene"],
+    ["Source", prospect.source === "manuel"
+      ? "ajouté à la main"
+      : prospect.source === "openstreetmap" ? "OpenStreetMap" : "recherche Sirene"],
   ].filter(([, v]) => v);
 
   vue.innerHTML = `

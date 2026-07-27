@@ -23,7 +23,9 @@ export interface ProspectStocke extends Prospect {
   id: string;
   /** Domaine pour les prospects ajoutés à la main (dédoublonnage). */
   domaine: string | null;
-  source: "recherche-entreprises" | "manuel";
+  source: "recherche-entreprises" | "manuel" | "openstreetmap";
+  /** Identifiant OpenStreetMap (`node/123`), pour ne pas réimporter deux fois le même commerce. */
+  osm_id: string | null;
   statut: StatutCommercial;
   notes: string | null;
   /** Coordonnées relevées sur le site, la meilleure d'abord. */
@@ -150,6 +152,7 @@ export class Stockage {
       // Fiches écrites par une version antérieure : compléter sans casser.
       base.prospects = base.prospects.map((prospect) => ({
         ...prospect,
+        osm_id: prospect.osm_id ?? null,
         emails: prospect.emails ?? [],
         telephones: prospect.telephones ?? [],
         google_maps_url: prospect.google_maps_url ?? null,
@@ -220,6 +223,38 @@ export class Stockage {
   }
 
   /**
+   * Enregistre des commerces OpenStreetMap.
+   * Dédoublonnage sur l'identifiant OSM d'abord (stable), puis sur le couple nom + code postal :
+   * un commerce déjà présent via Sirene ne doit pas réapparaître en double.
+   */
+  enregistreCommerces(commerces: Array<{ prospect: Prospect; osmId: string }>): { nouveaux: number; total: number } {
+    let nouveaux = 0;
+    for (const { prospect, osmId } of commerces) {
+      const existant = this.base.prospects.find((p) =>
+        p.osm_id === osmId ||
+        (p.nom.toLowerCase() === prospect.nom.toLowerCase() &&
+          Boolean(p.code_postal) && p.code_postal === prospect.code_postal));
+      if (existant) {
+        // On complète ce qui manque sans écraser des données Sirene plus riches.
+        existant.osm_id ??= osmId;
+        existant.telephone ??= prospect.telephone;
+        existant.email_contact ??= prospect.email_contact;
+        existant.adresse ??= prospect.adresse;
+        existant.latitude ??= prospect.latitude;
+        existant.longitude ??= prospect.longitude;
+        if (!existant.site_web && prospect.site_web) existant.site_web = prospect.site_web;
+        continue;
+      }
+      const cree = this.neuf(prospect, "openstreetmap", null);
+      cree.osm_id = osmId;
+      this.base.prospects.push(cree);
+      nouveaux++;
+    }
+    this.ecrit();
+    return { nouveaux, total: commerces.length };
+  }
+
+  /**
    * Prospect créé depuis l'écran « Auditer une URL », dédoublonné sur le domaine.
    * Le rapprochement se fait aussi sur le site déjà détecté d'un prospect issu de Sirene :
    * auditer l'adresse d'une entreprise déjà en base enrichit sa fiche au lieu d'en créer une
@@ -269,6 +304,7 @@ export class Stockage {
       source,
       statut: "nouveau",
       notes: null,
+      osm_id: null,
       emails: [],
       telephones: [],
       google_maps_url: null,

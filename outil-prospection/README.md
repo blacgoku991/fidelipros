@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 193 tests (moteur + stockage)
+npm test                   # 217 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -51,6 +51,39 @@ donc pas être exposé sur le réseau.
 | **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
 | **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, devis, email HTML prêt à envoyer, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
 | **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails |
+
+## Les sources : gratuites, sans clé, sans compte
+
+| Source | Ce qu'elle apporte | Clé |
+|---|---|---|
+| [API Recherche d'entreprises](https://recherche-entreprises.api.gouv.fr/docs/) (Sirene) | Toutes les entreprises françaises : activité, effectif, CA déposé, dirigeant, date de création | aucune |
+| [OpenStreetMap / Overpass](https://wiki.openstreetmap.org/wiki/Overpass_API) | Les commerces tels qu'ils existent sur le terrain : adresse exacte, téléphone, site quand il y en a un | aucune |
+| [PageSpeed Insights](https://developers.google.com/speed/docs/insights/v5/get-started) | Lighthouse **et** les mesures des visiteurs réels (Chrome UX Report) | facultative |
+| [Internet Archive](https://archive.org/help/wayback_api.php) | Depuis quand le site existe, et depuis quand il n'a pas changé | aucune |
+| DNS-over-HTTPS (Cloudflare) | MX, SPF, DMARC : usurpation d'email | aucune |
+| Le site lui-même | Coordonnées, liens morts, poids réel des images, certificat TLS, plateforme | — |
+
+Aucune de ces sources n'est facturée, aucune ne demande de compte. La seule clé possible
+(`PAGESPEED_API_KEY`) est gratuite et sert uniquement à augmenter un quota.
+
+### Deux façons de trouver des prospects
+
+**Par les entreprises (Sirene)** : tout le tissu économique, filtrable par secteur,
+département, ancienneté, effectif et chiffre d'affaires — mais sans téléphone ni site web,
+qu'il faut donc déduire.
+
+**Par les commerces (OpenStreetMap)** : les établissements cartographiés dans une commune,
+avec leur adresse, leur téléphone et, quand elle existe, leur adresse de site. Cocher
+« seulement les commerces sans site web déclaré » donne directement une liste de candidats.
+L'absence d'étiquette `website` reste un **indice** : la fiche est créée en « non vérifié », et
+c'est l'audit qui cherchera réellement un site avant de conclure.
+
+Les deux sources se complètent et se rejoignent : un commerce déjà connu par Sirene n'est pas
+dupliqué, sa fiche gagne simplement le téléphone et l'adresse relevés sur le terrain.
+
+> Données © les contributeurs OpenStreetMap, sous licence ODbL. Overpass est un service
+> bénévole : l'outil envoie une requête par recherche. `OVERPASS_URL` permet de basculer sur
+> un miroir si le serveur principal sature.
 
 ## Comment un prospect est trouvé
 
@@ -135,10 +168,10 @@ clair : l'API la rejetterait de toute façon.
 
 | Volet | Poids | Ce qui est vérifié |
 |---|---|---|
-| **Référencement** | 30 % | title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
-| **Design & mobile** | 25 % | viewport, débordement horizontal, taille des textes, cibles tactiles, contrastes, formats d'images, nombre de polices, technologies datées, favicon, contact cliquable, copyright ancien, LCP, CLS, note d'accessibilité Lighthouse |
-| **Sécurité** | 25 % | **certificat HTTPS invalide** (expiré, mauvais domaine, auto-signé), HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
-| **Performance** | 20 % | disponibilité, code HTTP, note de performance, poids et nombre de requêtes, compression, cache, HTTP/3, temps de réponse, erreurs console |
+| **Référencement** | 30 % | **liens morts vérifiés un par un**, **site figé depuis des années** (Internet Archive), title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
+| **Design & mobile** | 25 % | **poids réel des images mesuré une par une**, viewport, débordement horizontal, taille des textes, cibles tactiles, contrastes, formats d'images, nombre de polices, technologies datées, favicon, contact cliquable, copyright ancien, LCP, CLS, note d'accessibilité Lighthouse |
+| **Sécurité** | 25 % | **certificat lu directement** (émetteur, date d'expiration, version TLS négociée), certificat invalide (expiré, mauvais domaine, auto-signé), HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
+| **Performance** | 20 % | disponibilité, code HTTP, note de performance, **temps vécus par les visiteurs réels** (Chrome UX Report), poids et nombre de requêtes, compression, cache, HTTP/3, temps de réponse, erreurs console |
 
 Note d'un volet = `100 − somme des poids des défauts constatés`. L'urgence découle du nombre
 de défauts critiques et de la note globale.
@@ -177,6 +210,25 @@ Un audit non concluant n'émet aucun défaut, n'affiche aucune note, ne produit 
 remplace l'email par une note de travail interne, et **ne requalifie pas le prospect**. C'est
 fréquent : beaucoup de sites de PME sont derrière Cloudflare et répondent 403 à un client non
 navigateur. Relancez depuis un autre réseau, ou vérifiez à la main.
+
+### Ce qui rend un audit défendable
+
+Trois mesures ne dépendent d'aucune API et se vérifient devant le prospect en quelques
+secondes — ce sont les plus convaincantes :
+
+- **les liens morts** : jusqu'à douze liens du site sont suivis un par un, et le rapport cite
+  l'adresse et le code d'erreur (« /devis (404) ») ;
+- **le poids réel des images** : lu dans l'en-tête `content-length` de chaque image, sans
+  Lighthouse. « Votre photo d'accueil pèse 4,2 Mo » se comprend sans explication ;
+- **le certificat TLS** : lu dans la poignée de main, comme le cadenas du navigateur —
+  émetteur, date d'expiration, version du protocole.
+
+Deux autres viennent de sources publiques que le prospect peut consulter lui-même :
+
+- **l'Internet Archive** : « votre page d'accueil n'a pas changé depuis le 20 juin 2015 »,
+  avec la capture d'archive à l'appui ;
+- **les mesures terrain de Google** (Chrome UX Report, incluses dans la réponse PageSpeed) :
+  ce que vivent ses visiteurs réels sur 28 jours, pas un test en laboratoire.
 
 ### Cadre du sondage des fichiers publics
 
@@ -235,6 +287,7 @@ Deux clés facultatives, à passer en variables d'environnement :
 ```bash
 PAGESPEED_API_KEY=…   # Lighthouse : augmente le quota (l'API est gratuite sans clé)
 LOVABLE_API_KEY=…     # reformule l'email et la synthèse par IA
+OVERPASS_URL=…        # miroir OpenStreetMap (le serveur par défaut sature aux heures pleines)
 ```
 
 Sans `PAGESPEED_API_KEY`, l'audit fonctionne mais peut tomber sur le quota public : la note de
@@ -283,7 +336,7 @@ chaque écriture. Pour repartir de zéro : supprimez le dossier. Pour sauvegarde
 ## Structure
 
 ```
-src/moteur/          recherche, détection de site, audit, devis, rédaction
+src/moteur/          recherche Sirene et OpenStreetMap, détection de site, audit, devis, rédaction
   ├── audit/         collecte HTTP/DNS/Lighthouse, coordonnées, ~70 règles des quatre volets
   └── proposition/   devis, rapport, email texte et HTML, SMS, script d'appel, reformulation IA
 src/serveur/         serveur node:http (API JSON + fichiers statiques) et stockage
@@ -291,7 +344,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-193 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+217 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

@@ -4,6 +4,7 @@
 // L'audit reste strictement passif : lecture de pages publiques et d'enregistrements DNS,
 // aucune tentative d'exploitation, aucun contournement d'authentification.
 
+import { PROTOCOLES_SURS } from "./certificat.ts";
 import { emailEnClair } from "./contacts.ts";
 import {
   aBandeauConsentement, formulaires, generateur, ressourcesNonSecurisees, scripts, texteVisible,
@@ -29,6 +30,23 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   // Constat indépendant du contenu : la poignée de main TLS a échoué pour un motif précis.
   if (ctx.erreurCertificat) {
     findings.push(constate("sec_certificat_invalide", `HTTPS refusé : ${ctx.erreurCertificat}`));
+  }
+
+  // Certificat lu directement : la même information que le cadenas du navigateur.
+  const certificat = ctx.certificat;
+  if (certificat) {
+    if (typeof certificat.joursRestants === "number" && certificat.joursRestants <= 21) {
+      findings.push(constate(
+        "sec_certificat_bientot_expire",
+        certificat.joursRestants < 0
+          ? `Certificat expiré depuis ${Math.abs(certificat.joursRestants)} jour(s) (${certificat.expireLe})`
+          : `Expire dans ${certificat.joursRestants} jour(s), le ${certificat.expireLe}` +
+            (certificat.emetteur ? ` — émis par ${certificat.emetteur}` : ""),
+      ));
+    }
+    if (certificat.protocole && !PROTOCOLES_SURS.includes(certificat.protocole)) {
+      findings.push(constate("sec_tls_obsolete", `Connexion négociée en ${certificat.protocole}`));
+    }
   }
 
   // ── Protection email : vérifiable même si le site est en panne ─────────────

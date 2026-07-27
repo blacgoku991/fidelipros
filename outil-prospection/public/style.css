@@ -353,6 +353,20 @@ select.compact { padding: 4px 8px; font-size: 12.5px; }
 .jauge { height: 4px; border-radius: 999px; background: var(--bordure); margin-top: 8px; overflow: hidden; }
 .jauge > span { display: block; height: 100%; border-radius: 999px; }
 
+/* Faits mesurés qui appuient l'argumentaire, sans être des défauts. */
+.mesures {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--fond-relief);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-petit);
+  font-size: 13px;
+  color: var(--texte-doux);
+}
+
 .capture img { max-width: 230px; border: 1px solid var(--bordure-claire); border-radius: var(--rayon-petit); }
 
 /* ── Défauts ─────────────────────────────────────────────────────────────── */

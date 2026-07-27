@@ -1,6 +1,8 @@
 // Types du moteur d'audit (SEO, design, sécurité, technique).
 // Aucun import spécifique à un runtime : ce fichier doit rester portable.
 
+import type { ArchiveSite } from "./archive.ts";
+import type { CertificatTls } from "./certificat.ts";
 import type { Contacts } from "./contacts.ts";
 
 export type Pilier = "seo" | "design" | "securite" | "technique";
@@ -82,6 +84,18 @@ export interface DonneesDns {
   dmarc: EnregistrementDns<string | null>;
 }
 
+/**
+ * Mesures issues des vrais visiteurs (Chrome UX Report), renvoyées par PageSpeed dans le même
+ * appel et sans clé. Plus crédibles qu'un test en laboratoire : ce sont les temps que les
+ * clients du prospect subissent réellement, sur leurs téléphones et leurs réseaux.
+ */
+export interface MesuresTerrain {
+  lcpMs: number | null;
+  inpMs: number | null;
+  cls: number | null;
+  categorie: "FAST" | "AVERAGE" | "SLOW" | null;
+}
+
 export interface ResultatLighthouse {
   performance: number | null;
   seo: number | null;
@@ -94,7 +108,22 @@ export interface ResultatLighthouse {
   requetes: number | null;
   /** Sous-ensemble d'audits Lighthouse : id → réussi ou non. */
   audits: Record<string, { note: number | null; reussi: boolean }>;
+  /** Données des visiteurs réels sur les 28 derniers jours, null si le trafic est trop faible. */
+  terrain: MesuresTerrain | null;
   captureDataUri: string | null;
+}
+
+/** Lien interne qui ne mène nulle part. */
+export interface LienCasse {
+  url: string;
+  statut: number;
+  texte: string;
+}
+
+/** Image de la page d'accueil et son poids réel, lu dans l'en-tête `content-length`. */
+export interface ImageMesuree {
+  url: string;
+  octets: number;
 }
 
 export interface FichierExpose {
@@ -116,6 +145,14 @@ export interface ContexteAudit {
   wwwDuplique: boolean | null;
   /** Motif d'échec TLS (« certificat expiré »…), null si la connexion HTTPS a abouti. */
   erreurCertificat: string | null;
+  /** Liens internes vérifiés et ceux qui sont cassés. null = vérification non effectuée. */
+  liens: { verifies: number; casses: LienCasse[] } | null;
+  /** Poids réel des images, la plus lourde d'abord. null = mesure non effectuée. */
+  imagesMesurees: ImageMesuree[] | null;
+  /** Historique Internet Archive. null = site inconnu de l'archive ou requête non faite. */
+  archive: ArchiveSite | null;
+  /** Certificat TLS présenté par le site. null = lecture impossible ou site en HTTP. */
+  certificat: CertificatTls | null;
   robots: { present: boolean; contenu: string } | null;
   sitemap: { present: boolean; urls: number } | null;
   pageInterne: ReponseHttp | null;
@@ -148,6 +185,10 @@ export interface AuditSiteComplet {
   captureDataUri: string | null;
   /** Plateforme identifiée (Wix, WordPress, Shopify…) : un argument, pas un défaut. */
   technologie: string | null;
+  /** Historique public du site (Internet Archive), null si inconnu. */
+  archive: ArchiveSite | null;
+  /** Certificat TLS : émetteur, expiration, version du protocole. */
+  certificat: CertificatTls | null;
   /** Coordonnées publiées sur le site : c'est avec ça qu'on démarche. */
   contacts: Contacts;
   /** Raccourcis vers le meilleur contact trouvé (compatibilité et affichage). */

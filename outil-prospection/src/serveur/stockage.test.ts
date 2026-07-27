@@ -40,7 +40,7 @@ function auditFictif(surcharge: Partial<AuditSiteComplet> = {}): AuditSiteComple
     profondeur: "complet", accessibilite: "ok", concluant: true,
     scores: { global: 42, seo: 30, design: 40, securite: 50, technique: 60, urgence: "elevee" },
     findings: [], lighthouse: null, fichiersExposes: [],
-    captureDataUri: null, technologie: null, contacts: contactsVides(),
+    captureDataUri: null, technologie: null, archive: null, certificat: null, contacts: contactsVides(),
     emailContact: null, telephone: null, erreurs: [], dureeMs: 1200,
     ...surcharge,
   };
@@ -222,5 +222,41 @@ describe("sauvegarde", () => {
     stockage.majProspect(stockage.prospects()[0].id, { statut: "rdv" });
     writeFileSync(chemin, "{ tronqué", "utf8");
     expect(() => new Stockage(chemin)).toThrow(/\.bak/);
+  });
+});
+
+describe("import OpenStreetMap", () => {
+  const commerce = (osmId: string, surcharge: Partial<Prospect> = {}) => ({
+    osmId,
+    prospect: {
+      ...prospectSirene({ siren: "", nom: "Boulangerie du Marché", code_postal: "33000" }),
+      ...surcharge,
+    },
+  });
+
+  it("crée les commerces puis les reconnaît à la recherche suivante", () => {
+    const stockage = new Stockage(chemin);
+    expect(stockage.enregistreCommerces([commerce("node/1")])).toEqual({ nouveaux: 1, total: 1 });
+    expect(stockage.prospects()[0].source).toBe("openstreetmap");
+    expect(stockage.prospects()[0].osm_id).toBe("node/1");
+
+    // Deuxième passage : aucun doublon.
+    expect(stockage.enregistreCommerces([commerce("node/1")])).toEqual({ nouveaux: 0, total: 1 });
+    expect(stockage.prospects()).toHaveLength(1);
+  });
+
+  it("rattache un commerce à une fiche Sirene existante au lieu de la dupliquer", () => {
+    const stockage = new Stockage(chemin);
+    stockage.enregistreProspects([prospectSirene({ nom: "Boulangerie du Marché", code_postal: "33000" })]);
+
+    stockage.enregistreCommerces([commerce("node/7", { telephone: "05 56 78 12 34", adresse: "12 rue des Remparts" })]);
+
+    expect(stockage.prospects()).toHaveLength(1);
+    const fiche = stockage.prospects()[0];
+    // La fiche garde ses données Sirene et gagne les coordonnées de terrain.
+    expect(fiche.siren).toBe("912345678");
+    expect(fiche.source).toBe("recherche-entreprises");
+    expect(fiche.osm_id).toBe("node/7");
+    expect(fiche.telephone).toBe("05 56 78 12 34");
   });
 });
