@@ -6,7 +6,8 @@
 
 import { PROTOCOLES_SURS } from "./certificat.ts";
 import { emailEnClair } from "./contacts.ts";
-import { failleDe } from "./composants.ts";
+import { failleDe, libelleFaille } from "./composants.ts";
+import { logicielsObsoletes } from "./logiciels.ts";
 import {
   aBandeauConsentement, composantsDetectes, formulaires, generateur, ressourcesNonSecurisees,
   scripts, scriptsAvecAttributs, texteVisible, traceurs,
@@ -68,19 +69,29 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   // ── Protection email : vérifiable même si le site est en panne ─────────────
   // Un enregistrement non vérifié (résolveur injoignable) ne produit aucun constat.
   if (ctx.dns) {
-    const { spf, dmarc, mx } = ctx.dns;
+    const { spf, dmarc, mx, dnssec } = ctx.dns;
     if (spf.verifie && !spf.valeur) {
       findings.push(constate("sec_spf_absent", "Aucun enregistrement SPF sur le domaine"));
+    } else if (spf.valeur && /[?+]all\b/i.test(spf.valeur)) {
+      // Une règle qui se termine par « +all » ou « ?all » n'interdit rien : elle donne le
+      // change tout en laissant n'importe qui usurper le domaine.
+      findings.push(constate("sec_spf_permissif", `SPF se terminant par « ${/([?+~-]all)/i.exec(spf.valeur)?.[1]} » : ${spf.valeur.slice(0, 70)}`));
     }
     if (dmarc.verifie) {
       if (!dmarc.valeur) {
         findings.push(constate("sec_dmarc_absent", "Aucun enregistrement DMARC (_dmarc)"));
       } else if (/p=none/i.test(dmarc.valeur)) {
         findings.push(constate("sec_dmarc_permissif", `Politique déclarée : « ${dmarc.valeur.slice(0, 80)} »`));
+      } else if (!/rua=/i.test(dmarc.valeur)) {
+        findings.push(constate("sec_dmarc_sans_rapport", "DMARC actif mais sans adresse de rapport (rua)"));
       }
     }
     if (mx.verifie && !mx.valeur.length) {
       findings.push(constate("sec_mx_absent", "Aucun serveur de messagerie (MX) sur le domaine"));
+    }
+    // DNSSEC : constat seulement si des MX existent (un domaine de messagerie mérite la signature).
+    if (dnssec.verifie && !dnssec.valeur && mx.valeur.length > 0) {
+      findings.push(constate("sec_dnssec_absent", "Le domaine n'est pas signé par DNSSEC"));
     }
   }
 
@@ -169,6 +180,14 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
     findings.push(constate("sec_divulgation_serveur", bavards.join(" · ")));
   }
 
+  // Logiciel serveur en fin de support : plus aucun correctif de sécurité.
+  for (const logiciel of logicielsObsoletes(entetes)) {
+    findings.push(constate(
+      "sec_logiciel_serveur_eol",
+      `${logiciel.logiciel} ${logiciel.version} — fin de support : ${logiciel.finDeSupport}. Vérifier : ${logiciel.reference}`,
+    ));
+  }
+
   const gen = generateur(html) ?? "";
   if (/\d+\.\d+/.test(gen)) {
     findings.push(constate("sec_version_cms_visible", `La page annonce « ${gen} »`));
@@ -246,10 +265,10 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
     return faille ? [{ composant, faille }] : [];
   });
 
-  for (const { composant, faille } of composantsFailles.slice(0, 4)) {
+  for (const { composant, faille } of composantsFailles.slice(0, 5)) {
     findings.push(constate(
       "sec_composant_vulnerable",
-      `${composant.nom} ${composant.version} (corrigé en ${faille.corrigeeEn}) — ${faille.consequence}. Référence : ${faille.reference}`,
+      libelleFaille(composant.nom, composant.version, faille),
     ));
   }
   const versionsVisibles = composants.filter((composant) => composant.source !== "fichier");
@@ -259,6 +278,12 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
       `${versionsVisibles.length} extension(s) affichent leur version : ${
         versionsVisibles.slice(0, 4).map((c) => `${c.nom} ${c.version}`).join(", ")}`,
     ));
+  }
+
+  // security.txt (RFC 9116) : un site qui n'en a pas prive un chercheur de tout moyen de
+  // signaler une faille de manière responsable.
+  if (ctx.securityTxt === false) {
+    findings.push(constate("sec_securitytxt_absent", "Aucun fichier /.well-known/security.txt"));
   }
 
   // Points d'entrée WordPress : constat, avec les identifiants réellement publiés.

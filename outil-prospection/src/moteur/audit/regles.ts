@@ -458,6 +458,41 @@ export const REGLES: Record<string, Regle> = {
     effort: "faible", prestations: ["seo_technique"],
   },
 
+  sec_logiciel_serveur_eol: {
+    pilier: "securite", severite: "critique", poids: 26,
+    titre: "Logiciel serveur en fin de vie",
+    impact: "Plus aucun correctif de sécurité n'est publié pour cette version : chaque faille découverte depuis reste exploitable définitivement.",
+    effort: "eleve", prestations: ["hebergement", "maintenance"],
+  },
+
+  sec_dnssec_absent: {
+    pilier: "securite", severite: "mineur", poids: 5,
+    titre: "Nom de domaine non signé (DNSSEC)",
+    impact: "Sans signature DNSSEC, un attaquant sur le réseau peut détourner les visiteurs vers un faux site sans qu'ils s'en aperçoivent.",
+    effort: "moyen", prestations: ["correctif_dns_email"],
+  },
+
+  sec_spf_permissif: {
+    pilier: "securite", severite: "majeur", poids: 12,
+    titre: "Protection email contournable (SPF permissif)",
+    impact: "La règle se termine par « tout autoriser » : n'importe qui peut envoyer un email en se faisant passer pour votre domaine.",
+    effort: "faible", prestations: ["correctif_dns_email"],
+  },
+
+  sec_dmarc_sans_rapport: {
+    pilier: "securite", severite: "mineur", poids: 4,
+    titre: "Usurpation d'email invisible",
+    impact: "Aucune adresse de rapport DMARC n'est déclarée : vous ne saurez jamais que votre nom est utilisé pour des arnaques.",
+    effort: "faible", prestations: ["correctif_dns_email"],
+  },
+
+  sec_securitytxt_absent: {
+    pilier: "securite", severite: "mineur", poids: 3,
+    titre: "Aucun moyen de signaler une faille (security.txt)",
+    impact: "Un chercheur qui découvre un problème n'a aucun contact pour vous prévenir : il le publie ou le revend au lieu de vous alerter.",
+    effort: "faible", prestations: ["securisation_entetes"],
+  },
+
   sec_certificat_invalide: {
     pilier: "securite", severite: "critique", poids: 35,
     titre: "Certificat de sécurité invalide",

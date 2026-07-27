@@ -503,6 +503,19 @@ export async function interrogeDns(
   type: "TXT" | "MX" | "A",
   options: OptionsCollecte,
 ): Promise<string[] | null> {
+  const reponse = await interrogeDnsComplet(nom, type, options);
+  return reponse ? reponse.valeurs : null;
+}
+
+/**
+ * Requête DNS-over-HTTPS retournant aussi le drapeau `AD` (Authenticated Data), qui indique
+ * que la réponse a été validée par DNSSEC. Cloudflare valide DNSSEC par défaut.
+ */
+export async function interrogeDnsComplet(
+  nom: string,
+  type: "TXT" | "MX" | "A",
+  options: OptionsCollecte,
+): Promise<{ valeurs: string[]; dnssec: boolean } | null> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const controleur = new AbortController();
   const minuteur = setTimeout(() => controleur.abort(), options.timeoutMs ?? 8000);
@@ -512,10 +525,13 @@ export async function interrogeDns(
       { headers: { Accept: "application/dns-json", "User-Agent": USER_AGENT }, signal: controleur.signal },
     );
     if (!res.ok) return null;
-    const data = (await res.json()) as { Status?: number; Answer?: Array<{ data?: string }> };
+    const data = (await res.json()) as { Status?: number; AD?: boolean; Answer?: Array<{ data?: string }> };
     // Status 0 = réponse valide, 3 = domaine sans cet enregistrement : les deux sont exploitables.
     if (typeof data.Status === "number" && data.Status !== 0 && data.Status !== 3) return null;
-    return (data.Answer ?? []).map((r) => (r.data ?? "").replace(/^"|"$/g, "")).filter(Boolean);
+    return {
+      valeurs: (data.Answer ?? []).map((r) => (r.data ?? "").replace(/^"|"$/g, "")).filter(Boolean),
+      dnssec: data.AD === true,
+    };
   } catch {
     return null;
   } finally {
@@ -549,12 +565,10 @@ export async function collecteDns(
 ): Promise<DonneesDns | null> {
   const hote = domaine(url);
   if (!hote) return null;
-  const interroge = (nom: string, type: "TXT" | "MX") => interrogeDns(nom, type, options);
-
   const [txt, mx, dmarc] = await Promise.all([
-    interroge(hote, "TXT"),
-    interroge(hote, "MX"),
-    interroge(`_dmarc.${hote}`, "TXT"),
+    interrogeDnsComplet(hote, "TXT", options),
+    interrogeDnsComplet(hote, "MX", options),
+    interrogeDnsComplet(`_dmarc.${hote}`, "TXT", options),
   ]);
 
   // Le résolveur est totalement injoignable : l'audit le signalera comme non vérifié.
@@ -563,12 +577,14 @@ export async function collecteDns(
   }
 
   return {
-    mx: { verifie: mx !== null, valeur: mx ?? [] },
-    spf: { verifie: txt !== null, valeur: txt?.find((t) => t.toLowerCase().startsWith("v=spf1")) ?? null },
+    mx: { verifie: mx !== null, valeur: mx?.valeurs ?? [] },
+    spf: { verifie: txt !== null, valeur: txt?.valeurs.find((t) => t.toLowerCase().startsWith("v=spf1")) ?? null },
     dmarc: {
       verifie: dmarc !== null,
-      valeur: dmarc?.find((t) => t.toLowerCase().startsWith("v=dmarc1")) ?? null,
+      valeur: dmarc?.valeurs.find((t) => t.toLowerCase().startsWith("v=dmarc1")) ?? null,
     },
+    // Le drapeau DNSSEC de la requête sur le domaine lui-même fait référence.
+    dnssec: { verifie: txt !== null, valeur: txt?.dnssec ?? false },
   };
 }
 
@@ -782,6 +798,7 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     archive: null,
     certificat: null,
     wordpress: null,
+    securityTxt: null,
     page404: null,
     dns: null,
     lighthouse: null,
@@ -920,6 +937,17 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
       contexte.fichiersExposes = await sondeFichiers(urlEffective, options, contexte.robots?.contenu);
     } catch {
       erreurs.push("Sondage des fichiers publics interrompu");
+    }
+  }
+
+  // security.txt : un simple GET d'un chemin normalisé, une fois par audit.
+  if (options.avecSonde && !expire(options.echeance)) {
+    const base = origine(urlEffective);
+    if (base) {
+      const rep = await recupereHttp(`${base}/.well-known/security.txt`, {
+        fetchImpl: options.fetchImpl, timeoutMs: Math.min(options.timeoutMs ?? 5000, 5000), maxOctets: 4_000,
+      });
+      contexte.securityTxt = Boolean(rep && rep.statut === 200 && /contact:/i.test(rep.html));
     }
   }
 

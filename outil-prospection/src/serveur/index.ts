@@ -952,6 +952,21 @@ const serveur = createServer((req, res) => {
 serveur.requestTimeout = 0;
 serveur.headersTimeout = 0;
 
+// Message clair quand le port est déjà pris (une fenêtre lancée précédemment) : le message
+// brut de Node effraie pour rien, alors que la solution est immédiate.
+serveur.on("error", (erreur: NodeJS.ErrnoException) => {
+  if (erreur.code === "EADDRINUSE") {
+    console.error(
+      `\n  Le port ${PORT} est déjà utilisé — une autre fenêtre « npm start » tourne sans doute.\n` +
+        `  Fermez-la, ou démarrez sur un autre port :\n` +
+        `    PowerShell : $env:PORT=4100; npm start\n` +
+        `    macOS/Linux : PORT=4100 npm start\n`,
+    );
+    process.exit(1);
+  }
+  throw erreur;
+});
+
 serveur.listen(PORT, "127.0.0.1", () => {
   console.log(`\n  Prospection — http://127.0.0.1:${PORT}`);
   console.log(`  Données     — ${stockage.emplacement}`);

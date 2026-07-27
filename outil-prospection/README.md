@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 238 tests (moteur + stockage)
+npm test                   # 244 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -218,7 +218,7 @@ navigateur. Relancez depuis un autre réseau, ou vérifiez à la main.
 
 ### Ce que l'audit fait, et ce qu'il ne fait pas
 
-**96 règles** réparties en quatre volets : 31 référencement, 35 sécurité, 19 design et mobile,
+**101 règles** réparties en quatre volets : 40 sécurité, 31 référencement, 19 design et mobile,
 11 performance technique. Toutes reposent sur une observation directe et reproductible.
 
 Côté sécurité, l'audit va au-delà de la présence des en-têtes :
@@ -237,14 +237,29 @@ Côté sécurité, l'audit va au-delà de la présence des en-têtes :
 - **les scripts externes sans `integrity`** sont signalés : si le serveur qui les héberge est
   compromis, le code hostile s'exécute sur le site du prospect ;
 - **deux points d'entrée WordPress publics** sont interrogés, uniquement sur un WordPress :
-  `/wp-json/wp/v2/users`, qui publie souvent les identifiants de connexion, et `/xmlrpc.php`.
+  `/wp-json/wp/v2/users`, qui publie souvent les identifiants de connexion, et `/xmlrpc.php` ;
+- **le logiciel serveur en fin de vie** est déduit des en-têtes : un `PHP/5.6` ou un
+  `Apache/2.2` ne reçoit plus aucun correctif, chaque faille découverte depuis reste ouverte ;
+- **la protection email complète** : SPF absent ou permissif (`+all`/`?all`), DMARC absent,
+  en `p=none` ou sans adresse de rapport, MX, et **DNSSEC** (domaine signé ou non) ;
+- **l'absence de `security.txt`** : un chercheur qui trouve une faille n'a aucun moyen de
+  prévenir, il la publie ou la revend.
 
-**Ce que l'audit ne fait pas, volontairement** : aucune injection n'est tentée, aucun mot de
-passe essayé, aucun formulaire soumis, aucun contournement de pare-feu. Ces techniques sont
-réservées à un test d'intrusion mandaté par écrit ; sans mandat, elles sont illégales
-(article 323-1 du code pénal) et rendraient le rapport indéfendable. Quand un pare-feu bloque
-l'analyse, l'outil le dit et **s'arrête** — il ne cherche pas à passer outre. Le rapport client
-énonce d'ailleurs cette limite noir sur blanc.
+Chaque constat de faille de composant cite **la version trouvée, la version corrigée, la
+conséquence en clair et un lien de vérification** (base WPScan pour les extensions, Snyk pour
+les bibliothèques, site officiel pour les logiciels serveur) : le dirigeant, ou son
+prestataire, ouvre le lien et confirme lui-même.
+
+**Ce que l'audit ne fait pas, volontairement.** L'objectif est d'**alerter** le dirigeant pour
+qu'il se protège — c'est de la défense. Mais **vérifier qu'une faille est exploitable** veut
+dire lui envoyer l'attaque (injection, dépôt de fichier, test de mot de passe, contournement de
+pare-feu) : sur un site qu'on ne possède pas et sans mandat écrit, c'est un accès non autorisé,
+puni par l'article 323-1 du code pénal, et le rapport serait de toute façon inutilisable
+(« comment savez-vous ça ? — j'ai attaqué votre site »). L'outil s'arrête donc à la
+**détection** : il constate une version vulnérable et renvoie vers l'avis public, il ne
+l'exploite pas. La démarche crédible est de vendre l'audit → faire signer un mandat → réaliser
+*ensuite* le test d'intrusion. Quand un pare-feu bloque l'analyse, l'outil le dit et s'arrête ;
+il ne cherche pas à passer outre. Le rapport client énonce cette limite noir sur blanc.
 
 ### Ce qui rend un audit défendable
 
@@ -372,14 +387,14 @@ chaque écriture. Pour repartir de zéro : supprimez le dossier. Pour sauvegarde
 
 ```
 src/moteur/          recherche Sirene et OpenStreetMap, détection de site, audit, devis, rédaction
-  ├── audit/         collecte HTTP/DNS/TLS/Lighthouse, coordonnées, 96 règles des quatre volets
+  ├── audit/         collecte HTTP/DNS/TLS/Lighthouse, coordonnées, 101 règles des quatre volets
   └── proposition/   devis, rapport, email texte et HTML, SMS, script d'appel, reformulation IA
 src/serveur/         serveur node:http (API JSON + fichiers statiques) et stockage
 src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-238 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+244 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

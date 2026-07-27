@@ -82,6 +82,8 @@ export interface DonneesDns {
   mx: EnregistrementDns<string[]>;
   spf: EnregistrementDns<string | null>;
   dmarc: EnregistrementDns<string | null>;
+  /** Le domaine est-il signé par DNSSEC (drapeau AD de la réponse) ? */
+  dnssec: EnregistrementDns<boolean>;
 }
 
 /**
@@ -155,6 +157,8 @@ export interface ContexteAudit {
   certificat: CertificatTls | null;
   /** Points d'entrée WordPress publics. null = site non WordPress ou sondage désactivé. */
   wordpress: { comptes: string[]; xmlrpc: boolean } | null;
+  /** Présence d'un /.well-known/security.txt. null = non vérifié. */
+  securityTxt: boolean | null;
   robots: { present: boolean; contenu: string } | null;
   sitemap: { present: boolean; urls: number } | null;
   pageInterne: ReponseHttp | null;

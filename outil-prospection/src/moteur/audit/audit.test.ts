@@ -20,6 +20,7 @@ import {
   typesJsonLd,
 } from "./html.ts";
 import { compareVersions, failleDe } from "./composants.ts";
+import { logicielsObsoletes } from "./logiciels.ts";
 import { REGLES, constate, reglesDuPilier } from "./regles.ts";
 import {
   argumentsCles, calculeScores, piliersPartiels, resumeSeverites, scorePilier,
@@ -117,6 +118,7 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     archive: null,
     certificat: null,
     wordpress: null,
+    securityTxt: null,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
@@ -134,13 +136,14 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
 
 /** Enregistrements DNS vérifiés, sauf mention contraire. */
 function dns(
-  valeurs: { mx?: string[]; spf?: string | null; dmarc?: string | null },
+  valeurs: { mx?: string[]; spf?: string | null; dmarc?: string | null; dnssec?: boolean },
   verifie = true,
 ): ContexteAudit["dns"] {
   return {
     mx: { verifie, valeur: valeurs.mx ?? [] },
     spf: { verifie, valeur: valeurs.spf ?? null },
     dmarc: { verifie, valeur: valeurs.dmarc ?? null },
+    dnssec: { verifie, valeur: valeurs.dnssec ?? true },
   };
 }
 
@@ -599,7 +602,7 @@ describe("collecteurs", () => {
 
   it("lit SPF, DMARC et MX via DNS-over-HTTPS", async () => {
     const impl = fetchSimule({
-      "https://cloudflare-dns.com/dns-query?name=x.fr&type=TXT": { json: { Status: 0, Answer: [{ data: '"v=spf1 -all"' }] } },
+      "https://cloudflare-dns.com/dns-query?name=x.fr&type=TXT": { json: { Status: 0, AD: true, Answer: [{ data: '"v=spf1 -all"' }] } },
       "https://cloudflare-dns.com/dns-query?name=x.fr&type=MX": { json: { Status: 0, Answer: [{ data: "10 mx.x.fr." }] } },
       "https://cloudflare-dns.com/dns-query?name=_dmarc.x.fr&type=TXT": { json: { Status: 0, Answer: [{ data: '"v=DMARC1; p=reject"' }] } },
     });
@@ -607,6 +610,7 @@ describe("collecteurs", () => {
       mx: { verifie: true, valeur: ["10 mx.x.fr."] },
       spf: { verifie: true, valeur: "v=spf1 -all" },
       dmarc: { verifie: true, valeur: "v=DMARC1; p=reject" },
+      dnssec: { verifie: true, valeur: true },
     });
   });
 
@@ -1090,7 +1094,7 @@ describe("volets partiellement mesurés", () => {
     // Résolveur DNS muet : on ne peut rien conclure sur SPF / DMARC.
     expect(piliersPartiels(contexte({ dns: null }))).toContain("securite");
     expect(piliersPartiels(contexte({
-      dns: { mx: { verifie: true, valeur: [] }, spf: { verifie: false, valeur: null }, dmarc: { verifie: true, valeur: null } },
+      dns: { mx: { verifie: true, valeur: [] }, spf: { verifie: false, valeur: null }, dmarc: { verifie: true, valeur: null }, dnssec: { verifie: true, valeur: true } },
     }))).toContain("securite");
 
     // Sondage désactivé (audit rapide) : les fichiers exposés n'ont pas été cherchés.
@@ -1492,8 +1496,11 @@ describe("sécurité approfondie : composants et chaîne d'approvisionnement", (
     expect(compareVersions("5.4.6", "5.4.6")).toBe(0);
     expect(compareVersions("6.1", "5.4.6")).toBeGreaterThan(0);
 
-    expect(failleDe("revslider", "5.2.6")?.reference).toContain("CVE-2016-10309");
+    // revslider est cité sans CVE incertain : la référence renvoie à la base WPScan.
+    expect(failleDe("revslider", "5.2.6")?.reference).toContain("wpscan.com");
     expect(failleDe("revslider", "6.0.0")).toBeNull();
+    // Une extension avec CVE certain le conserve.
+    expect(failleDe("wp-file-manager", "6.0")?.cve).toBe("CVE-2020-25213");
     expect(failleDe("plugin-inconnu", "1.0")).toBeNull();
   });
 
@@ -1509,12 +1516,14 @@ describe("sécurité approfondie : composants et chaîne d'approvisionnement", (
   });
 
   it("constate une extension à faille connue avec sa conséquence", () => {
-    const html = `<link href="/wp-content/plugins/revslider/public/css/rs6.css?ver=5.2.6">`;
+    const html = `<link href="/wp-content/plugins/wp-file-manager/x.css?ver=6.0">`;
     const finding = evalueSecurite(contexte({ accueil: reponse({ html }) }))
       .find((f) => f.regle === "sec_composant_vulnerable");
-    expect(finding?.constat).toContain("revslider 5.2.6");
-    expect(finding?.constat).toContain("corrigé en 5.4.6");
-    expect(finding?.constat).toContain("prise de contrôle");
+    expect(finding?.constat).toContain("wp-file-manager 6.0");
+    expect(finding?.constat).toContain("corrigé en 6.9");
+    expect(finding?.constat).toContain("exécution de code");
+    expect(finding?.constat).toContain("CVE-2020-25213");
+    expect(finding?.constat).toContain("Vérifier :");
     expect(finding?.severite).toBe("critique");
   });
 
@@ -1631,5 +1640,63 @@ describe("page interne représentative", () => {
       liens: { verifies: 5, casses: [{ url: "https://boulangerie.fr/?p=12", statut: 404, texte: "Nos pains" }] },
     })).find((f) => f.regle === "seo_liens_morts");
     expect(finding?.constat).toContain("/?p=12 (404)");
+  });
+});
+
+describe("logiciel serveur en fin de vie", () => {
+  it("détecte PHP et Apache en fin de support à partir des en-têtes", () => {
+    expect(logicielsObsoletes({ "x-powered-by": "PHP/7.4.3" })[0]?.logiciel).toBe("PHP");
+    expect(logicielsObsoletes({ "server": "Apache/2.2.15 (CentOS)" })[0]?.logiciel).toBe("Apache httpd");
+    // Version encore supportée : rien.
+    expect(logicielsObsoletes({ "x-powered-by": "PHP/8.3.2" })).toEqual([]);
+    expect(logicielsObsoletes({})).toEqual([]);
+  });
+
+  it("produit un constat critique renvoyant vers la source officielle", () => {
+    const finding = evalueSecurite(contexte({
+      accueil: reponse({ entetes: { "content-type": "text/html", "x-powered-by": "PHP/5.4.16" } }),
+    })).find((f) => f.regle === "sec_logiciel_serveur_eol");
+    expect(finding?.constat).toContain("PHP 5.4.16");
+    expect(finding?.constat).toContain("php.net");
+    expect(finding?.severite).toBe("critique");
+  });
+});
+
+describe("protection email approfondie", () => {
+  it("signale un SPF qui autorise tout le monde", () => {
+    const permissif = evalueSecurite(contexte({ dns: dns({ spf: "v=spf1 include:mail.fr +all", mx: ["10 mx.fr"] }) }));
+    expect(permissif.find((f) => f.regle === "sec_spf_permissif")?.constat).toContain("+all");
+
+    // Un SPF strict ne déclenche rien.
+    expect(evalueSecurite(contexte({ dns: dns({ spf: "v=spf1 include:mail.fr -all", mx: ["10 mx.fr"] }) }))
+      .map((f) => f.regle)).not.toContain("sec_spf_permissif");
+  });
+
+  it("signale un DMARC actif mais sans adresse de rapport", () => {
+    const sansRapport = evalueSecurite(contexte({ dns: dns({ dmarc: "v=DMARC1; p=quarantine", mx: ["10 mx.fr"] }) }));
+    expect(sansRapport.map((f) => f.regle)).toContain("sec_dmarc_sans_rapport");
+    // Avec rua : rien.
+    expect(evalueSecurite(contexte({ dns: dns({ dmarc: "v=DMARC1; p=reject; rua=mailto:a@b.fr", mx: ["10 mx.fr"] }) }))
+      .map((f) => f.regle)).not.toContain("sec_dmarc_sans_rapport");
+  });
+
+  it("signale un domaine de messagerie non signé par DNSSEC", () => {
+    const nonSigne = evalueSecurite(contexte({ dns: dns({ mx: ["10 mx.fr"], dnssec: false, spf: "v=spf1 -all" }) }));
+    expect(nonSigne.map((f) => f.regle)).toContain("sec_dnssec_absent");
+    // Signé : rien.
+    expect(evalueSecurite(contexte({ dns: dns({ mx: ["10 mx.fr"], dnssec: true, spf: "v=spf1 -all" }) }))
+      .map((f) => f.regle)).not.toContain("sec_dnssec_absent");
+    // Sans MX (pas de messagerie), on n'exige pas DNSSEC.
+    expect(evalueSecurite(contexte({ dns: dns({ mx: [], dnssec: false }) }))
+      .map((f) => f.regle)).not.toContain("sec_dnssec_absent");
+  });
+});
+
+describe("security.txt", () => {
+  it("signale l'absence d'un moyen de signaler une faille", () => {
+    expect(evalueSecurite(contexte({ securityTxt: false })).map((f) => f.regle)).toContain("sec_securitytxt_absent");
+    expect(evalueSecurite(contexte({ securityTxt: true })).map((f) => f.regle)).not.toContain("sec_securitytxt_absent");
+    // Non vérifié : aucun constat.
+    expect(evalueSecurite(contexte({ securityTxt: null })).map((f) => f.regle)).not.toContain("sec_securitytxt_absent");
   });
 });
