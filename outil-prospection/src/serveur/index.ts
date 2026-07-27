@@ -16,8 +16,8 @@ import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
 import {
-  appliqueAudit, appliqueFiltres, dateIlYaNMois, filtreSelonCible, filtresValides, MAX_PER_PAGE,
-  scoreProspect, versCsv,
+  appliqueAudit, appliqueFiltres, categorieEcart, dateIlYaNMois, filtreSelonCible, filtresValides,
+  respecteFiltres, scoreProspect, versCsv,
 } from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
 import { rechercheEntreprises } from "../moteur/sirene.ts";
@@ -176,7 +176,8 @@ function litFiltres(brut: Record<string, unknown>): ProspectionFilters {
     caMin: nombre(brut.caMin),
     caMax: nombre(brut.caMax),
     cible,
-    pages: Math.min(Math.max(nombre(brut.pages) ?? 2, 1), 10),
+    // Plafond de pages : la recherche s'arrête avant si l'objectif de prospects est atteint.
+    pages: Math.min(Math.max(nombre(brut.pages) ?? 10, 1), 10),
     auditSites: brut.auditSites !== false,
   };
 }
@@ -309,15 +310,21 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
   }
   const debut = Date.now();
 
+  // L'API n'applique pas tous les critères (la date de création notamment) : on lui demande
+  // page après page jusqu'à réunir l'objectif de prospects réellement conformes.
+  const objectif = Math.min(Math.max(nombre(corps.objectif) ?? 50, 1), 250);
   travail.etape = "recherche des entreprises";
-  travail.total = (filtres.pages ?? 2) * MAX_PER_PAGE;
+  travail.total = objectif;
   const recherche = await rechercheEntreprises(filtres, {
+    objectif,
+    endpoint: process.env.SIRENE_URL || undefined,
+    retenir: (prospect) => respecteFiltres(prospect, filtres) === null,
     onPage: (page, total) => {
-      travail.faits = Math.min(travail.total, page * MAX_PER_PAGE);
-      travail.etape = `page ${page} — ${nombreFr(total)} entreprise(s) correspondent aux critères`;
+      travail.etape = `page ${page} — ${nombreFr(total)} entreprise(s) correspondent aux critères de l'API`;
     },
   });
   let prospects = recherche.prospects;
+  travail.faits = prospects.length;
 
   if (filtres.auditSites && prospects.length) {
     travail.etape = `analyse des sites (${prospects.length} entreprises)`;
@@ -333,20 +340,29 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
     prospects = prospects.map((prospect, i) => (audits[i] ? appliqueAudit(prospect, audits[i]!) : prospect));
   }
 
-  // Les critères sont revérifiés ici : ce qui s'affiche correspond à ce qui a été demandé,
-  // et ce que l'API a laissé passer est écarté en le disant.
-  const { retenus: conformes, ecartes } = appliqueFiltres(prospects, filtres);
+  // Les critères ont déjà été vérifiés page par page ; on repasse ici pour la comptabilité
+  // et pour couvrir les prospects enrichis entre-temps.
+  const { retenus: conformes, ecartes: ecartesFinaux } = appliqueFiltres(prospects, filtres);
+  const ecartes = [
+    ...appliqueFiltres(recherche.ecartes, filtres).ecartes,
+    ...ecartesFinaux,
+  ];
   const cibles = filtres.auditSites ? filtreSelonCible(conformes, filtres.cible) : conformes;
   const retenus = [...cibles].sort((a, b) => b.score - a.score);
   const { nouveaux } = stockage.enregistreProspects(retenus);
 
   // Raisons d'exclusion regroupées, pour expliquer un écart entre le total annoncé et la liste.
   const raisons: Record<string, number> = {};
-  for (const ecart of ecartes) raisons[ecart.raison.replace(/ \d[\d\s,.]*.*$/, "")] = (raisons[ecart.raison.replace(/ \d[\d\s,.]*.*$/, "")] ?? 0) + 1;
+  for (const ecart of ecartes) {
+    const categorie = categorieEcart(ecart.raison);
+    raisons[categorie] = (raisons[categorie] ?? 0) + 1;
+  }
 
   return {
     total_disponible: recherche.totalDisponible,
-    analyses: recherche.prospects.length,
+    analyses: recherche.analysees,
+    pages_parcourues: recherche.pagesParcourues,
+    objectif,
     hors_criteres: ecartes.length,
     raisons_ecart: Object.entries(raisons).map(([raison, nombre]) => ({ raison, nombre }))
       .sort((a, b) => b.nombre - a.nombre),

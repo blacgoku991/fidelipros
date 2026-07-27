@@ -369,6 +369,24 @@ function formateEuros(montant: number): string {
   return `${new Intl.NumberFormat("fr-FR").format(Math.round(montant))} €`;
 }
 
+/**
+ * Regroupe une raison d'écart en catégorie stable, sans la valeur qui change d'une entreprise à
+ * l'autre : « créée le 2011-06-02, avant la date demandée » → « créée avant la date demandée ».
+ * C'est ce libellé qui est compté et affiché — sinon le bilan liste cent raisons uniques.
+ */
+export function categorieEcart(raison: string): string {
+  if (raison.startsWith("chiffre d'affaires non publié")) return "chiffre d'affaires non publié";
+  if (raison.includes("inférieur au minimum")) return "chiffre d'affaires sous le minimum demandé";
+  if (raison.includes("supérieur au maximum")) return "chiffre d'affaires au-dessus du maximum demandé";
+  if (raison.includes("avant la date demandée")) return "créée avant la date demandée";
+  if (raison.includes("après la date demandée")) return "créée après la date demandée";
+  if (raison.startsWith("date de création inconnue")) return "date de création inconnue";
+  if (raison.startsWith("effectif")) return raison;
+  if (raison.startsWith("siège dans le département")) return "siège hors du département demandé";
+  if (raison.startsWith("siège au code postal")) return "siège hors du code postal demandé";
+  return raison;
+}
+
 /** Sépare les prospects conformes aux critères de ceux à écarter, avec la raison. */
 export function appliqueFiltres(
   prospects: Prospect[],

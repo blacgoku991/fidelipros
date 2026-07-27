@@ -228,6 +228,19 @@ function brancheCopies(racine, textes) {
   });
 }
 
+/**
+ * Le navigateur refuse d'envoyer un formulaire contenant un champ invalide, sans rien afficher
+ * si le champ est hors écran. On le dit explicitement, en nommant le champ.
+ */
+function brancheValidation(formulaire) {
+  formulaire.addEventListener("invalid", (evenement) => {
+    const champ = evenement.target;
+    const intitule = formulaire.querySelector(`label[for="${champ.id}"]`)?.textContent?.trim() ?? champ.id;
+    notifie(`« ${intitule} » : ${champ.validationMessage}`, "erreur");
+    champ.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, true);
+}
+
 function brancheCopiesTexte(racine) {
   racine.querySelectorAll("[data-copier-texte]").forEach((bouton) => {
     bouton.addEventListener("click", () => copie(bouton.dataset.copierTexte, "Email"));
@@ -511,13 +524,13 @@ async function vueProspects() {
             </div>
             <div>
               <label for="caMin">CA minimum (€)</label>
-              <input type="number" id="caMin" placeholder="0" min="0" step="10000" value="${valeur("caMin")}">
+              <input type="number" id="caMin" placeholder="0" min="0" value="${valeur("caMin")}">
               <p class="aide-mini">Connu seulement pour les entreprises qui déposent leurs comptes :
                 filtrer dessus écarte les autres.</p>
             </div>
             <div>
               <label for="caMax">CA maximum (€)</label>
-              <input type="number" id="caMax" placeholder="illimité" min="0" step="10000" value="${valeur("caMax")}">
+              <input type="number" id="caMax" placeholder="illimité" min="0" value="${valeur("caMax")}">
             </div>
           </div>
 
@@ -538,8 +551,10 @@ async function vueProspects() {
               </select>
             </div>
             <div>
-              <label for="pages">Pages à parcourir (25 entreprises / page)</label>
-              <input type="number" id="pages" value="${valeur("pages", "2")}" min="1" max="10">
+              <label for="objectif">Nombre de prospects visés</label>
+              <input type="number" id="objectif" value="${valeur("objectif", "50")}" min="1" max="250" step="1">
+              <p class="aide-mini">L'outil tourne les pages jusqu'à réunir ce nombre de prospects
+                <em>conformes à vos critères</em> (250 entreprises examinées au maximum).</p>
             </div>
             <div class="pleine-largeur">
               <label class="case"><input type="checkbox" id="auditSites" ${coche("auditSites", true)}>
@@ -577,7 +592,7 @@ async function vueProspects() {
             </div>
             <div>
               <label for="osm-limite">Nombre maximum de commerces</label>
-              <input type="number" id="osm-limite" value="${valeur("osmLimite", "200")}" min="10" max="500" step="10">
+              <input type="number" id="osm-limite" value="${valeur("osmLimite", "200")}" min="10" max="500" step="1">
             </div>
           </div>
 
@@ -629,12 +644,14 @@ async function vueProspects() {
   panneau.addEventListener("toggle", () => localStorage.setItem(CLE_PANNEAU, panneau.open ? "1" : "0"));
 
   const formulaireOsm = vue.querySelector("#recherche-osm");
+  brancheValidation(formulaireOsm);
   formulaireOsm.addEventListener("submit", (evenement) => {
     evenement.preventDefault();
     lanceRechercheOsm(formulaireOsm);
   });
 
   const formulaire = vue.querySelector("#recherche");
+  brancheValidation(formulaire);
   formulaire.addEventListener("submit", (evenement) => {
     evenement.preventDefault();
     lanceRecherche(formulaire);
@@ -714,7 +731,7 @@ async function lanceRecherche(formulaire) {
     caMin: Number(lire("caMin")) || undefined,
     caMax: Number(lire("caMax")) || undefined,
     cible: lire("cible"),
-    pages: Number(lire("pages")),
+    objectif: Number(lire("objectif")) || 50,
     secteurs: [...vue.querySelectorAll("#secteurs input:checked")].map((c) => c.value),
     trancheEffectif: [...vue.querySelectorAll("#effectifs input:checked")].map((c) => c.value),
     auditSites: vue.querySelector("#auditSites").checked,
@@ -734,11 +751,7 @@ async function lanceRecherche(formulaire) {
       },
     );
     dernierBilan = resultat;
-    notifie(
-      `${resultat.retenus} prospect(s) retenu(s) — ${resultat.nouveaux} nouveau(x)` +
-        (resultat.hors_criteres ? `, ${resultat.hors_criteres} hors critères` : ""),
-      "succes",
-    );
+    notifie(messageRecherche(resultat), resultat.retenus ? "succes" : "erreur");
     vue.querySelector("#panneau-recherche").open = false;
     localStorage.setItem(CLE_PANNEAU, "0");
     await chargeEtAffiche();
@@ -798,6 +811,31 @@ async function lanceRechercheOsm(formulaire) {
   }
 }
 
+/**
+ * Un « 0 retenu » sans explication est inutilisable : on nomme le critère qui a écarté le plus
+ * d'entreprises, puisque c'est celui qu'il faut assouplir.
+ */
+function raisonDominante(bilan) {
+  return (bilan.raisons_ecart ?? []).slice().sort((a, b) => b.nombre - a.nombre)[0] ?? null;
+}
+
+function messageRecherche(bilan) {
+  if (bilan.retenus) {
+    return `${bilan.retenus} prospect(s) retenu(s) — ${bilan.nouveaux} nouveau(x)` +
+      (bilan.hors_criteres ? `, ${bilan.hors_criteres} écarté(s) par vos critères` : "");
+  }
+  const raison = raisonDominante(bilan);
+  if (raison) {
+    return `Aucun prospect retenu : ${bilan.analyses} entreprise(s) examinée(s), toutes écartées ` +
+      `— principalement « ${raison.raison} ». Assouplissez ce critère et relancez.`;
+  }
+  if (bilan.hors_cible) {
+    return `Aucun prospect retenu : les ${bilan.analyses} entreprises examinées ont toutes un site ` +
+      `correct. Choisissez « Les deux » comme objectif, ou changez de secteur.`;
+  }
+  return `Aucune entreprise ne correspond à ces critères dans la base Sirene.`;
+}
+
 async function chargeEtAffiche() {
   try {
     prospects = (await api("/api/prospects")).prospects;
@@ -840,14 +878,16 @@ function dessineBilan() {
 
   cible.innerHTML = `
     <p class="aide-mini" style="margin-top:14px">
-      Dernière recherche : ${nombre(bilan.total_disponible)} entreprise(s) correspondent aux critères
-      côté API, ${nombre(bilan.analyses)} analysée(s) sur les pages parcourues,
+      Dernière recherche : ${nombre(bilan.total_disponible)} entreprise(s) répondent aux critères que
+      l'API sait appliquer, ${nombre(bilan.analyses)} examinée(s) sur ${nombre(bilan.pages_parcourues ?? 0)} page(s),
       <strong>${nombre(bilan.retenus)} retenue(s)</strong>${bilan.nouveaux ? ` dont ${nombre(bilan.nouveaux)} nouvelle(s)` : ""}.
       ${bilan.hors_cible ? `${nombre(bilan.hors_cible)} écartée(s) car leur site n'est pas à refaire. ` : ""}
-      ${bilan.tronque ? "Recherche interrompue avant la fin des pages demandées. " : ""}
+      ${bilan.tronque ? `Objectif de ${nombre(bilan.objectif ?? 0)} non atteint : le maximum de pages a été parcouru. ` : ""}
     </p>
     ${raisons ? `<div class="aide-mini">Écartées par vos critères :
-      <ul style="margin:4px 0 0 18px">${raisons}</ul></div>` : ""}`;
+      <ul style="margin:4px 0 0 18px">${raisons}</ul>
+      <p style="margin-top:6px">Ces critères sont vérifiés ici sur chaque entreprise reçue : l'API
+        ne sait pas tous les appliquer elle-même, en particulier la date de création.</p></div>` : ""}`;
 }
 
 /** Les prospects effectivement listés, après les filtres d'affichage. */
@@ -872,9 +912,12 @@ function dessineTableau() {
   vue.querySelector("#compte").textContent = `${retenus.length} / ${prospects.length}`;
 
   if (!retenus.length) {
-    cible.innerHTML = `<p class="aide">${prospects.length
+    const explication = prospects.length
       ? "Aucun prospect ne correspond aux filtres d'affichage."
-      : "Aucun prospect pour l'instant : lancez une recherche ci-dessus, ou auditez directement l'adresse d'un site."}</p>`;
+      : dernierBilan
+        ? messageRecherche(dernierBilan)
+        : "Aucun prospect pour l'instant : lancez une recherche ci-dessus, ou auditez directement l'adresse d'un site.";
+    cible.innerHTML = `<p class="aide">${esc(explication)}</p>`;
     return;
   }
 
@@ -1028,6 +1071,7 @@ function vueAuditer() {
     <div id="resultat-audit"></div>`;
 
   const formulaire = vue.querySelector("#formulaire-audit");
+  brancheValidation(formulaire);
   formulaire.addEventListener("submit", async (evenement) => {
     evenement.preventDefault();
     const corps = {
@@ -1391,7 +1435,7 @@ async function vuePrestations() {
                 <td data-libelle="Actif"><input type="checkbox" data-champ="actif" aria-label="Activer ${esc(p.libelle)}" ${p.actif === false ? "" : "checked"}></td>
                 <td data-libelle="Libellé"><input type="text" data-champ="libelle" aria-label="Libellé de ${esc(p.code)}" value="${esc(p.libelle)}"></td>
                 <td data-libelle="Description"><input type="text" data-champ="description" aria-label="Description de ${esc(p.libelle)}" value="${esc(p.description ?? "")}"></td>
-                <td data-libelle="Prix"><input type="number" data-champ="prix" aria-label="Prix de ${esc(p.libelle)}" value="${Number(p.prix)}" min="0" step="10"></td>
+                <td data-libelle="Prix"><input type="number" data-champ="prix" aria-label="Prix de ${esc(p.libelle)}" value="${Number(p.prix)}" min="0" step="1"></td>
                 <td data-libelle="Unité"><select data-champ="unite" aria-label="Unité de ${esc(p.libelle)}">
                   <option value="forfait" ${p.unite === "forfait" ? "selected" : ""}>forfait</option>
                   <option value="mois" ${p.unite === "mois" ? "selected" : ""}>par mois</option>

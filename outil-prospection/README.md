@@ -141,10 +141,15 @@ apparaît sur la fiche et dans le script d'appel.
 
 ### Les critères sont respectés, et ce qui est écarté est expliqué
 
-Les critères sont envoyés à l'API **et revérifiés sur chaque résultat** : département, code
-postal, dates de création, tranches d'effectif, CA minimum et maximum. Un prospect qui ne les
-respecte pas est écarté, et le bilan sous le tableau dit combien et pourquoi
-(« 12 × chiffre d'affaires non publié », « 3 × créée avant la date demandée »).
+Les critères sont envoyés à l'API **et revérifiés sur chaque entreprise reçue** : département,
+code postal, dates de création, tranches d'effectif, CA minimum et maximum.
+
+L'API n'applique pas tout ce qu'on lui demande — la date de création, en particulier, semble
+ignorée. La recherche **tourne donc les pages jusqu'à réunir le nombre de prospects conformes
+demandé** (« Nombre de prospects visés », 250 entreprises examinées au maximum) au lieu de
+rendre une page filtrée à zéro. Le bilan sous le tableau dit combien ont été écartés et
+pourquoi (« 180 × créée avant la date demandée »), et si aucun prospect ne passe, le message
+nomme le critère à assouplir.
 
 Le cas à connaître : l'API ne connaît le **chiffre d'affaires** que des entreprises qui
 déposent leurs comptes. Filtrer sur un CA minimum écarte donc toutes les autres — l'interface

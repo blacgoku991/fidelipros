@@ -14,20 +14,36 @@ import type { EntrepriseApi, Prospect, ProspectionFilters } from "./types.ts";
 export interface OptionsRecherche {
   /** Implémentation de fetch (injectable pour les tests). */
   fetchImpl?: typeof fetch;
+  /**
+   * Critère de conformité appliqué à chaque entreprise reçue.
+   * L'API n'applique pas tous les filtres demandés (la date de création, notamment, n'est pas
+   * toujours prise en compte) : on continue donc de tourner les pages jusqu'à réunir le nombre
+   * de prospects conformes visé, au lieu de rendre une page filtrée à zéro.
+   */
+  retenir?: (prospect: Prospect) => boolean;
+  /** Nombre de prospects conformes visés. La pagination s'arrête dès qu'il est atteint. */
+  objectif?: number;
   /** Pause entre deux pages, pour rester sous la limite de 7 req/s. */
   delaiEntrePagesMs?: number;
   /** Timestamp (ms) au-delà duquel on arrête de paginer. */
   echeance?: number;
   /** Callback de progression, appelé après chaque page. */
   onPage?: (page: number, total: number) => void;
+  /** Point d'entrée de l'API (miroir ou instance locale pour les tests). */
+  endpoint?: string;
 }
 
 export interface ResultatRecherche {
+  /** Entreprises conformes aux critères (ou toutes, si aucun critère n'est passé). */
   prospects: Prospect[];
+  /** Entreprises reçues de l'API mais écartées par la vérification locale. */
+  ecartes: Prospect[];
   /** Nombre total d'entreprises correspondant aux filtres côté API. */
   totalDisponible: number;
+  /** Nombre d'entreprises effectivement examinées. */
+  analysees: number;
   pagesParcourues: number;
-  /** Vrai si la pagination a été interrompue (échéance atteinte). */
+  /** Vrai si la pagination a été interrompue (échéance ou budget de pages atteint). */
   tronque: boolean;
 }
 
@@ -37,8 +53,9 @@ async function appelApi(
   params: Record<string, string>,
   fetchImpl: typeof fetch,
   tentative = 0,
+  endpoint = API_RECHERCHE_ENTREPRISES,
 ): Promise<{ results?: EntrepriseApi[]; total_results?: number; total_pages?: number }> {
-  const url = `${API_RECHERCHE_ENTREPRISES}?${new URLSearchParams(params).toString()}`;
+  const url = `${endpoint}?${new URLSearchParams(params).toString()}`;
   const res = await fetchImpl(url, {
     headers: { Accept: "application/json", "User-Agent": "FideliPro-Prospection/1.0" },
   });
@@ -46,7 +63,7 @@ async function appelApi(
   // 429 : quota dépassé → backoff exponentiel (3 tentatives max).
   if (res.status === 429 && tentative < 3) {
     await pause(1000 * 2 ** tentative);
-    return appelApi(params, fetchImpl, tentative + 1);
+    return appelApi(params, fetchImpl, tentative + 1, endpoint);
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
@@ -74,9 +91,11 @@ export async function rechercheEntreprises(
   const pagesDemandees = Math.min(MAX_PAGES, Math.max(1, filters.pages ?? 2));
 
   const prospects: Prospect[] = [];
+  const ecartes: Prospect[] = [];
   const sirensVus = new Set<string>();
   let totalDisponible = 0;
   let pagesParcourues = 0;
+  let analysees = 0;
   let tronque = false;
 
   for (let page = 1; page <= pagesDemandees; page++) {
@@ -85,7 +104,7 @@ export async function rechercheEntreprises(
       break;
     }
 
-    const data = await appelApi(construireParamsRecherche(filters, page), fetchImpl);
+    const data = await appelApi(construireParamsRecherche(filters, page), fetchImpl, 0, options.endpoint);
     totalDisponible = data.total_results ?? totalDisponible;
     pagesParcourues = page;
 
@@ -93,15 +112,26 @@ export async function rechercheEntreprises(
       const prospect = mapEntreprise(brute);
       if (!prospect || sirensVus.has(prospect.siren)) continue;
       sirensVus.add(prospect.siren);
-      prospects.push(prospect);
+      analysees++;
+      if (options.retenir && !options.retenir(prospect)) ecartes.push(prospect);
+      else prospects.push(prospect);
     }
 
     options.onPage?.(page, totalDisponible);
 
+    // Objectif atteint : inutile de solliciter l'API davantage.
+    if (options.objectif && prospects.length >= options.objectif) break;
+
     const pagesRestantes = (data.total_pages ?? 0) > page;
     if (!pagesRestantes) break;
-    if (page < pagesDemandees) await pause(delai);
+    if (page === pagesDemandees) {
+      // Il restait des pages mais le budget est épuisé : on le dit plutôt que de laisser
+      // croire que la base ne contient rien de plus.
+      tronque = Boolean(options.objectif && prospects.length < options.objectif);
+      break;
+    }
+    await pause(delai);
   }
 
-  return { prospects, totalDisponible, pagesParcourues, tronque };
+  return { prospects, ecartes, totalDisponible, analysees, pagesParcourues, tronque };
 }

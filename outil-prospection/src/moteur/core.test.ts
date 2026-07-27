@@ -5,6 +5,7 @@ import {
   analyseHtml,
   appliqueAudit,
   appliqueFiltres,
+  categorieEcart,
   candidatsDomaines,
   construireParamsRecherche,
   dernieresFinances,
@@ -588,5 +589,98 @@ describe("export CSV : fiche Google", () => {
     expect(entetes).toContain("Fiche Google");
     expect(avec).toContain("https://g.page/garage");
     expect(decodeURIComponent(sans)).toContain("maps/search/?api=1&query=Sans fiche 33000 Bordeaux");
+  });
+});
+
+describe("pagination jusqu'à l'objectif", () => {
+  /** API simulée : 4 pages de 5 entreprises, une seule sur cinq étant récente. */
+  function apiSimulee(appels: string[] = []) {
+    return (async (url: string) => {
+      const page = Number(new URL(String(url)).searchParams.get("page") ?? "1");
+      appels.push(`page ${page}`);
+      const results = Array.from({ length: 5 }, (_, i) => ({
+        siren: String(100000000 + page * 10 + i),
+        nom_complet: `ENTREPRISE ${page}-${i}`,
+        // Une entreprise récente par page ; les autres datent de 2010.
+        date_creation: i === 0 ? "2026-02-01" : "2010-05-05",
+        etat_administratif: "A",
+        siege: { departement: "33", code_postal: "33000", libelle_commune: "BORDEAUX" },
+      }));
+      const corps = JSON.stringify({ results, total_results: 200, total_pages: 4 });
+      return {
+        ok: true, status: 200, url: String(url),
+        headers: { get: () => "application/json" },
+        text: async () => corps, json: async () => JSON.parse(corps), body: null,
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+  }
+
+  it("continue de tourner les pages jusqu'à réunir l'objectif de prospects conformes", async () => {
+    const appels: string[] = [];
+    const resultat = await rechercheEntreprises(
+      { departement: "33", creeApres: "2025-01-01", pages: 10 },
+      {
+        fetchImpl: apiSimulee(appels),
+        delaiEntrePagesMs: 0,
+        objectif: 3,
+        retenir: (prospect) => respecteFiltres(prospect, { creeApres: "2025-01-01" }) === null,
+      },
+    );
+
+    // Une entreprise conforme par page : il en faut trois, donc trois pages.
+    expect(resultat.prospects).toHaveLength(3);
+    expect(appels).toEqual(["page 1", "page 2", "page 3"]);
+    expect(resultat.analysees).toBe(15);
+    expect(resultat.ecartes).toHaveLength(12);
+    expect(resultat.tronque).toBe(false);
+  });
+
+  it("signale que l'objectif n'a pas été atteint au lieu de rendre une liste vide en silence", async () => {
+    const resultat = await rechercheEntreprises(
+      { departement: "33", creeApres: "2025-01-01", pages: 2 },
+      {
+        fetchImpl: apiSimulee(),
+        delaiEntrePagesMs: 0,
+        objectif: 50,
+        retenir: (prospect) => respecteFiltres(prospect, { creeApres: "2025-01-01" }) === null,
+      },
+    );
+
+    expect(resultat.prospects).toHaveLength(2);
+    expect(resultat.pagesParcourues).toBe(2);
+    expect(resultat.tronque).toBe(true);
+    // Les écartées sont conservées : c'est ce qui permet d'expliquer le résultat.
+    expect(resultat.ecartes.length).toBeGreaterThan(0);
+  });
+
+  it("sans critère de conformité, tout est retenu comme avant", async () => {
+    const resultat = await rechercheEntreprises(
+      { departement: "33", pages: 1 },
+      { fetchImpl: apiSimulee(), delaiEntrePagesMs: 0 },
+    );
+    expect(resultat.prospects).toHaveLength(5);
+    expect(resultat.ecartes).toEqual([]);
+  });
+});
+
+describe("catégories d'écart", () => {
+  it("regroupe les raisons sans la valeur qui change d'une entreprise à l'autre", () => {
+    expect(categorieEcart("créée le 2011-06-02, avant la date demandée")).toBe("créée avant la date demandée");
+    expect(categorieEcart("créée le 2026-12-01, après la date demandée")).toBe("créée après la date demandée");
+    expect(categorieEcart("chiffre d'affaires 45 000 € inférieur au minimum demandé"))
+      .toBe("chiffre d'affaires sous le minimum demandé");
+    expect(categorieEcart("chiffre d'affaires non publié")).toBe("chiffre d'affaires non publié");
+    expect(categorieEcart("siège dans le département 44")).toBe("siège hors du département demandé");
+    expect(categorieEcart("siège au code postal 33800")).toBe("siège hors du code postal demandé");
+    expect(categorieEcart("effectif non déclaré")).toBe("effectif non déclaré");
+  });
+
+  it("compte ensemble des raisons de même nature mais de valeurs différentes", () => {
+    const raisons = [
+      "créée le 2011-06-02, avant la date demandée",
+      "créée le 2009-01-01, avant la date demandée",
+      "chiffre d'affaires non publié",
+    ].map(categorieEcart);
+    expect(new Set(raisons).size).toBe(2);
   });
 });
