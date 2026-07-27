@@ -425,7 +425,7 @@ function encadreDevis(ctx: ContexteProposition): string {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
                  style="background:#f0f6ff;border:1px solid #d6e4ff;border-radius:8px">
             <tr><td style="padding:14px 16px">
-              <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#1d4ed8">Ce que je propose</div>
+              <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#7c3aed">Ce que je propose</div>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px">
                 ${lignes}
                 <tr><td colspan="2" style="border-top:1px solid #d6e4ff;padding-top:8px"></td></tr>
@@ -502,7 +502,7 @@ export function emailHtml(
           ${encadreDevis(ctx)}
           <tr><td align="center" style="padding:6px 0 18px">
             <a href="mailto:${echappeHtml(emetteur.email)}?subject=${sujetReponse}"
-               style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 26px;border-radius:8px">
+               style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:12px 26px;border-radius:8px">
               Recevoir le rapport complet</a>
             <div style="font-size:12px;color:#6b7280;margin-top:8px">Gratuit et sans engagement — répondez simplement à cet email.</div>
           </td></tr>
@@ -657,7 +657,7 @@ export function emailIntroductionHtml(
   const cartesArguments = arguments3.length
     ? `<tr><td style="padding:0 0 8px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
         ${arguments3.map((f) => `<tr><td style="padding:0 0 10px">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8fc;border-left:3px solid #2f6df6;border-radius:0 8px 8px 0">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8fc;border-left:3px solid #7c3aed;border-radius:0 8px 8px 0">
             <tr><td style="padding:12px 14px">
               <div style="font-size:15px;font-weight:600;color:#1f2430">${echappeHtml(f.titre)}</div>
               <div style="font-size:14px;color:#3a4150;margin-top:4px;line-height:1.5">${echappeHtml(f.impact)}</div>
@@ -695,7 +695,7 @@ export function emailIntroductionHtml(
 
           <tr><td align="center" style="padding:2px 0 20px">
             <a href="mailto:${echappeHtml(emetteur.email)}?subject=${sujetReponse}"
-               style="display:inline-block;background:#2f6df6;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 28px;border-radius:8px">
+               style="display:inline-block;background:#7c3aed;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 28px;border-radius:8px">
               Échanger 15 minutes</a>
             <div style="font-size:12px;color:#6b7280;margin-top:8px">Sans engagement — répondez simplement à cet email.</div>
           </td></tr>
@@ -832,7 +832,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     .rapport h2 { font-size: 17px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: space-between; align-items: baseline; }
     .rapport h3 { font-size: 15px; margin: 20px 0 8px; }
     .rapport p { margin: 0 0 10px; }
-    .entete { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 2px solid #1a1a1a; padding-bottom: 14px; }
+    .entete { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 2px solid #0b1020; padding-bottom: 14px; }
     .entete .emetteur { text-align: right; font-size: 12px; color: #555; }
     .logo-emetteur { display: flex; justify-content: flex-end; margin-bottom: 6px; }
     .meta { font-size: 13px; color: #555; }
@@ -844,7 +844,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     .jauge-entete { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
     .jauge-piste { height: 7px; background: #eee; border-radius: 4px; overflow: hidden; }
     .jauge-remplissage { height: 100%; border-radius: 4px; }
-    .synthese { background: #f7f7f8; border-left: 3px solid #1a1a1a; padding: 12px 14px; border-radius: 0 8px 8px 0; }
+    .synthese { background: #f7f6fb; border-left: 3px solid #7c3aed; padding: 12px 14px; border-radius: 0 8px 8px 0; }
     .capture { margin: 18px 0; text-align: center; }
     .capture img { max-width: 300px; border: 1px solid #ddd; border-radius: 8px; }
     table { width: 100%; border-collapse: collapse; font-size: 13px; }

@@ -47,7 +47,7 @@ donc pas être exposé sur le réseau.
 
 | Écran | À quoi ça sert |
 |---|---|
-| **Prospects** | Rechercher des entreprises (secteur, département, dates de création, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
+| **Prospects** | Rechercher des entreprises (secteur, département, **ancienneté à partir d'1 mois**, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
 | **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
 | **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, **email d'approche HTML sans devis** (rapport en PDF joint), devis, email HTML de relance, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
 | **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails (raison sociale, **site web**, email, téléphone…) |
@@ -80,6 +80,26 @@ c'est l'audit qui cherchera réellement un site avant de conclure.
 
 Les deux sources se complètent et se rejoignent : un commerce déjà connu par Sirene n'est pas
 dupliqué, sa fiche gagne simplement le téléphone et l'adresse relevés sur le terrain.
+
+### Les sociétés toutes neuves
+
+Le filtre d'ancienneté descend à **1, 2 ou 3 mois**, et le raccourci *« Sociétés créées ces
+2 derniers mois »* pose le critère d'un clic (il efface au passage les dates explicites, qui
+autrement prendraient le pas). C'est le meilleur moment pour démarcher : l'entreprise n'a
+souvent pas encore de site, et le budget de lancement n'est pas dépensé.
+
+**Ce que vous obtiendrez vraiment, sans illusion** : Sirene donne le nom, l'adresse,
+l'activité, la forme juridique et le **dirigeant** — jamais le téléphone ni l'email. Ces
+coordonnées sont relevées par l'audit *sur le site de l'entreprise*… qui, pour une société
+créée il y a trois semaines, n'existe généralement pas encore. Concrètement :
+
+- **toujours** : raison sociale, adresse, activité, date de création, dirigeant ;
+- **souvent** : téléphone, quand l'établissement est un commerce cartographié dans
+  OpenStreetMap (lancez la recherche par commerces sur la même commune pour les récupérer) ;
+- **rarement** : email, qui suppose un site déjà en ligne.
+
+Un prospect sans site est justement un prospect à 100 d'opportunité : l'approche se fait au
+téléphone ou en passant, avec le script d'appel — pas par email.
 
 > Données © les contributeurs OpenStreetMap, sous licence ODbL. Overpass est un service
 > bénévole : l'outil envoie une requête par recherche. `OVERPASS_URL` permet de basculer sur
@@ -353,6 +373,15 @@ d'opposition. Quand l'audit n'est pas concluant, **aucun email commercial n'est 
 vous recevez une note de travail interne.
 
 ## Votre identité visuelle
+
+La palette reprend celle de **smartfixx.fr** : noir profond légèrement violacé, deux halos
+(violet à gauche, cyan à droite) en fond de page, et un accent **violet → cyan** porté par les
+boutons principaux et le logotype. Le cyan sert d'accent interactif (liens, onglet actif,
+cases à cocher) parce qu'il passe le contraste AA là où le violet seul devient limite sur du
+texte de petite taille ; le violet reste la couleur de marque, portée par les dégradés. Les
+documents suivent : le violet remplace le bleu sur les boutons d'email et le filet de la
+synthèse du rapport, dans une nuance assombrie (`#7c3aed`) qui tient sur fond blanc.
+
 
 L'outil porte **votre marque**, pas la sienne : en-tête de l'interface, onglet du navigateur,
 en-tête des deux emails et du rapport remis au prospect. Le logotype est bicolore — la

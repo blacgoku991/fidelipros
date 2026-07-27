@@ -508,10 +508,12 @@ async function vueProspects() {
             <div>
               <label for="depuis">Créées depuis moins de</label>
               <select id="depuis">
-                ${[["", "peu importe"], ["6", "6 mois"], ["12", "12 mois"], ["18", "18 mois"], ["24", "2 ans"], ["60", "5 ans"]]
+                ${[["", "peu importe"], ["1", "1 mois (toutes neuves)"], ["2", "2 mois"], ["3", "3 mois"],
+                   ["6", "6 mois"], ["12", "12 mois"], ["18", "18 mois"], ["24", "2 ans"], ["60", "5 ans"]]
                   .map(([v, l]) => `<option value="${v}" ${String(criteres.depuis ?? "12") === v ? "selected" : ""}>${l}</option>`).join("")}
               </select>
-              <p class="aide-mini">Une entreprise jeune a un budget de lancement.</p>
+              <p class="aide-mini">Une entreprise jeune a un budget de lancement.
+                <button type="button" id="preset-neuves" class="lien-mini">Sociétés créées ces 2 derniers mois</button></p>
             </div>
             <div>
               <label for="creeApres">…ou créée après le</label>
@@ -659,6 +661,15 @@ async function vueProspects() {
   vue.querySelector("#vider-criteres").addEventListener("click", () => {
     localStorage.removeItem(CLE_CRITERES);
     vueProspects();
+  });
+
+  // Raccourci « sociétés toutes neuves » : deux mois d'ancienneté, et on efface les dates
+  // explicites qui, sinon, prendraient le pas sur le choix ci-dessus.
+  vue.querySelector("#preset-neuves")?.addEventListener("click", () => {
+    vue.querySelector("#depuis").value = "2";
+    vue.querySelector("#creeApres").value = "";
+    vue.querySelector("#creeAvant").value = "";
+    notifie("Critère posé : créées il y a moins de 2 mois — lancez la recherche", "info");
   });
 
   ["texte", "statut", "priorite"].forEach((clef) => {
