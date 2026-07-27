@@ -118,6 +118,76 @@ export function scripts(html: string): string[] {
   return [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["']/gi)].map((m) => m[1]);
 }
 
+/** Balise script avec ses attributs de sécurité : sert au contrôle d'intégrité (SRI). */
+export interface ScriptHtml {
+  src: string;
+  integrity: string | null;
+  externe: boolean;
+}
+
+export function scriptsAvecAttributs(html: string, origine?: string): ScriptHtml[] {
+  return [...html.matchAll(/<script\b[^>]*src=["']([^"']+)["'][^>]*>/gi)].map((balise) => {
+    const src = balise[1].trim();
+    let externe = /^https?:\/\//i.test(src) || src.startsWith("//");
+    if (externe && origine) {
+      try {
+        externe = new URL(src, origine).origin !== new URL(origine).origin;
+      } catch {
+        externe = true;
+      }
+    }
+    return {
+      src,
+      integrity: /integrity=["']([^"']+)["']/i.exec(balise[0])?.[1] ?? null,
+      externe,
+    };
+  });
+}
+
+/**
+ * Composants front identifiés avec leur version, à partir du nom de fichier ou du paramètre
+ * `?ver=` que WordPress ajoute à chaque ressource. C'est exactement ce que lit un scanner
+ * automatisé pour choisir sa cible.
+ */
+export interface ComposantDetecte {
+  nom: string;
+  version: string;
+  source: string;
+}
+
+const COMPOSANTS: Array<{ nom: string; motif: RegExp }> = [
+  { nom: "jQuery", motif: /jquery[.-](\d+\.\d+(?:\.\d+)?)(?:\.min)?\.js/i },
+  { nom: "jQuery UI", motif: /jquery-ui[.-](\d+\.\d+(?:\.\d+)?)/i },
+  { nom: "jQuery Migrate", motif: /jquery-migrate[.-](\d+\.\d+(?:\.\d+)?)/i },
+  { nom: "Bootstrap", motif: /bootstrap[.-](\d+\.\d+(?:\.\d+)?)(?:\.min)?\.(?:js|css)/i },
+  { nom: "AngularJS", motif: /angular[.-](1\.\d+(?:\.\d+)?)(?:\.min)?\.js/i },
+  { nom: "Moment.js", motif: /moment[.-](\d+\.\d+(?:\.\d+)?)(?:\.min)?\.js/i },
+  { nom: "Lodash", motif: /lodash[.-](\d+\.\d+(?:\.\d+)?)(?:\.min)?\.js/i },
+  { nom: "Slick", motif: /slick[.-](\d+\.\d+(?:\.\d+)?)/i },
+  { nom: "Fancybox", motif: /fancybox[.-](\d+\.\d+(?:\.\d+)?)/i },
+  { nom: "Swiper", motif: /swiper[.-](\d+\.\d+(?:\.\d+)?)/i },
+];
+
+/** Extensions WordPress repérées dans les URL de ressources, avec leur version déclarée. */
+const RE_PLUGIN_WP = /\/wp-content\/plugins\/([a-z0-9_-]+)\/[^"'\s]*?(?:\?|&)ver=([0-9][0-9a-z.\-]*)/gi;
+const RE_THEME_WP = /\/wp-content\/themes\/([a-z0-9_-]+)\/[^"'\s]*?(?:\?|&)ver=([0-9][0-9a-z.\-]*)/gi;
+
+export function composantsDetectes(html: string): ComposantDetecte[] {
+  const trouves = new Map<string, ComposantDetecte>();
+
+  for (const { nom, motif } of COMPOSANTS) {
+    const trouve = motif.exec(html);
+    if (trouve) trouves.set(nom, { nom, version: trouve[1], source: "fichier" });
+  }
+  for (const [, slug, version] of html.matchAll(RE_PLUGIN_WP)) {
+    trouves.set(`plugin:${slug}`, { nom: slug, version, source: "plugin WordPress" });
+  }
+  for (const [, slug, version] of html.matchAll(RE_THEME_WP)) {
+    trouves.set(`theme:${slug}`, { nom: slug, version, source: "thème WordPress" });
+  }
+  return [...trouves.values()];
+}
+
 export function feuillesDeStyle(html: string): string[] {
   return [...html.matchAll(/<link\b[^>]*rel=["']?stylesheet["']?[^>]*>/gi)]
     .map((m) => m[0].match(/href=["']([^"']+)["']/i)?.[1] ?? "")

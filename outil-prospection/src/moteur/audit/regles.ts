@@ -144,6 +144,34 @@ export const REGLES: Record<string, Regle> = {
     impact: "Téléphone et adresse invisibles : perte directe d'appels, et référencement local pénalisé.",
     effort: "faible", prestations: ["seo_local"],
   },
+  seo_canonical_incoherente: {
+    pilier: "seo", severite: "critique", poids: 22,
+    titre: "L'adresse canonique désigne une autre page",
+    impact: "Vous demandez à Google d'ignorer cette page au profit d'une autre : elle peut disparaître des résultats sans que personne ne comprenne pourquoi.",
+    effort: "faible", prestations: ["seo_technique"],
+  },
+
+  seo_titre_duplique: {
+    pilier: "seo", severite: "majeur", poids: 10,
+    titre: "Le même titre sur plusieurs pages",
+    impact: "Google ne sait pas laquelle proposer et les affiche moins bien toutes les deux.",
+    effort: "faible", prestations: ["seo_technique", "redaction_contenu"],
+  },
+
+  seo_urls_illisibles: {
+    pilier: "seo", severite: "mineur", poids: 6,
+    titre: "Adresses de pages illisibles",
+    impact: "Une adresse en « ?p=142 » n'indique rien à Google ni au visiteur, et se partage mal.",
+    effort: "moyen", prestations: ["seo_technique"],
+  },
+
+  seo_fiche_incomplete: {
+    pilier: "seo", severite: "majeur", poids: 10,
+    titre: "Fiche établissement incomplète",
+    impact: "Sans adresse, téléphone et horaires déclarés dans le code, Google n'affiche pas votre encadré local — celui qui capte les appels.",
+    effort: "faible", prestations: ["seo_local", "seo_technique"],
+  },
+
   seo_liens_morts: {
     pilier: "seo", severite: "majeur", poids: 10,
     titre: "Des liens de votre site ne mènent nulle part",
@@ -213,6 +241,13 @@ export const REGLES: Record<string, Regle> = {
     pilier: "design", severite: "majeur", poids: 12,
     titre: "Images trop lourdes pour un téléphone",
     impact: "En 4G, chaque méga-octet ajoute environ une seconde d'attente : la moitié des visiteurs partent avant l'affichage.",
+    effort: "faible", prestations: ["optimisation_perf"],
+  },
+
+  design_images_sans_dimensions: {
+    pilier: "design", severite: "mineur", poids: 6,
+    titre: "Images sans dimensions déclarées",
+    impact: "La page saute pendant le chargement : le visiteur clique au mauvais endroit, et Google pénalise cette instabilité.",
     effort: "faible", prestations: ["optimisation_perf"],
   },
 
@@ -428,6 +463,69 @@ export const REGLES: Record<string, Regle> = {
     titre: "Certificat de sécurité invalide",
     impact: "Chrome et Safari affichent un avertissement plein écran avant d'ouvrir le site : la quasi-totalité des visiteurs rebrousse chemin.",
     effort: "faible", prestations: ["mise_https", "maintenance"],
+  },
+
+  sec_csp_permissive: {
+    pilier: "securite", severite: "majeur", poids: 10,
+    titre: "Politique de sécurité du contenu inopérante",
+    impact: "La règle existe mais autorise les scripts inline : elle n'arrête pas une injection de code, alors qu'elle donne l'impression d'être protégé.",
+    effort: "moyen", prestations: ["securisation_entetes"],
+  },
+
+  sec_hsts_faible: {
+    pilier: "securite", severite: "mineur", poids: 5,
+    titre: "Forçage HTTPS trop court",
+    impact: "Une durée courte laisse une fenêtre pour intercepter la première visite d'un client sur un réseau public.",
+    effort: "faible", prestations: ["securisation_entetes"],
+  },
+
+  sec_cors_permissif: {
+    pilier: "securite", severite: "majeur", poids: 15,
+    titre: "Partage de ressources ouvert à tous les sites",
+    impact: "N'importe quel site peut lire les réponses du vôtre au nom d'un visiteur connecté : c'est un vol de session par un autre chemin.",
+    effort: "faible", prestations: ["securisation_entetes"],
+  },
+
+  sec_sri_absente: {
+    pilier: "securite", severite: "majeur", poids: 10,
+    titre: "Scripts externes chargés sans contrôle d'intégrité",
+    impact: "Si le serveur qui héberge ces scripts est compromis, le code hostile s'exécute sur votre site — c'est ainsi que des milliers de sites ont été piégés en une nuit.",
+    effort: "faible", prestations: ["securisation_entetes"],
+  },
+
+  sec_composant_vulnerable: {
+    pilier: "securite", severite: "critique", poids: 28,
+    titre: "Extension dans une version aux failles connues",
+    impact: "Ces versions figurent dans les outils d'attaque automatisés : les sites concernés sont trouvés et exploités sans que personne ne les vise en particulier.",
+    effort: "moyen", prestations: ["mise_a_jour_cms", "maintenance"],
+  },
+
+  sec_composants_exposes: {
+    pilier: "securite", severite: "mineur", poids: 6,
+    titre: "Versions des extensions visibles publiquement",
+    impact: "Chaque numéro de version affiché indique à un attaquant automatisé quelles failles essayer.",
+    effort: "faible", prestations: ["securisation_entetes", "maintenance"],
+  },
+
+  sec_traceurs_avant_consentement: {
+    pilier: "securite", severite: "majeur", poids: 18,
+    titre: "Cookies de suivi déposés avant tout consentement",
+    impact: "Constat direct : les cookies publicitaires arrivent dès l'ouverture de la page, sans clic. C'est le manquement que la CNIL sanctionne le plus, jusqu'à 2 % du chiffre d'affaires.",
+    effort: "faible", prestations: ["conformite_rgpd"],
+  },
+
+  sec_enumeration_comptes: {
+    pilier: "securite", severite: "majeur", poids: 15,
+    titre: "Liste des comptes accessible publiquement",
+    impact: "Les identifiants de connexion sont donnés à qui les demande : il ne reste plus qu'à tester des mots de passe.",
+    effort: "faible", prestations: ["securisation_entetes", "maintenance"],
+  },
+
+  sec_xmlrpc_ouvert: {
+    pilier: "securite", severite: "mineur", poids: 6,
+    titre: "Interface XML-RPC ouverte",
+    impact: "Point d'entrée classique pour tester des milliers de mots de passe en peu de requêtes, ou pour faire relayer une attaque par votre serveur.",
+    effort: "faible", prestations: ["securisation_entetes", "maintenance"],
   },
 
   sec_certificat_bientot_expire: {

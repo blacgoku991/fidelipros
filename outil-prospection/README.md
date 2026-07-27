@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 217 tests (moteur + stockage)
+npm test                   # 238 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -173,9 +173,9 @@ clair : l'API la rejetterait de toute façon.
 
 | Volet | Poids | Ce qui est vérifié |
 |---|---|---|
-| **Référencement** | 30 % | **liens morts vérifiés un par un**, **site figé depuis des années** (Internet Archive), title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
+| **Référencement** | 30 % | **adresse canonique incohérente**, **titre dupliqué entre pages**, **fiche établissement incomplète**, **adresses illisibles**, liens morts vérifiés un par un, site figé depuis des années (Internet Archive), title, description, H1 et hiérarchie, canonical, `lang`, `noindex`, robots.txt, sitemap, données structurées, Open Graph, `alt` des images, volume de contenu, page contact, mentions légales, page 404, coordonnées en page d'accueil, maillage interne, **duplication avec / sans « www »**, note SEO Lighthouse |
 | **Design & mobile** | 25 % | **poids réel des images mesuré une par une**, viewport, débordement horizontal, taille des textes, cibles tactiles, contrastes, formats d'images, nombre de polices, technologies datées, favicon, contact cliquable, copyright ancien, LCP, CLS, note d'accessibilité Lighthouse |
-| **Sécurité** | 25 % | **certificat lu directement** (émetteur, date d'expiration, version TLS négociée), certificat invalide (expiré, mauvais domaine, auto-signé), HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
+| **Sécurité** | 25 % | **extensions à failles publiques connues** (référence CVE citée), **cookies de suivi déposés avant consentement**, **scripts externes sans contrôle d'intégrité**, **qualité réelle des en-têtes** (CSP permissive, HSTS trop court, CORS ouvert aux identifiants), **points d'entrée WordPress** (liste des comptes, XML-RPC), **certificat lu directement** (émetteur, date d'expiration, version TLS négociée), certificat invalide (expiré, mauvais domaine, auto-signé), HTTPS et redirection, HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, versions divulguées, CMS obsolète, bibliothèques à failles connues, cookies non protégés, contenu mixte, formulaire en clair, fichiers publics exposés, listing de répertoire, SPF, DMARC, MX, email en clair, politique de confidentialité, **traceurs déposés sans bandeau de consentement** (risque CNIL) |
 | **Performance** | 20 % | disponibilité, code HTTP, note de performance, **temps vécus par les visiteurs réels** (Chrome UX Report), poids et nombre de requêtes, compression, cache, HTTP/3, temps de réponse, erreurs console |
 
 Note d'un volet = `100 − somme des poids des défauts constatés`. L'urgence découle du nombre
@@ -215,6 +215,36 @@ Un audit non concluant n'émet aucun défaut, n'affiche aucune note, ne produit 
 remplace l'email par une note de travail interne, et **ne requalifie pas le prospect**. C'est
 fréquent : beaucoup de sites de PME sont derrière Cloudflare et répondent 403 à un client non
 navigateur. Relancez depuis un autre réseau, ou vérifiez à la main.
+
+### Ce que l'audit fait, et ce qu'il ne fait pas
+
+**96 règles** réparties en quatre volets : 31 référencement, 35 sécurité, 19 design et mobile,
+11 performance technique. Toutes reposent sur une observation directe et reproductible.
+
+Côté sécurité, l'audit va au-delà de la présence des en-têtes :
+
+- **les extensions et bibliothèques sont relevées avec leur version** — c'est ce que lit un
+  scanner automatisé — et confrontées à une courte liste de failles publiques massivement
+  exploitées (Slider Revolution, WP File Manager, Duplicator, Elementor, Contact Form 7,
+  jQuery, Lodash…). Le constat cite la version, la version corrigée, la conséquence et **la
+  référence CVE**, pour que le prospect vérifie lui-même ;
+- **la qualité des en-têtes** compte autant que leur présence : une CSP en `unsafe-inline`
+  n'arrête aucune injection, un HSTS d'un jour ne protège personne, un
+  `Access-Control-Allow-Origin: *` combiné à `Allow-Credentials: true` ouvre les réponses du
+  site à n'importe quel autre site ;
+- **les cookies de suivi déposés dès l'ouverture** sont constatés dans la réponse elle-même,
+  pas déduits : c'est une preuve, et c'est le manquement que la CNIL sanctionne le plus ;
+- **les scripts externes sans `integrity`** sont signalés : si le serveur qui les héberge est
+  compromis, le code hostile s'exécute sur le site du prospect ;
+- **deux points d'entrée WordPress publics** sont interrogés, uniquement sur un WordPress :
+  `/wp-json/wp/v2/users`, qui publie souvent les identifiants de connexion, et `/xmlrpc.php`.
+
+**Ce que l'audit ne fait pas, volontairement** : aucune injection n'est tentée, aucun mot de
+passe essayé, aucun formulaire soumis, aucun contournement de pare-feu. Ces techniques sont
+réservées à un test d'intrusion mandaté par écrit ; sans mandat, elles sont illégales
+(article 323-1 du code pénal) et rendraient le rapport indéfendable. Quand un pare-feu bloque
+l'analyse, l'outil le dit et **s'arrête** — il ne cherche pas à passer outre. Le rapport client
+énonce d'ailleurs cette limite noir sur blanc.
 
 ### Ce qui rend un audit défendable
 
@@ -342,14 +372,14 @@ chaque écriture. Pour repartir de zéro : supprimez le dossier. Pour sauvegarde
 
 ```
 src/moteur/          recherche Sirene et OpenStreetMap, détection de site, audit, devis, rédaction
-  ├── audit/         collecte HTTP/DNS/Lighthouse, coordonnées, ~70 règles des quatre volets
+  ├── audit/         collecte HTTP/DNS/TLS/Lighthouse, coordonnées, 96 règles des quatre volets
   └── proposition/   devis, rapport, email texte et HTML, SMS, script d'appel, reformulation IA
 src/serveur/         serveur node:http (API JSON + fichiers statiques) et stockage
 src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-217 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+238 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

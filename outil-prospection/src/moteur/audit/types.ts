@@ -153,6 +153,8 @@ export interface ContexteAudit {
   archive: ArchiveSite | null;
   /** Certificat TLS présenté par le site. null = lecture impossible ou site en HTTP. */
   certificat: CertificatTls | null;
+  /** Points d'entrée WordPress publics. null = site non WordPress ou sondage désactivé. */
+  wordpress: { comptes: string[]; xmlrpc: boolean } | null;
   robots: { present: boolean; contenu: string } | null;
   sitemap: { present: boolean; urls: number } | null;
   pageInterne: ReponseHttp | null;

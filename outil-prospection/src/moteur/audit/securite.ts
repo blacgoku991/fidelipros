@@ -6,12 +6,28 @@
 
 import { PROTOCOLES_SURS } from "./certificat.ts";
 import { emailEnClair } from "./contacts.ts";
+import { failleDe } from "./composants.ts";
 import {
-  aBandeauConsentement, formulaires, generateur, ressourcesNonSecurisees, scripts, texteVisible,
-  traceurs,
+  aBandeauConsentement, composantsDetectes, formulaires, generateur, ressourcesNonSecurisees,
+  scripts, scriptsAvecAttributs, texteVisible, traceurs,
 } from "./html.ts";
 import { constate } from "./regles.ts";
 import type { ContexteAudit, Finding } from "./types.ts";
+
+/** Cookies dont le dépôt sans consentement est explicitement sanctionné. */
+const COOKIES_TRACEURS = [
+  /^_ga/, /^_gid$/, /^_gcl_au$/, /^_fbp$/, /^_fbc$/, /^IDE$/, /^NID$/, /^_hjSession/, /^_uetsid/,
+  /^_clck$/, /^_clsk$/, /^_ttp$/, /^__utm/,
+];
+
+/** Hôte d'une URL de script, pour nommer la source sans afficher une adresse illisible. */
+function hoteLisible(src: string): string {
+  try {
+    return new URL(src, "https://exemple.invalid").hostname;
+  } catch {
+    return src.slice(0, 40);
+  }
+}
 
 const MOTS_CONFIDENTIALITE = /(politique de confidentialit|donn[eé]es personnelles|vie priv[eé]e|rgpd|privacy)/i;
 
@@ -98,13 +114,43 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
   }
 
   // ── En-têtes de sécurité ──────────────────────────────────────────────────
-  if (enHttps && !entetes["strict-transport-security"]) {
+  const hsts = entetes["strict-transport-security"] ?? "";
+  if (enHttps && !hsts) {
     findings.push(constate("sec_hsts_absent", "En-tête Strict-Transport-Security absent"));
+  } else if (enHttps) {
+    // Un en-tête présent mais valable quelques heures ne protège quasiment personne.
+    const duree = Number(/max-age=(\d+)/i.exec(hsts)?.[1] ?? "0");
+    if (duree > 0 && duree < 15_552_000) {
+      findings.push(constate(
+        "sec_hsts_faible",
+        `max-age de ${Math.round(duree / 86_400)} jour(s), recommandé : 180 jours minimum`,
+      ));
+    }
   }
-  if (!entetes["content-security-policy"]) {
-    findings.push(constate("sec_csp_absente", "En-tête Content-Security-Policy absent"));
-  }
+
   const csp = entetes["content-security-policy"] ?? "";
+  if (!csp) {
+    findings.push(constate("sec_csp_absente", "En-tête Content-Security-Policy absent"));
+  } else {
+    // Présence ≠ protection : ces directives annulent l'essentiel de l'effet attendu.
+    const faiblesses = [
+      /script-src[^;]*'unsafe-inline'/i.test(csp) ? "'unsafe-inline' sur les scripts" : null,
+      /'unsafe-eval'/i.test(csp) ? "'unsafe-eval'" : null,
+      /(?:default|script)-src[^;]*\*(?!\.)/i.test(csp) ? "sources autorisées en *" : null,
+    ].filter(Boolean);
+    if (faiblesses.length) {
+      findings.push(constate("sec_csp_permissive", `Politique présente mais permissive : ${faiblesses.join(", ")}`));
+    }
+  }
+
+  // Partage de ressources ouvert : dangereux seulement combiné aux identifiants de session.
+  if (entetes["access-control-allow-origin"] === "*" &&
+      /true/i.test(entetes["access-control-allow-credentials"] ?? "")) {
+    findings.push(constate(
+      "sec_cors_permissif",
+      "Access-Control-Allow-Origin: * combiné à Allow-Credentials: true",
+    ));
+  }
   if (!entetes["x-frame-options"] && !/frame-ancestors/i.test(csp)) {
     findings.push(constate("sec_xfo_absent", "Ni X-Frame-Options ni directive frame-ancestors"));
   }
@@ -182,6 +228,51 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
     }
   }
 
+  // ── Chaîne d'approvisionnement : scripts externes et composants ───────────
+  const scriptsExternes = scriptsAvecAttributs(html, accueil?.urlFinale)
+    .filter((script) => script.externe && !/googletagmanager|google-analytics|gstatic|recaptcha/i.test(script.src));
+  const sansIntegrite = scriptsExternes.filter((script) => !script.integrity);
+  if (sansIntegrite.length) {
+    findings.push(constate(
+      "sec_sri_absente",
+      `${sansIntegrite.length} script(s) externe(s) sans attribut integrity : ${
+        sansIntegrite.slice(0, 2).map((script) => hoteLisible(script.src)).join(", ")}`,
+    ));
+  }
+
+  const composants = composantsDetectes(html);
+  const composantsFailles = composants.flatMap((composant) => {
+    const faille = failleDe(composant.nom, composant.version);
+    return faille ? [{ composant, faille }] : [];
+  });
+
+  for (const { composant, faille } of composantsFailles.slice(0, 4)) {
+    findings.push(constate(
+      "sec_composant_vulnerable",
+      `${composant.nom} ${composant.version} (corrigé en ${faille.corrigeeEn}) — ${faille.consequence}. Référence : ${faille.reference}`,
+    ));
+  }
+  const versionsVisibles = composants.filter((composant) => composant.source !== "fichier");
+  if (versionsVisibles.length >= 3 && !composantsFailles.length) {
+    findings.push(constate(
+      "sec_composants_exposes",
+      `${versionsVisibles.length} extension(s) affichent leur version : ${
+        versionsVisibles.slice(0, 4).map((c) => `${c.nom} ${c.version}`).join(", ")}`,
+    ));
+  }
+
+  // Points d'entrée WordPress : constat, avec les identifiants réellement publiés.
+  if (ctx.wordpress?.comptes.length) {
+    findings.push(constate(
+      "sec_enumeration_comptes",
+      `/wp-json/wp/v2/users publie ${ctx.wordpress.comptes.length} identifiant(s) : ${
+        ctx.wordpress.comptes.slice(0, 3).join(", ")}`,
+    ));
+  }
+  if (ctx.wordpress?.xmlrpc) {
+    findings.push(constate("sec_xmlrpc_ouvert", "/xmlrpc.php répond : l'interface est active"));
+  }
+
   // ── RGPD et exposition de l'email ─────────────────────────────────────────
   const texte = texteVisible(html);
   if (!MOTS_CONFIDENTIALITE.test(html) && !MOTS_CONFIDENTIALITE.test(texte)) {
@@ -193,6 +284,17 @@ export function evalueSecurite(ctx: ContexteAudit): Finding[] {
 
   // Traceurs chargés dès l'arrivée alors qu'aucune solution de consentement n'est présente.
   // On ne conclut que sur ce qui est écrit dans la page : les deux faits sont observés.
+  // Preuve directe : les cookies publicitaires sont déjà posés dans la réponse d'accueil.
+  const cookiesTraceurs = (accueil?.cookies ?? [])
+    .map((cookie) => cookie.split("=")[0]?.trim() ?? "")
+    .filter((nom) => COOKIES_TRACEURS.some((motif) => motif.test(nom)));
+  if (cookiesTraceurs.length) {
+    findings.push(constate(
+      "sec_traceurs_avant_consentement",
+      `Déposés dès l'ouverture, sans aucun clic : ${[...new Set(cookiesTraceurs)].slice(0, 4).join(", ")}`,
+    ));
+  }
+
   const traceursCharges = traceurs(html);
   if (traceursCharges.length && !aBandeauConsentement(html)) {
     findings.push(constate(

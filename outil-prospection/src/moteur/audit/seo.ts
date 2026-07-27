@@ -154,10 +154,71 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
     findings.push(constate("seo_lighthouse_faible", `Note SEO Google : ${ctx.lighthouse.seo}/100`));
   }
 
+  // Canonique qui désigne une autre page : cause classique de disparition des résultats.
+  const canonique = canonical(html);
+  if (canonique && accueil) {
+    try {
+      const cible = new URL(canonique, accueil.urlFinale);
+      const courante = new URL(accueil.urlFinale);
+      const memePage = cible.hostname.replace(/^www\./, "") === courante.hostname.replace(/^www\./, "") &&
+        cible.pathname.replace(/\/$/, "") === courante.pathname.replace(/\/$/, "");
+      if (!memePage) {
+        findings.push(constate(
+          "seo_canonical_incoherente",
+          `La page d'accueil déclare comme adresse officielle ${cible.toString()}`,
+        ));
+      }
+    } catch {
+      // Canonique inexploitable : la règle « canonical absent » couvre déjà le cas.
+    }
+  }
+
+  // Titre et description identiques entre l'accueil et une page interne.
+  if (accueil && ctx.pageInterne) {
+    const titreAccueil = titrePage(html)?.trim();
+    const titreInterne = titrePage(ctx.pageInterne.html)?.trim();
+    if (titreAccueil && titreAccueil === titreInterne) {
+      findings.push(constate(
+        "seo_titre_duplique",
+        `« ${titreAccueil.slice(0, 60)} » sert de titre à l'accueil et à ${new URL(ctx.pageInterne.urlFinale).pathname}`,
+      ));
+    }
+  }
+
+  // Adresses techniques : ?p=142, index.php?id=7…
+  if (accueil) {
+    const illisibles = liens(html)
+      .map((lien) => lien.href)
+      .filter((href) => /[?&](p|page_id|cat|id|product_id)=\d+/i.test(href) || /index\.php\?/i.test(href));
+    if (illisibles.length >= 3) {
+      findings.push(constate(
+        "seo_urls_illisibles",
+        `${illisibles.length} lien(s) en adresse technique, par exemple ${illisibles[0].slice(0, 50)}`,
+      ));
+    }
+  }
+
+  // Fiche établissement déclarée mais amputée : Google ne l'affiche pas.
+  const typesFiche = typesJsonLd(html);
+  if (typesFiche.some((type) => /LocalBusiness|Store|Restaurant|Organization/i.test(type))) {
+    const manques = [
+      /"address"\s*:/.test(html) ? null : "adresse",
+      /"telephone"\s*:/.test(html) ? null : "téléphone",
+      /"openingHours/i.test(html) ? null : "horaires",
+    ].filter(Boolean);
+    if (manques.length) {
+      findings.push(constate("seo_fiche_incomplete", `Données structurées sans ${manques.join(", ")}`));
+    }
+  }
+
   // Liens vérifiés un par un : on cite les adresses, le prospect vérifie en un clic.
   if (ctx.liens && ctx.liens.casses.length) {
     const exemples = ctx.liens.casses.slice(0, 3)
-      .map((lien) => `${new URL(lien.url).pathname} (${lien.statut})`)
+      .map((lien) => {
+        // Le chemin seul est trompeur quand l'adresse porte la page en paramètre (« /?p=12 »).
+        const adresse = new URL(lien.url);
+        return `${adresse.pathname}${adresse.search} (${lien.statut})`;
+      })
       .join(", ");
     findings.push(constate(
       "seo_liens_morts",

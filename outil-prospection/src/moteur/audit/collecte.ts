@@ -9,7 +9,7 @@ import { litCertificat, type OptionsCertificat } from "./certificat.ts";
 import {
   agregeContacts, CHEMINS_CONTACT, contactsVides, lienspagesContact,
 } from "./contacts.ts";
-import { images, liens } from "./html.ts";
+import { images, liens, technologie } from "./html.ts";
 import { domaine, origine, pause, recupereHttp, USER_AGENT, type CauseEchec } from "./http.ts";
 import type {
   ContexteAudit,
@@ -90,7 +90,6 @@ export const FICHIERS_SONDES: Array<{ chemin: string; indice: string }> = [
   { chemin: "/.DS_Store", indice: "Fichier macOS listant les fichiers du dossier" },
   { chemin: "/server-status", indice: "Console d'état du serveur Apache" },
   { chemin: "/wp-content/uploads/", indice: "Listing du dossier des fichiers téléversés" },
-  { chemin: "/xmlrpc.php", indice: "Point d'entrée WordPress utilisé pour les attaques par force brute" },
 ];
 
 const PSI_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed";
@@ -234,6 +233,9 @@ export async function collectePageInterne(
 ): Promise<ReponseHttp | null> {
   const base = origine(accueil.urlFinale);
   if (!base) return null;
+  // Jusqu'à trois candidats : une page qui répond en erreur ne représente pas le site, et
+  // fausserait les comparaisons de titre et de contenu.
+  let essais = 0;
   for (const lien of liens(accueil.html).slice(0, 40)) {
     if (/^(mailto:|tel:|javascript:|#)/i.test(lien.href)) continue;
     let absolue: URL;
@@ -245,11 +247,14 @@ export async function collectePageInterne(
     if (absolue.origin !== base) continue;
     if (absolue.pathname === "/" || absolue.pathname === new URL(accueil.urlFinale).pathname) continue;
     if (/\.(pdf|jpe?g|png|gif|zip|docx?|xlsx?|mp4|svg|webp)$/i.test(absolue.pathname)) continue;
-    return await recupereHttp(absolue.toString(), {
+
+    const reponse = await recupereHttp(absolue.toString(), {
       fetchImpl: options.fetchImpl,
       timeoutMs: options.timeoutMs ?? 8000,
       maxOctets: options.maxOctets ?? 500_000,
     });
+    if (reponse && reponse.statut < 400) return reponse;
+    if (++essais >= 3) return reponse;
   }
   return null;
 }
@@ -425,6 +430,48 @@ export async function collectePagesContact(
     }
   }
   return trouvees;
+}
+
+/**
+ * Deux points d'entrée WordPress publics, interrogés uniquement si le site est un WordPress.
+ * Lecture seule, deux requêtes GET, sur des adresses documentées : `/wp-json/wp/v2/users`
+ * publie la liste des comptes (c'est une fonctionnalité, souvent involontaire), et `/xmlrpc.php`
+ * répond en GET qu'il n'accepte que le POST — ce qui suffit à savoir qu'il est actif. Aucun
+ * mot de passe n'est essayé, aucune requête XML-RPC n'est envoyée.
+ */
+export async function sondeWordpress(
+  url: string,
+  options: OptionsCollecte,
+  robotsTxt?: string | null,
+): Promise<{ comptes: string[]; xmlrpc: boolean }> {
+  const base = origine(url);
+  const resultat = { comptes: [] as string[], xmlrpc: false };
+  if (!base) return resultat;
+  const interdits = cheminsInterdits(robotsTxt);
+  const commun = {
+    fetchImpl: options.fetchImpl,
+    timeoutMs: Math.min(options.timeoutMs ?? 5000, 5000),
+    maxOctets: 20_000,
+  };
+
+  if (cheminAutorise("/wp-json/wp/v2/users", interdits)) {
+    const reponse = await recupereHttp(`${base}/wp-json/wp/v2/users`, commun);
+    await pause(options.delaiSondeMs ?? 300);
+    if (reponse?.statut === 200 && /"slug"\s*:/.test(reponse.html)) {
+      resultat.comptes = [...reponse.html.matchAll(/"slug"\s*:\s*"([^"]{1,60})"/g)]
+        .map((trouve) => trouve[1])
+        .slice(0, 5);
+    }
+  }
+
+  if (!expire(options.echeance) && cheminAutorise("/xmlrpc.php", interdits)) {
+    const reponse = await recupereHttp(`${base}/xmlrpc.php`, commun);
+    await pause(options.delaiSondeMs ?? 300);
+    // 405 « XML-RPC server accepts POST requests only » : l'interface est en service.
+    resultat.xmlrpc = Boolean(reponse && (reponse.statut === 405 || /XML-RPC server accepts POST/i.test(reponse.html)));
+  }
+
+  return resultat;
 }
 
 /** Vérifie qu'une adresse inexistante renvoie un vrai 404 avec une page personnalisée. */
@@ -734,6 +781,7 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
     imagesMesurees: null,
     archive: null,
     certificat: null,
+    wordpress: null,
     page404: null,
     dns: null,
     lighthouse: null,
@@ -872,6 +920,15 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
       contexte.fichiersExposes = await sondeFichiers(urlEffective, options, contexte.robots?.contenu);
     } catch {
       erreurs.push("Sondage des fichiers publics interrompu");
+    }
+  }
+
+  // Points d'entrée WordPress : seulement si c'est un WordPress, et seulement avec le sondage.
+  if (options.avecSonde && !expire(options.echeance) && technologie(accueil.html, accueil.entetes) === "WordPress") {
+    try {
+      contexte.wordpress = await sondeWordpress(urlEffective, options, contexte.robots?.contenu);
+    } catch {
+      erreurs.push("Vérification des points d'entrée WordPress interrompue");
     }
   }
 

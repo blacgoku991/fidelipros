@@ -115,6 +115,16 @@ export function evalueDesign(ctx: ContexteAudit): Finding[] {
     findings.push(constate("design_debordement_mobile", "Aucune règle d'adaptation d'écran trouvée dans la page"));
   }
 
+  // Dimensions déclarées : sans elles, la page saute pendant le chargement.
+  const toutesImages = images(html);
+  const sansDimensions = toutesImages.filter((image) => !image.aDimensions);
+  if (toutesImages.length >= 4 && sansDimensions.length / toutesImages.length > 0.6) {
+    findings.push(constate(
+      "design_images_sans_dimensions",
+      `${sansDimensions.length} image(s) sur ${toutesImages.length} sans attribut width/height`,
+    ));
+  }
+
   // Poids réel mesuré image par image : indépendant de Lighthouse, et très concret.
   const lourdes = (ctx.imagesMesurees ?? []).filter((image) => image.octets > 700_000);
   if (lourdes.length) {

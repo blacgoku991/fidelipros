@@ -16,8 +16,10 @@ import {
 import { aBandeauConsentement, traceurs } from "./html.ts";
 import {
   anneeCopyright, compteMots, comptePolices, echappeHtml, formulaires, images, liens, meta,
-  niveauxTitres, ressourcesNonSecurisees, technologie, texteVisible, titrePage, typesJsonLd,
+  composantsDetectes, niveauxTitres, ressourcesNonSecurisees, technologie, texteVisible, titrePage,
+  typesJsonLd,
 } from "./html.ts";
+import { compareVersions, failleDe } from "./composants.ts";
 import { REGLES, constate, reglesDuPilier } from "./regles.ts";
 import {
   argumentsCles, calculeScores, piliersPartiels, resumeSeverites, scorePilier,
@@ -114,6 +116,7 @@ function contexte(surcharge: Partial<ContexteAudit> = {}): ContexteAudit {
     imagesMesurees: null,
     archive: null,
     certificat: null,
+    wordpress: null,
     robots: { present: true, contenu: "User-agent: *\nAllow: /\nSitemap: https://garagemartin.fr/sitemap.xml" },
     sitemap: { present: true, urls: 12 },
     pageInterne: null,
@@ -1434,5 +1437,199 @@ describe("mesures des visiteurs réels (données terrain)", () => {
     // Trafic insuffisant pour des données terrain : aucun constat inventé.
     expect(evalueTechnique(contexte({ lighthouse: lighthouse({ terrain: null }) }))
       .map((f) => f.regle)).not.toContain("tech_terrain_lent");
+  });
+});
+
+describe("sécurité approfondie : qualité des en-têtes", () => {
+  const avecEntetes = (entetes: Record<string, string>) =>
+    contexte({ accueil: reponse({ urlFinale: "https://garagemartin.fr/", entetes: { "content-type": "text/html", ...entetes } }) });
+
+  it("distingue une politique de sécurité réelle d'une politique de façade", () => {
+    // Présente mais inopérante : les scripts inline restent autorisés.
+    const permissive = evalueSecurite(avecEntetes({
+      "content-security-policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    }));
+    const finding = permissive.find((f) => f.regle === "sec_csp_permissive");
+    expect(finding?.constat).toContain("unsafe-inline");
+    expect(finding?.constat).toContain("unsafe-eval");
+    expect(permissive.map((f) => f.regle)).not.toContain("sec_csp_absente");
+
+    // Politique stricte : aucun constat.
+    const stricte = evalueSecurite(avecEntetes({
+      "content-security-policy": "default-src 'self'; script-src 'self'; frame-ancestors 'none'",
+    })).map((f) => f.regle);
+    expect(stricte).not.toContain("sec_csp_permissive");
+    expect(stricte).not.toContain("sec_csp_absente");
+  });
+
+  it("mesure la durée du forçage HTTPS au lieu de se contenter de sa présence", () => {
+    const court = evalueSecurite(avecEntetes({ "strict-transport-security": "max-age=86400" }));
+    expect(court.find((f) => f.regle === "sec_hsts_faible")?.constat).toContain("1 jour(s)");
+
+    const correct = evalueSecurite(avecEntetes({
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+    })).map((f) => f.regle);
+    expect(correct).not.toContain("sec_hsts_faible");
+    expect(correct).not.toContain("sec_hsts_absent");
+  });
+
+  it("ne signale le partage de ressources ouvert que s'il porte les identifiants de session", () => {
+    const dangereux = evalueSecurite(avecEntetes({
+      "access-control-allow-origin": "*",
+      "access-control-allow-credentials": "true",
+    }));
+    expect(dangereux.map((f) => f.regle)).toContain("sec_cors_permissif");
+
+    // Étoile seule : courant et sans danger pour un site vitrine, donc aucun constat.
+    expect(evalueSecurite(avecEntetes({ "access-control-allow-origin": "*" })).map((f) => f.regle))
+      .not.toContain("sec_cors_permissif");
+  });
+});
+
+describe("sécurité approfondie : composants et chaîne d'approvisionnement", () => {
+  it("compare les versions et cite la référence publique de la faille", () => {
+    expect(compareVersions("5.2.6", "5.4.6")).toBeLessThan(0);
+    expect(compareVersions("5.4.6", "5.4.6")).toBe(0);
+    expect(compareVersions("6.1", "5.4.6")).toBeGreaterThan(0);
+
+    expect(failleDe("revslider", "5.2.6")?.reference).toContain("CVE-2016-10309");
+    expect(failleDe("revslider", "6.0.0")).toBeNull();
+    expect(failleDe("plugin-inconnu", "1.0")).toBeNull();
+  });
+
+  it("détecte les extensions WordPress et leur version dans les URL de ressources", () => {
+    const html = `<link href="/wp-content/plugins/revslider/public/css/rs6.css?ver=5.2.6">
+      <script src="/wp-content/plugins/contact-form-7/includes/js/index.js?ver=5.6.4"></script>
+      <link href="/wp-content/themes/monTheme/style.css?ver=1.2.0">
+      <script src="/js/jquery-1.7.2.min.js"></script>`;
+    const composants = composantsDetectes(html);
+    expect(composants).toContainEqual({ nom: "revslider", version: "5.2.6", source: "plugin WordPress" });
+    expect(composants).toContainEqual({ nom: "monTheme", version: "1.2.0", source: "thème WordPress" });
+    expect(composants).toContainEqual({ nom: "jQuery", version: "1.7.2", source: "fichier" });
+  });
+
+  it("constate une extension à faille connue avec sa conséquence", () => {
+    const html = `<link href="/wp-content/plugins/revslider/public/css/rs6.css?ver=5.2.6">`;
+    const finding = evalueSecurite(contexte({ accueil: reponse({ html }) }))
+      .find((f) => f.regle === "sec_composant_vulnerable");
+    expect(finding?.constat).toContain("revslider 5.2.6");
+    expect(finding?.constat).toContain("corrigé en 5.4.6");
+    expect(finding?.constat).toContain("prise de contrôle");
+    expect(finding?.severite).toBe("critique");
+  });
+
+  it("signale les scripts externes sans contrôle d'intégrité, en ignorant les mesures d'audience", () => {
+    const html = `<script src="https://cdn.exemple-tiers.net/lib.js"></script>
+      <script src="https://cdn.autre.net/x.js" integrity="sha384-abc"></script>
+      <script src="https://www.googletagmanager.com/gtag/js?id=G-1"></script>
+      <script src="/js/local.js"></script>`;
+    const finding = evalueSecurite(contexte({
+      accueil: reponse({ html, urlFinale: "https://garagemartin.fr/" }),
+    })).find((f) => f.regle === "sec_sri_absente");
+
+    expect(finding?.constat).toContain("1 script");
+    expect(finding?.constat).toContain("cdn.exemple-tiers.net");
+  });
+});
+
+describe("sécurité approfondie : RGPD et points d'entrée WordPress", () => {
+  it("prouve le dépôt de cookies de suivi avant tout consentement", () => {
+    const finding = evalueSecurite(contexte({
+      accueil: reponse({ cookies: ["_ga=GA1.2.123; Path=/", "_fbp=fb.1.456; Path=/", "PHPSESSID=abc; Path=/"] }),
+    })).find((f) => f.regle === "sec_traceurs_avant_consentement");
+
+    expect(finding?.constat).toContain("_ga");
+    expect(finding?.constat).toContain("_fbp");
+    // Un cookie de session technique n'est pas un traceur.
+    expect(finding?.constat).not.toContain("PHPSESSID");
+  });
+
+  it("interroge les deux points d'entrée sur un site WordPress", async () => {
+    const appels: string[] = [];
+    const impl = fetchSimule({
+      "https://boutique.fr/wp-json/wp/v2/users": { corps: `[{"id":1,"name":"Marie","slug":"marie"}]` },
+      "https://boutique.fr/xmlrpc.php": { statut: 405, corps: "XML-RPC server accepts POST requests only." },
+      "https://boutique.fr/": { corps: `<html><head><title>Boutique</title></head><body><link href="/wp-content/themes/x/style.css"></body></html>` },
+    }, appels);
+
+    const ctx = await collecte("https://boutique.fr/", { fetchImpl: impl, avecSonde: true, delaiSondeMs: 0 });
+    expect(ctx.wordpress?.comptes).toEqual(["marie"]);
+    expect(ctx.wordpress?.xmlrpc).toBe(true);
+  });
+
+  it("relève l'exposition des identifiants et l'interface XML-RPC", () => {
+    const findings = evalueSecurite(contexte({
+      wordpress: { comptes: ["admin", "marie"], xmlrpc: true },
+    }));
+    expect(findings.find((f) => f.regle === "sec_enumeration_comptes")?.constat).toContain("admin");
+    expect(findings.map((f) => f.regle)).toContain("sec_xmlrpc_ouvert");
+  });
+
+  it("n'interroge les points d'entrée WordPress que sur un site WordPress", async () => {
+    const appels: string[] = [];
+    const impl = fetchSimule({
+      "https://site-sur-mesure.fr/": { corps: "<html><body>Site sur mesure</body></html>" },
+    }, appels);
+    const ctx = await collecte("https://site-sur-mesure.fr/", { fetchImpl: impl, avecSonde: true, delaiSondeMs: 0 });
+    expect(appels.some((a) => a.includes("/wp-json/"))).toBe(false);
+    expect(appels.some((a) => a.includes("/xmlrpc.php"))).toBe(false);
+    expect(ctx.wordpress).toBeNull();
+  });
+});
+
+describe("référencement approfondi", () => {
+  it("signale une adresse canonique qui désigne une autre page", () => {
+    const html = `<html><head><link rel="canonical" href="https://autre-site.fr/accueil"></head><body>x</body></html>`;
+    const finding = evalueSeo(contexte({ accueil: reponse({ html, urlFinale: "https://garagemartin.fr/" }) }))
+      .find((f) => f.regle === "seo_canonical_incoherente");
+    expect(finding?.constat).toContain("autre-site.fr/accueil");
+    expect(finding?.severite).toBe("critique");
+
+    // Canonique qui pointe sur la page elle-même : rien à signaler.
+    const propre = `<link rel="canonical" href="https://garagemartin.fr/">`;
+    expect(evalueSeo(contexte({ accueil: reponse({ html: propre, urlFinale: "https://garagemartin.fr/" }) }))
+      .map((f) => f.regle)).not.toContain("seo_canonical_incoherente");
+  });
+
+  it("repère un titre réutilisé tel quel sur une page interne", () => {
+    const titre = "<title>Garage Martin — mécanique générale à Bordeaux</title>";
+    const finding = evalueSeo(contexte({
+      accueil: reponse({ html: `<html><head>${titre}</head><body>x</body></html>` }),
+      pageInterne: reponse({ html: `<html><head>${titre}</head><body>y</body></html>`, urlFinale: "https://garagemartin.fr/services" }),
+    })).find((f) => f.regle === "seo_titre_duplique");
+    expect(finding?.constat).toContain("/services");
+  });
+
+  it("signale des adresses techniques et une fiche établissement amputée", () => {
+    const html = `<html><head><script type="application/ld+json">{"@type":"LocalBusiness","name":"Garage"}</script></head>
+      <body><a href="/?p=12">A</a><a href="/?p=34">B</a><a href="/index.php?id=7">C</a></body></html>`;
+    const findings = evalueSeo(contexte({ accueil: reponse({ html }) })).map((f) => f.regle);
+    expect(findings).toContain("seo_urls_illisibles");
+    expect(findings).toContain("seo_fiche_incomplete");
+  });
+});
+
+describe("page interne représentative", () => {
+  it("passe au lien suivant quand la page interne répond en erreur", async () => {
+    const accueil = `<html><head><title>Boulangerie</title></head><body>
+      <a href="/?p=12">Nos pains</a><a href="/services">Services</a>
+      ${"Pain au levain cuit au feu de bois. ".repeat(20)}</body></html>`;
+    const impl = fetchSimule({
+      "https://boulangerie.fr/services": { corps: "<html><head><title>Services</title></head><body>Nos services</body></html>" },
+      "https://boulangerie.fr/?p=12": { statut: 404, corps: "<html>Not found</html>" },
+      "https://boulangerie.fr/": { corps: accueil },
+    });
+
+    const ctx = await collecte("https://boulangerie.fr/", { fetchImpl: impl });
+    // La page retenue est celle qui répond, pas la première trouvée.
+    expect(ctx.pageInterne?.urlFinale).toBe("https://boulangerie.fr/services");
+    expect(ctx.pageInterne?.statut).toBe(200);
+  });
+
+  it("cite l'adresse complète d'un lien cassé, paramètres compris", () => {
+    const finding = evalueSeo(contexte({
+      liens: { verifies: 5, casses: [{ url: "https://boulangerie.fr/?p=12", statut: 404, texte: "Nos pains" }] },
+    })).find((f) => f.regle === "seo_liens_morts");
+    expect(finding?.constat).toContain("/?p=12 (404)");
   });
 });
