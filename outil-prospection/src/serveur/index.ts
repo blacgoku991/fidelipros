@@ -27,6 +27,9 @@ import {
   CATEGORIES_OSM, chercheCommerces, prospectDepuisCommerce, type FiltresOsm,
 } from "../moteur/osm.ts";
 import { chercheEtablissements, prospectDepuisEtablissement } from "../moteur/places.ts";
+import {
+  DEPARTEMENTS, REGIONS, departementParCode, departementsDeRegion, libelleDepartement,
+} from "../moteur/geo.ts";
 import { auditeProspects, detecteEtAuditeSite } from "../moteur/website.ts";
 import type { CibleProspection, ProspectionFilters, StatutSite } from "../moteur/types.ts";
 import { auditeSite, normaliseUrl } from "../moteur/audit/index.ts";
@@ -569,24 +572,53 @@ async function lanceProspectionOsm(corps: Record<string, unknown>, travail: Trav
     limite: Math.min(Math.max(nombre(corps.limite) ?? 200, 1), 3000),
   };
   const debut = Date.now();
-
-  travail.etape = `interrogation d'OpenStreetMap (${filtres.ville ?? filtres.codePostal ?? "zone"})`;
-  const commerces = await chercheCommerces(filtres, {
-    timeoutMs: 90_000,
+  const options = {
+    timeoutMs: 180_000,
     // Overpass a plusieurs miroirs : celui par défaut sature aux heures pleines.
     endpoint: process.env.OVERPASS_URL || undefined,
-  });
+  };
 
-  travail.total = commerces.length;
+  // Une région se découpe en départements : huit requêtes qui aboutissent valent mieux qu'une
+  // requête géante qu'Overpass fait expirer. L'avancement montre où on en est.
+  const region = texte(corps.region, 10);
+  const zones = region ? departementsDeRegion(region) : [];
+  if (region && !zones.length) throw new Error(`Région inconnue : ${region}`);
+
+  const commerces: Awaited<ReturnType<typeof chercheCommerces>> = [];
+  const vus = new Set<string>();
+
+  if (zones.length) {
+    travail.total = zones.length;
+    for (const [index, departement] of zones.entries()) {
+      travail.etape = `OpenStreetMap — ${libelleDepartement(departement)} (${index + 1}/${zones.length})`;
+      // Un département qui échoue (saturation ponctuelle) ne doit pas perdre les précédents.
+      try {
+        for (const commerce of await chercheCommerces({ ...filtres, departement: departement.code }, options)) {
+          if (vus.has(commerce.osmId)) continue;
+          vus.add(commerce.osmId);
+          commerces.push(commerce);
+        }
+      } catch (erreur) {
+        travail.etape = `${libelleDepartement(departement)} indisponible : ${(erreur as Error).message}`;
+      }
+      travail.faits = index + 1;
+    }
+  } else {
+    const zone = filtres.ville ?? filtres.codePostal ??
+      (filtres.departement ? libelleDepartement(departementParCode(filtres.departement) ?? { code: filtres.departement, nom: "", region: "" }) : "zone");
+    travail.etape = `interrogation d'OpenStreetMap (${zone})`;
+    commerces.push(...await chercheCommerces(filtres, options));
+  }
+
   travail.etape = `${commerces.length} commerce(s) trouvé(s)`;
   const { nouveaux } = stockage.enregistreCommerces(
     commerces.map((commerce) => ({ prospect: prospectDepuisCommerce(commerce), osmId: commerce.osmId })),
   );
-  travail.faits = commerces.length;
 
   return {
     trouves: commerces.length,
     nouveaux,
+    zones: zones.length || 1,
     sans_site: commerces.filter((commerce) => !commerce.siteWeb).length,
     avec_telephone: commerces.filter((commerce) => commerce.telephone).length,
     duree_ms: Date.now() - debut,
@@ -888,6 +920,8 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       statuts: STATUTS,
       statuts_site: STATUTS_SITE,
       categories_osm: CATEGORIES_OSM.map(({ id, label }) => ({ id, label })),
+      regions: REGIONS,
+      departements: DEPARTEMENTS.map((d) => ({ ...d, libelle: libelleDepartement(d) })),
       piliers: LIBELLES_PILIERS,
       severites: LIBELLES_SEVERITE,
       efforts: LIBELLES_EFFORT,
@@ -1092,8 +1126,9 @@ ${corpsHtml}
 
   if (methode === "POST" && chemin === "/api/prospection-osm") {
     const corps = await litCorps(req);
-    if (!texte(corps.ville, 80) && !texte(corps.codePostal, 5) && !texte(corps.departement, 3)) {
-      envoieJson(res, { error: "Précisez une commune, un code postal ou un département." }, 400);
+    if (!texte(corps.ville, 80) && !texte(corps.codePostal, 5) && !texte(corps.departement, 3) &&
+        !texte(corps.region, 10)) {
+      envoieJson(res, { error: "Précisez une commune, un code postal, un département ou une région." }, 400);
       return;
     }
     const travail = creeTravail("prospection", "démarrage");

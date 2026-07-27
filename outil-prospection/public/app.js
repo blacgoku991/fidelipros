@@ -630,8 +630,18 @@ async function vueProspects() {
             </div>
             <div>
               <label for="osm-departement">…ou département entier</label>
-              <input type="text" id="osm-departement" placeholder="92" maxlength="3" value="${valeur("osmDepartement")}">
-              <p class="aide-mini">Tout le département d'un coup — aucun plafond de 60 comme chez Google.</p>
+              <select id="osm-departement">
+                <option value="">— choisir —</option>
+                ${(config.departements ?? []).map((d) => `<option value="${esc(d.code)}" ${criteres.osmDepartement === d.code ? "selected" : ""}>${esc(d.libelle)}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label for="osm-region">…ou région entière</label>
+              <select id="osm-region">
+                <option value="">— choisir —</option>
+                ${(config.regions ?? []).map((r) => `<option value="${esc(r.id)}" ${criteres.osmRegion === r.id ? "selected" : ""}>${esc(r.nom)}</option>`).join("")}
+              </select>
+              <p class="aide-mini">Une région est balayée département par département, sans plafond.</p>
             </div>
             <div>
               <label for="osm-limite">Nombre maximum de commerces</label>
@@ -901,12 +911,13 @@ async function lanceRechercheOsm(formulaire) {
     ville: lire("osm-ville"),
     codePostal: lire("osm-cp"),
     departement: lire("osm-departement"),
+    region: lire("osm-region"),
     limite: Number(lire("osm-limite")) || 200,
     categories: [...vue.querySelectorAll("#osm-categories input:checked")].map((c) => c.value),
     sansSiteSeulement: vue.querySelector("#osm-sans-site").checked,
   };
-  if (!corps.ville && !corps.codePostal && !corps.departement) {
-    notifie("Précisez une commune, un code postal ou un département", "erreur");
+  if (!corps.ville && !corps.codePostal && !corps.departement && !corps.region) {
+    notifie("Précisez une commune, un code postal, un département ou une région", "erreur");
     return;
   }
   // On mémorise ces critères à côté de ceux de la recherche Sirene.
@@ -914,6 +925,7 @@ async function lanceRechercheOsm(formulaire) {
   localStorage.setItem(CLE_CRITERES, JSON.stringify({
     ...memoire,
     osmVille: corps.ville, osmCodePostal: corps.codePostal, osmDepartement: corps.departement,
+    osmRegion: corps.region,
     osmLimite: corps.limite,
     osmCategories: corps.categories, osmSansSite: corps.sansSiteSeulement,
   }));
@@ -932,8 +944,10 @@ async function lanceRechercheOsm(formulaire) {
       },
     );
     notifie(
-      `${resultat.trouves} commerce(s) trouvé(s), ${resultat.nouveaux} nouveau(x) — ` +
-        `${resultat.sans_site} sans site déclaré, ${resultat.avec_telephone} avec téléphone`,
+      `${resultat.trouves} commerce(s) trouvé(s)` +
+        (resultat.zones > 1 ? ` sur ${resultat.zones} départements` : "") +
+        `, ${resultat.nouveaux} nouveau(x) — ${resultat.sans_site} sans site déclaré, ` +
+        `${resultat.avec_telephone} avec téléphone`,
       "succes",
     );
     vue.querySelector("#panneau-osm").open = false;

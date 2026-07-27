@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 271 tests (moteur + stockage)
+npm test                   # 278 tests (moteur + stockage)
 npm run reset              # vide la base (prospects, audits, documents)
 npm run verif              # vérification des types
 ```
@@ -114,10 +114,14 @@ Aucune de ces sources n'est facturée, aucune ne demande de compte. La seule cl�
 département, ancienneté, effectif et chiffre d'affaires — mais sans téléphone ni site web,
 qu'il faut donc déduire.
 
-**Par les commerces (OpenStreetMap)** : les établissements cartographiés dans une commune,
-un code postal **ou un département entier** — sans plafond de résultats, contrairement à
-Google Places qui s'arrête à 60 par recherche. C'est la source à privilégier pour ratisser
-large ;
+**Par les commerces (OpenStreetMap)** : les établissements cartographiés dans une commune, un
+code postal, **un département ou une région entière** — choisis dans des listes déroulantes,
+sans plafond de résultats, contrairement à Google Places qui s'arrête à 60 par recherche.
+C'est la source à privilégier pour ratisser large.
+
+Une région est balayée **département par département** : huit requêtes qui aboutissent valent
+mieux qu'une requête géante qu'Overpass ferait expirer. L'avancement indique le département en
+cours, et si l'un d'eux sature, les précédents sont conservés au lieu de tout perdre ;
 avec leur adresse, leur téléphone et, quand elle existe, leur adresse de site. Cocher
 « seulement les commerces sans site web déclaré » donne directement une liste de candidats.
 L'absence d'étiquette `website` reste un **indice** : la fiche est créée en « non vérifié », et
@@ -625,7 +629,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-271 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+278 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de
