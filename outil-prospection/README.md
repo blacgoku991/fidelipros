@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 249 tests (moteur + stockage)
+npm test                   # 250 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -352,6 +352,33 @@ demande une seule chose — l'envoi du rapport — et rappelle l'origine des don
 d'opposition. Quand l'audit n'est pas concluant, **aucun email commercial n'est fabriqué** :
 vous recevez une note de travail interne.
 
+## Le script d'appel (pour un commercial qui débute)
+
+Chaque fiche produit un script à donner tel quel à quelqu'un qui n'a jamais prospecté. Il est
+écrit pour être **lu au téléphone**, pas pour être compris d'abord : ce qu'il faut dire à voix
+haute est entre guillemets, le reste est une consigne.
+
+- **Un mémo avant de décrocher** — le but de l'appel n'est pas de vendre mais d'obtenir l'accord
+  d'envoyer le rapport et un créneau de rappel ; ne jamais annoncer « un appel commercial » ou
+  « de la prospection » (le mot fait raccrocher) ; poser une question puis se taire ; raccrocher
+  dès que le créneau est obtenu.
+- **Le barrage secrétaire** — la phrase pour obtenir le bon interlocuteur sans rien vendre au
+  standard.
+- **L'accroche de 15 secondes**, à savoir par cœur, avec la note réelle du site, et les trois
+  suites possibles (il écoute / il demande si c'est commercial / il raccroche).
+- **Les trois défauts** réellement constatés : le constat technique pour le commercial, et
+  juste en dessous **la phrase exacte à dire** au dirigeant.
+- **Six objections** avec la réponse mot pour mot, dont « c'est de la prospection ? » traitée
+  franchement (« Honnêtement ? Oui, je fais des sites. Mais je ne vous aurais pas appelé sans
+  avoir vu un vrai problème sur le vôtre : … ») — mentir sur ce point se paie tout de suite.
+- **La conclusion** par une alternative (« plutôt le matin ou l'après-midi ? »), le **message
+  répondeur**, et la **check-list d'après-appel**.
+
+Les prix cités (l'entrée de gamme dans l'objection « c'est trop cher », le total) viennent du
+devis réel du prospect. Quand l'audit n'est pas concluant, le script est remplacé par un
+« AUCUN SCRIPT » assumé : annoncer des défauts non vérifiés décrédibilise dès la première
+minute.
+
 ## Options
 
 Deux clés facultatives, à passer en variables d'environnement :
@@ -416,7 +443,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-249 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+250 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

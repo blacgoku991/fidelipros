@@ -176,48 +176,133 @@ export function scriptAppel(ctx: ContexteProposition): string {
     ].join("\n");
   }
   const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
+  const marque = ctx.emetteur.raison_sociale;
+  const dirigeant = prenomDirigeant(ctx.prospect.dirigeant);
+  const pointCritique = ctx.arguments[0] ? minuscule(ctx.arguments[0].titre) : "un vrai point à corriger";
+  const entree = ctx.devis.lignes_projet[0] ? `${euros(ctx.devis.lignes_projet[0].total)} HT` : "un budget réduit";
   const lignes: string[] = [];
+  const T = "════════════════════════════════════════════════════════";
 
-  lignes.push(`SCRIPT D'APPEL — ${nom}${ctx.prospect.ville ? ` (${villeLisible(ctx.prospect.ville)})` : ""}`);
+  lignes.push(T);
+  lignes.push(`  SCRIPT D'APPEL — ${nom}${ctx.prospect.ville ? ` (${villeLisible(ctx.prospect.ville)})` : ""}`);
+  lignes.push(T);
   // La plateforme n'est pas un défaut, mais elle oriente l'échange : un site fait sur un
   // éditeur en ligne ne s'exporte pas, un WordPress demande un suivi.
   if (ctx.audit?.technologie) {
-    lignes.push(`Plateforme repérée : ${ctx.audit.technologie}. À garder en tête pour la discussion technique.`);
+    lignes.push(`Plateforme repérée : ${ctx.audit.technologie} (info interne, n'en parlez pas d'entrée).`);
   }
   lignes.push("");
-  lignes.push("1. ACCROCHE (15 secondes)");
+
+  // ── Mémo pour débutant : le mental et les pièges, avant même de composer ────
+  lignes.push("À LIRE AVANT DE DÉCROCHER (surtout si c'est vos premiers appels)");
+  lignes.push("");
+  lignes.push("Le but de cet appel n'est PAS de vendre. C'est d'obtenir un OUI pour");
+  lignes.push("envoyer le rapport + un créneau de rappel. Vous vendrez plus tard.");
+  lignes.push("");
+  lignes.push("  1. Ne dites JAMAIS « c'est un appel commercial » ni « de la prospection ».");
+  lignes.push("     Le mot tue l'appel en 2 secondes. Vous appelez parce que vous avez");
+  lignes.push("     VRAIMENT regardé leur site et vu un problème concret — dites ça, c'est vrai.");
+  lignes.push("  2. Souriez en parlant, ça s'entend. Parlez lentement, un ton plus bas.");
+  lignes.push("  3. Les 15 premières secondes décident de tout : l'accroche se sait par cœur.");
+  lignes.push("  4. Posez une question, puis TAISEZ-VOUS. Le premier qui parle a perdu.");
+  lignes.push("  5. Un « non » est un réflexe, pas un mur. Une objection = une porte à pousser.");
+  lignes.push("  6. Dès que vous avez le OUI + le créneau, vous remerciez et vous raccrochez.");
+  lignes.push("     N'en rajoutez pas : on ne revend pas ce qui est déjà vendu.");
+  lignes.push("");
+
+  // ── Barrage secrétaire : on ne pitche pas, on récupère le bon interlocuteur ─
+  lignes.push("SI UN STANDARD / UNE SECRÉTAIRE RÉPOND");
+  lignes.push(
+    `   « Bonjour, je cherche la personne qui s'occupe du site internet` +
+      (dirigeant ? `, c'est bien ${dirigeant} ?` : " chez vous ?") +
+      ` J'ai regardé leur site, j'ai un point technique à leur signaler. »`,
+  );
+  lignes.push("   (Ton calme, comme si votre appel était attendu. On ne vend rien à la secrétaire.)");
+  lignes.push("");
+
+  lignes.push("1. ACCROCHE (15 secondes — apprenez-la par cœur)");
   lignes.push(
     sansSite
-      ? `« Bonjour, ${ctx.emetteur.raison_sociale}. Je vous appelle parce que j'ai cherché votre entreprise en ligne et je n'ai trouvé aucun site à votre nom. Est-ce un choix de votre part, ou c'est un projet que vous avez repoussé ? »`
-      : `« Bonjour, ${ctx.emetteur.raison_sociale}. J'ai analysé votre site ce matin, il obtient ${ctx.audit!.scores.global} sur 100 sur les critères de Google. Vous avez deux minutes, je vous dis les trois points qui vous coûtent des clients ? »`,
+      ? `   « Bonjour, ${marque} à l'appareil. Je vais être direct : j'ai cherché ${nom} sur Google et je n'ai trouvé aucun site à votre nom. Aujourd'hui un client qui vous cherche le soir et ne trouve rien appelle le concurrent. C'est ça que je veux vous éviter. Je vous vole 30 secondes ? »`
+      : `   « Bonjour, ${marque} à l'appareil. Je vais être direct avec vous : j'ai regardé le site de ${nom} ce matin, il est à ${ctx.audit!.scores.global}/100 sur les critères que Google et vos clients regardent. Honnêtement il mérite mieux. Je vous dis les 3 points qui vous font perdre des clients, et vous jugez ? »`,
   );
+  lignes.push("   ▸ Il vous laisse parler → étape 2.");
+  lignes.push("   ▸ « C'est pour me vendre un truc ? » → réponse dans les OBJECTIONS ci-dessous.");
+  lignes.push("   ▸ Il raccroche → tant pis, prospect suivant. Vous n'avez rien perdu.");
   lignes.push("");
-  lignes.push("2. LES POINTS À ANNONCER");
-  ctx.arguments.forEach((f, i) => {
-    lignes.push(`   ${i + 1}. ${f.titre}`);
-    lignes.push(`      Constat : ${f.constat}`);
-    lignes.push(`      À dire : « ${f.impact} »`);
-  });
+
+  lignes.push("2. LES POINTS À ANNONCER (lisez-les tels quels, un par un, en marquant une pause)");
+  if (ctx.arguments.length) {
+    ctx.arguments.forEach((f, i) => {
+      lignes.push(`   ${i + 1}. ${f.titre}`);
+      lignes.push(`      Le constat (pour vous) : ${f.constat}`);
+      lignes.push(`      Ce que vous dites (à voix haute) : « ${f.impact} »`);
+    });
+  } else {
+    lignes.push("   (Aucun défaut majeur retenu : restez sur l'accroche et la qualification.)");
+  }
   lignes.push("");
-  lignes.push("3. QUALIFICATION");
-  lignes.push("   • Qui s'occupe du site aujourd'hui ? (agence, neveu, personne)");
+
+  lignes.push("3. QUALIFICATION (posez, écoutez, notez — c'est là que vous apprenez tout)");
+  lignes.push("   • Qui s'occupe du site aujourd'hui ? (une agence, un proche, personne ?)");
   lignes.push("   • Combien de demandes vous arrivent par le site chaque mois ?");
-  lignes.push("   • Vous avez déjà budgété quelque chose là-dessus cette année ?");
+  lignes.push("   • Vous aviez déjà prévu un budget là-dessus cette année ?");
   lignes.push("");
-  lignes.push("4. OBJECTIONS");
-  lignes.push("   « C'est trop cher » → « Le devis est découpé par priorité. On peut ne traiter que le point critique d'abord, c'est " +
-    (ctx.devis.lignes_projet[0] ? euros(ctx.devis.lignes_projet[0].total) : "un budget réduit") + " HT. »");
-  lignes.push("   « J'ai déjà quelqu'un » → « Parfait. Je vous envoie le rapport, vous le transmettez, il verra les points à corriger. Si ça reste en attente, rappelez-moi. »");
-  lignes.push("   « Ça marche très bien comme ça » → « Combien de clients vous disent qu'ils vous ont trouvé sur Google ? C'est justement ce qu'on peut faire progresser. »");
-  lignes.push("   « Envoyez-moi un mail » → « Je le fais dans l'heure. Je vous rappelle vendredi pour votre avis, ça vous va ? »");
+
+  lignes.push("4. OBJECTIONS (il va forcément en sortir une — vous êtes prêt)");
+  lignes.push(`   « C'est de la prospection / vous voulez me vendre un truc ? »`);
+  lignes.push(`      → « Honnêtement ? Oui, je fais des sites. Mais je ne vous aurais pas appelé`);
+  lignes.push(`         sans avoir vu un vrai problème sur le vôtre : ${pointCritique}. Laissez-moi`);
+  lignes.push(`         30 secondes, si ça ne vous parle pas vous raccrochez. »`);
+  lignes.push(`   « C'est trop cher »`);
+  lignes.push(`      → « Le devis est découpé par priorité. On peut ne traiter que le point critique`);
+  lignes.push(`         d'abord, c'est ${entree}. On avance pas à pas. »`);
+  lignes.push(`   « J'ai déjà quelqu'un »`);
+  lignes.push(`      → « Parfait. Je vous envoie le rapport, vous le lui transmettez : il verra les`);
+  lignes.push(`         points à corriger. Si ça reste en attente, vous me rappelez. »`);
+  lignes.push(`   « Ça marche très bien comme ça »`);
+  lignes.push(`      → « Combien de clients vous disent vous avoir trouvé sur Google ? C'est justement`);
+  lignes.push(`         ce qu'on peut faire progresser, sans rien changer à ce qui marche. »`);
+  lignes.push(`   « Envoyez-moi un mail »`);
+  lignes.push(`      → « Je le fais dans l'heure. Je vous rappelle ${jourRelance()} pour votre avis, ça vous va ? »`);
+  lignes.push(`   « C'est pas le moment »`);
+  lignes.push(`      → « Aucun souci, je ne vais pas vous embêter. Je vous rappelle ${jourRelance()} à la`);
+  lignes.push(`         même heure ? » (vous notez le rappel, et vous raccrochez.)`);
   lignes.push("");
-  lignes.push("5. CONCLUSION");
+
+  lignes.push("5. ON CONCLUT (dès qu'il montre un intérêt, on arrête de parler du problème)");
   lignes.push(
-    `   « Je vous envoie le rapport complet et le devis à ${euros(ctx.devis.total_ht)} HT` +
-      (ctx.devis.mensuel_ht ? ` plus ${euros(ctx.devis.mensuel_ht)} HT par mois de suivi` : "") +
-      `. On se rappelle en fin de semaine pour en discuter ? »`,
+    `   « Voilà ce que je vous propose : je vous envoie le rapport complet en PDF, tout est`,
   );
+  lignes.push(
+    `     détaillé et vérifiable dedans. On se cale 15 minutes ${jourRelance()} pour que je vous`,
+  );
+  lignes.push(
+    `     montre l'essentiel. Vous préférez plutôt le matin ou l'après-midi ? »`,
+  );
+  lignes.push(`   (« matin ou après-midi » le fait choisir un créneau sans avoir à dire « oui ».)`);
+  lignes.push("");
+
+  lignes.push("SI VOUS TOMBEZ SUR LE RÉPONDEUR (message court, vous rappellerez)");
+  lignes.push(
+    `   « Bonjour, ${marque}. J'ai regardé le site de ${nom} et relevé 2-3 points qui vous coûtent`,
+  );
+  lignes.push(
+    `     des clients — rien de grave, ça se corrige. Je vous rappelle ${jourRelance()}` +
+      (ctx.emetteur.telephone ? `, ou joignez-moi au ${ctx.emetteur.telephone}` : "") + `. Bonne journée ! »`,
+  );
+  lignes.push("");
+
+  lignes.push("APRÈS L'APPEL (ne zappez pas, c'est ce qui fait signer)");
+  lignes.push("   ✓ Envoyez le rapport PDF dans l'heure, tant que vous êtes frais dans sa tête.");
+  lignes.push("   ✓ Notez la date de rappel dans l'agenda.");
+  lignes.push("   ✓ Mettez à jour le statut du prospect dans l'outil.");
   return lignes.join("\n");
+}
+
+/** Jour de relance « neutre » : évite de dater le script, tout en donnant un repère concret. */
+function jourRelance(): string {
+  return "en fin de semaine";
 }
 
 /** 2026-08-25 → 25/08/2026 : personne n'écrit une date en ISO dans un email. */

@@ -265,6 +265,19 @@ describe("rédaction", () => {
     expect(texte).not.toContain("undefined");
   });
 
+  it("guide un commercial débutant : mémo, barrage secrétaire, objection « prospection », répondeur", () => {
+    const texte = scriptAppel(contexte());
+    // Le mémo de départ pose la règle d'or (ne pas s'annoncer comme un appel commercial).
+    expect(texte).toContain("À LIRE AVANT DE DÉCROCHER");
+    expect(texte).toMatch(/Ne dites JAMAIS .* de la prospection/);
+    // L'objection « c'est pour me vendre » est traitée honnêtement plutôt qu'esquivée.
+    expect(texte).toContain("Honnêtement ? Oui, je fais des sites");
+    // Passe-plat secrétaire et message répondeur : les deux situations que rate un débutant.
+    expect(texte).toContain("SI UN STANDARD / UNE SECRÉTAIRE RÉPOND");
+    expect(texte).toContain("SI VOUS TOMBEZ SUR LE RÉPONDEUR");
+    expect(texte).toContain("APRÈS L'APPEL");
+  });
+
   it("produit un rapport HTML avec les quatre volets et le devis", () => {
     const html = rapportHtml(contexte());
     expect(html).toContain("Référencement");
