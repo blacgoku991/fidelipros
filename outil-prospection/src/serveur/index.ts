@@ -706,6 +706,9 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       severites: LIBELLES_SEVERITE,
       efforts: LIBELLES_EFFORT,
       emplacement: stockage.emplacement,
+      // L'en-tête de l'interface porte le nom de l'émetteur : renommer sa société dans
+      // « Prestations » suffit à rebaptiser l'outil, sans toucher au code.
+      marque: { nom: stockage.emetteur().raison_sociale, site_web: stockage.emetteur().site_web },
       // Les deux clés sont optionnelles : l'interface indique ce qui tourne sans elles.
       pagespeed: Boolean(process.env.PAGESPEED_API_KEY),
       ia: Boolean(process.env.LOVABLE_API_KEY),

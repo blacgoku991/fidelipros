@@ -84,12 +84,14 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "JetBrains Mono", 
   width: 32px;
   height: 32px;
   border-radius: 9px;
-  background: linear-gradient(145deg, #2b3f6b, #1b2740);
-  border: 1px solid var(--bordure-claire);
+  background: #0d0b18;
+  border: 1px solid #7b3fd4;
   font-size: 16px;
 }
 
 .marque strong { display: block; font-size: 14.5px; line-height: 1.2; }
+/* Logotype bicolore : la seconde moitié du nom porte le cyan de la marque. */
+.marque .marque-fin { color: #22d3ee; }
 .sous-titre { color: var(--texte-faible); font-size: 12px; }
 
 #menu { display: flex; gap: 2px; flex-wrap: wrap; }

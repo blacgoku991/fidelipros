@@ -1598,6 +1598,27 @@ async function affiche() {
   window.scrollTo({ top: 0 });
 }
 
+/**
+ * Porte le nom de la société sur l'en-tête et l'onglet du navigateur.
+ * La coupure du logotype suit la même règle que `marque.ts` côté serveur : on coupe sur la
+ * majuscule interne (« SmartFixx » → « Smart » + « Fixx »), sinon le nom reste d'une seule
+ * couleur plutôt que d'inventer une césure.
+ */
+function appliqueMarque(nom) {
+  const propre = (nom ?? "").trim();
+  if (!propre) return;
+
+  const interne = /^(.+?[a-zà-ÿ])([A-ZÀ-Þ].*)$/.exec(propre);
+  const espace = propre.lastIndexOf(" ");
+  const [debut, fin] = interne
+    ? [interne[1], interne[2]]
+    : espace > 0 ? [propre.slice(0, espace + 1), propre.slice(espace + 1)] : [propre, ""];
+
+  document.getElementById("marque-nom").innerHTML =
+    `${esc(debut)}${fin ? `<span class="marque-fin">${esc(fin)}</span>` : ""}`;
+  document.title = `${propre} — Prospection & Audit`;
+}
+
 async function demarre() {
   try {
     config = await api("/api/config");
@@ -1612,6 +1633,8 @@ async function demarre() {
     config.pagespeed ? "Lighthouse : clé PageSpeed" : "Lighthouse : quota public",
     config.ia ? "IA : active" : "IA : désactivée",
   ].map(esc).join(" · ");
+
+  appliqueMarque(config.marque?.nom);
 
   window.addEventListener("hashchange", affiche);
   await affiche();

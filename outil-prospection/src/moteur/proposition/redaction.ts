@@ -8,6 +8,7 @@ import { compteParSeverite, resumeSeverites } from "../audit/score.ts";
 import { echappeHtml } from "../audit/html.ts";
 import type { Finding, Pilier } from "../audit/types.ts";
 import { euros } from "./devis.ts";
+import { logotypeEmailHtml, logotypeHtml } from "./marque.ts";
 import type { ContexteProposition } from "./types.ts";
 
 const PILIERS: Pilier[] = ["seo", "design", "securite", "technique"];
@@ -489,9 +490,9 @@ export function emailHtml(
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"
            style="width:100%;max-width:600px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:${POLICE_EMAIL}">
 
-      <tr><td style="background:#111827;padding:18px 24px">
-        <div style="font-size:16px;font-weight:700;color:#ffffff">${echappeHtml(emetteur.raison_sociale)}</div>
-        <div style="font-size:12px;color:#9ca3af;margin-top:2px">Audit de présence en ligne — ${echappeHtml(nom)}</div>
+      <tr><td style="background:#0a0d1c;padding:18px 24px">
+        ${logotypeEmailHtml(emetteur.raison_sociale, POLICE_EMAIL)}
+        <div style="font-size:12px;color:#9ca3af;margin-top:9px">Audit de présence en ligne — ${echappeHtml(nom)}</div>
       </td></tr>
 
       <tr><td style="padding:22px 24px 4px">
@@ -669,9 +670,9 @@ export function emailIntroductionHtml(
   <tr><td align="center">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;font-family:${POLICE_EMAIL}">
 
-      <tr><td style="background:linear-gradient(135deg,#1b2a4a,#0f1b34);padding:22px 26px">
-        <div style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.02em">${echappeHtml(emetteur.raison_sociale)}</div>
-        <div style="font-size:12.5px;color:#9fb3d9;margin-top:3px">Création &amp; refonte de sites web${site ? ` · ${echappeHtml(site)}` : ""}</div>
+      <tr><td style="background:linear-gradient(135deg,#151a33,#0a0d1c);padding:22px 26px">
+        ${logotypeEmailHtml(emetteur.raison_sociale, POLICE_EMAIL)}
+        <div style="font-size:12.5px;color:#9fb3d9;margin-top:9px">Création &amp; refonte de sites web${site ? ` · ${echappeHtml(site)}` : ""}</div>
       </td></tr>
 
       <tr><td style="padding:24px 26px 6px">
@@ -833,6 +834,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     .rapport p { margin: 0 0 10px; }
     .entete { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 2px solid #1a1a1a; padding-bottom: 14px; }
     .entete .emetteur { text-align: right; font-size: 12px; color: #555; }
+    .logo-emetteur { display: flex; justify-content: flex-end; margin-bottom: 6px; }
     .meta { font-size: 13px; color: #555; }
     .mesure-partielle { font-size: 11px; font-weight: 600; color: #a35200; background: #fff4e5; padding: 2px 8px; border-radius: 999px; }
     .global { display: flex; gap: 20px; align-items: center; margin: 22px 0; padding: 16px; border: 1px solid #e5e5e5; border-radius: 12px; }
@@ -875,7 +877,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
       ${audit?.urlFinale ? `<div class="meta">${echappeHtml(audit.urlFinale)}</div>` : ""}
     </div>
     <div class="emetteur">
-      <strong>${echappeHtml(emetteur.raison_sociale)}</strong><br>
+      <div class="logo-emetteur">${logotypeHtml(emetteur.raison_sociale, "clair", "rapport")}</div>
       ${echappeHtml(emetteur.adresse)}<br>
       ${echappeHtml(emetteur.email)}${emetteur.telephone ? ` — ${echappeHtml(emetteur.telephone)}` : ""}
       ${emetteur.siret ? `<br>SIRET ${echappeHtml(emetteur.siret)}` : ""}

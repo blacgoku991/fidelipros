@@ -11,6 +11,7 @@ import {
   emailHtml, emailIntroduction, emailIntroductionHtml, emailPriseContact, rapportHtml,
   scriptAppel, sms, synthese,
 } from "./redaction.ts";
+import { couperNom, logoSvg, logotypeEmailHtml, logotypeHtml } from "./marque.ts";
 import { construitProposition, emetteurDepuisSettings } from "./index.ts";
 import type { ContexteProposition, Prestation } from "./types.ts";
 
@@ -688,5 +689,58 @@ describe("email d'approche (sans devis)", () => {
     const html = emailIntroductionHtml(ctx({ audit: auditBloque, arguments: [] }));
     expect(html).toContain("Aucun email à envoyer");
     expect(html).not.toContain("joint à cet email");
+  });
+});
+
+describe("identité visuelle (logo et logotype)", () => {
+  const ctxMarque = (): ContexteProposition => {
+    const findings = [constate("sec_https_absent", "Le site répond en HTTP")];
+    const auditComplet = audit(findings);
+    return {
+      prospect: PROSPECT,
+      audit: auditComplet,
+      devis: construitDevis(auditComplet, CATALOGUE),
+      emetteur: { ...EMETTEUR_PAR_DEFAUT, raison_sociale: "SmartFixx" },
+      arguments: findings,
+    };
+  };
+
+  it("coupe le nom sur la majuscule interne pour le logotype bicolore", () => {
+    expect(couperNom("SmartFixx")).toEqual({ debut: "Smart", fin: "Fixx" });
+    expect(couperNom("Agence Dupont")).toEqual({ debut: "Agence ", fin: "Dupont" });
+    // Un nom d'un seul bloc n'est pas coupé : mieux vaut un logotype uni qu'une césure absurde.
+    expect(couperNom("Webagency")).toEqual({ debut: "Webagency", fin: "" });
+  });
+
+  it("dessine la croix de SmartFixx, et l'initiale pour toute autre société", () => {
+    expect(logoSvg("SmartFixx")).toContain("<path");
+    const autre = logoSvg("Garage Martin");
+    expect(autre).not.toContain("<path");
+    expect(autre).toContain(">G<");
+  });
+
+  it("habille l'email sans image ni SVG : Gmail supprime l'un et bloque l'autre", () => {
+    const html = emailIntroductionHtml(ctxMarque());
+    expect(html).toContain("Smart");
+    expect(html).toContain("Fixx");
+    expect(html).not.toContain("<svg");
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("data:image");
+    // La seconde moitié du nom porte la couleur de marque.
+    expect(html).toContain("#22d3ee");
+  });
+
+  it("échappe un nom de société hostile dans le logo comme dans le logotype", () => {
+    const mechant = '<script>alert(1)</script>';
+    expect(logoSvg(mechant)).not.toContain("<script>alert");
+    expect(logotypeHtml(mechant)).not.toContain("<script>alert");
+    expect(logotypeEmailHtml(mechant, "Arial")).not.toContain("<script>alert");
+  });
+
+  it("adapte le logotype au fond du support : le rapport s'imprime sur du papier blanc", () => {
+    expect(logotypeHtml("SmartFixx", "sombre")).toContain("#f3f5fa");
+    expect(logotypeHtml("SmartFixx", "clair")).not.toContain("#f3f5fa");
+    // Le rapport remis au prospect porte le logo de l'émetteur.
+    expect(rapportHtml(ctxMarque())).toContain("logo-emetteur");
   });
 });

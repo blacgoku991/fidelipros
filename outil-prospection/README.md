@@ -1,4 +1,4 @@
-# Prospection web
+# SmartFixx — Prospection & Audit
 
 > **Ce dossier est destiné à vivre dans son propre dépôt.** Il ne dépend de rien de
 > l'application FidéliPro : il est ici uniquement pour vous être transmis. Pour le publier
@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 250 tests (moteur + stockage)
+npm test                   # 255 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -352,6 +352,25 @@ demande une seule chose — l'envoi du rapport — et rappelle l'origine des don
 d'opposition. Quand l'audit n'est pas concluant, **aucun email commercial n'est fabriqué** :
 vous recevez une note de travail interne.
 
+## Votre identité visuelle
+
+L'outil porte **votre marque**, pas la sienne : en-tête de l'interface, onglet du navigateur,
+en-tête des deux emails et du rapport remis au prospect. Le logotype est bicolore — la
+majuscule interne du nom sert de coupure (« Smart » + « **Fixx** » en cyan), le monogramme
+reprend le dégradé violet → cyan.
+
+Le nom vient du champ **Raison sociale** de l'écran *Prestations & devis* : le changer suffit
+à rebaptiser l'outil et tous les documents, sans toucher au code. Un nom autre que SmartFixx
+affiche son initiale dans le monogramme plutôt que la croix.
+
+Deux rendus, parce que les contraintes diffèrent :
+
+- **navigateur** (interface, rapport imprimable) → SVG en ligne, net à toutes les tailles, et
+  décliné pour fond clair : sur le papier blanc du rapport, du texte blanc serait invisible ;
+- **client mail** → **ni image ni SVG**. Gmail supprime les `<svg>` et bloque les images en
+  `data:` ; le logo y est donc dessiné en bordures et en texte, le seul habillage qui
+  s'affiche à l'identique dans Gmail, Outlook et Apple Mail sans image distante.
+
 ## Le script d'appel (pour un commercial qui débute)
 
 Chaque fiche produit un script à donner tel quel à quelqu'un qui n'a jamais prospecté. Il est
@@ -443,7 +462,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-250 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+255 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de
