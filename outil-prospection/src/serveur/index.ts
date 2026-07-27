@@ -9,9 +9,10 @@
 // aucune authentification — il ne doit pas être exposé sur le réseau.
 
 import { Buffer } from "node:buffer";
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { networkInterfaces } from "node:os";
 import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
@@ -38,6 +39,21 @@ import type { Emetteur, Prestation } from "../moteur/proposition/types.ts";
 import { Stockage, type ProspectStocke, type StatutCommercial } from "./stockage.ts";
 
 const PORT = Number(process.env.PORT ?? 4000);
+/**
+ * Interface d'écoute. `127.0.0.1` par défaut : l'outil manipule des données personnelles
+ * (dirigeants, emails) et n'a pas de compte utilisateur. `HOTE=0.0.0.0` l'ouvre au réseau
+ * local — pour un téléphone sur le même Wi-Fi — et impose alors une clé d'accès.
+ */
+const HOTE = process.env.HOTE ?? "127.0.0.1";
+/** Vrai quand le serveur n'est joignable que depuis la machine elle-même. */
+const EN_LOCAL = HOTE === "127.0.0.1" || HOTE === "localhost" || HOTE === "::1";
+/**
+ * Clé d'accès exigée dès que le serveur sort de la machine. Fournie par `CLE_ACCES`, sinon
+ * tirée au hasard et affichée au démarrage : ouvrir au réseau sans mot de passe exposerait
+ * le fichier de prospects à tout l'immeuble sur un Wi-Fi partagé.
+ */
+const CLE_ACCES = EN_LOCAL ? null : (process.env.CLE_ACCES?.trim() || randomUUID().slice(0, 8));
+const COOKIE_CLE = "prospection_cle";
 /**
  * Lève le garde-fou anti-SSRF pour auditer un serveur local (127.0.0.1, réseau privé).
  * Réservé aux tests : l'outil refuse ces adresses par défaut.
@@ -93,6 +109,63 @@ const TYPES_MIME: Record<string, string> = {
   ".webp": "image/webp",
   ".ico": "image/x-icon",
 };
+
+// ── Contrôle d'accès ────────────────────────────────────────────────────────
+
+/** Comparaison à durée constante : une comparaison naïve laisse deviner la clé caractère par caractère. */
+function memeCle(fournie: string, attendue: string): boolean {
+  const a = Buffer.from(fournie);
+  const b = Buffer.from(attendue);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function litCookie(req: IncomingMessage, nom: string): string | null {
+  for (const morceau of (req.headers.cookie ?? "").split(";")) {
+    const [cle, ...reste] = morceau.trim().split("=");
+    if (cle === nom) return decodeURIComponent(reste.join("="));
+  }
+  return null;
+}
+
+/**
+ * Autorise la requête, ou répond à la place et renvoie `false`.
+ *
+ * La clé se présente une fois dans l'adresse (`?cle=...`) : elle est alors déposée en cookie
+ * et retirée de l'URL, pour ne pas rester dans l'historique du téléphone ni dans les liens
+ * partagés. En local, aucun contrôle — c'est l'usage normal sur son propre poste.
+ */
+function accesAutorise(req: IncomingMessage, res: ServerResponse, url: URL): boolean {
+  if (!CLE_ACCES) return true;
+
+  const fournie = url.searchParams.get("cle");
+  if (fournie && memeCle(fournie, CLE_ACCES)) {
+    url.searchParams.delete("cle");
+    res.writeHead(302, {
+      // Une session de 30 jours : on ne redemande pas la clé à chaque ouverture du téléphone.
+      "Set-Cookie": `${COOKIE_CLE}=${encodeURIComponent(CLE_ACCES)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000`,
+      Location: `${url.pathname}${url.search}`,
+    });
+    res.end();
+    return false;
+  }
+
+  const cookie = litCookie(req, COOKIE_CLE);
+  if (cookie && memeCle(cookie, CLE_ACCES)) return true;
+
+  // 401 explicite plutôt qu'une page blanche : sans cette phrase, on croit à une panne.
+  envoieHtml(res, `<!doctype html><html lang="fr"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Accès protégé</title>
+<body style="font-family:system-ui;background:#08060f;color:#ecebf5;display:grid;place-items:center;height:100vh;margin:0">
+  <div style="max-width:420px;padding:24px;text-align:center">
+    <h1 style="font-size:19px">Accès protégé</h1>
+    <p style="color:#a099bb;font-size:14px;line-height:1.6">Ce serveur de prospection est ouvert
+    sur le réseau local. Ouvrez l'adresse complète affichée dans le terminal, clé comprise :
+    <code style="color:#22d3ee">…:${PORT}/?cle=votre-cle</code></p>
+  </div>
+</body></html>`, 401);
+  return false;
+}
 
 // ── Utilitaires HTTP ────────────────────────────────────────────────────────
 
@@ -706,6 +779,10 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const chemin = url.pathname;
   const methode = req.method ?? "GET";
 
+  // Le contrôle passe avant tout le reste, fichiers statiques compris : sans quoi l'interface
+  // et ses appels seraient lisibles par n'importe qui sur le réseau.
+  if (!accesAutorise(req, res, url)) return;
+
   // Les pages servies hors interface (rapport, email) déclenchent une requête de favicon :
   // on répond une fois pour toutes plutôt que de laisser un 404 dans la console.
   if (chemin === "/favicon.ico" || chemin === "/favicon.svg") {
@@ -1041,8 +1118,29 @@ serveur.on("error", (erreur: NodeJS.ErrnoException) => {
   throw erreur;
 });
 
-serveur.listen(PORT, "127.0.0.1", () => {
+/** Première adresse IPv4 non locale : celle que le téléphone doit viser sur le même Wi-Fi. */
+function adresseReseau(): string | null {
+  for (const cartes of Object.values(networkInterfaces())) {
+    for (const carte of cartes ?? []) {
+      if (carte.family === "IPv4" && !carte.internal) return carte.address;
+    }
+  }
+  return null;
+}
+
+serveur.listen(PORT, HOTE, () => {
   console.log(`\n  Prospection — http://127.0.0.1:${PORT}`);
+  if (CLE_ACCES) {
+    const ip = adresseReseau();
+    console.log(`\n  Depuis votre téléphone (même Wi-Fi) — ouvrez cette adresse en entier :`);
+    console.log(`    http://${ip ?? "<ip-de-ce-poste>"}:${PORT}/?cle=${CLE_ACCES}`);
+    console.log(`  La clé n'est demandée qu'une fois, puis retenue 30 jours sur l'appareil.`);
+    if (!process.env.CLE_ACCES) {
+      console.log(`  Clé tirée au hasard à ce démarrage. Pour la figer :`);
+      console.log(`    PowerShell : $env:CLE_ACCES="ma-cle"; $env:HOTE="0.0.0.0"; npm start`);
+    }
+    console.log("");
+  }
   console.log(`  Données     — ${stockage.emplacement}`);
   if (!process.env.PAGESPEED_API_KEY) {
     console.log("  PageSpeed   — sans clé (quota public, suffisant pour quelques audits)");

@@ -41,8 +41,48 @@ npm run reset              # vide la base (prospects, audits, documents)
 npm run verif              # vérification des types
 ```
 
-Le serveur écoute sur `127.0.0.1` uniquement : il n'y a pas d'authentification, il ne doit
-donc pas être exposé sur le réseau.
+Par défaut le serveur écoute sur `127.0.0.1` uniquement : lui seul, sur votre poste.
+
+## Y accéder depuis votre téléphone
+
+Le téléphone doit être sur **le même Wi-Fi** que l'ordinateur qui fait tourner l'outil (c'est
+lui qui garde les données ; le téléphone n'est qu'un écran).
+
+```powershell
+# Windows / PowerShell
+$env:HOTE="0.0.0.0"; npm start
+```
+```bash
+# macOS / Linux
+HOTE=0.0.0.0 npm start
+```
+
+Le terminal affiche alors l'adresse exacte à ouvrir sur le téléphone, clé comprise :
+
+```
+  Depuis votre téléphone (même Wi-Fi) — ouvrez cette adresse en entier :
+    http://192.168.1.24:4000/?cle=3f9a1c02
+```
+
+**Pourquoi une clé.** L'outil n'a pas de compte utilisateur et votre fichier contient des
+données personnelles — noms de dirigeants, emails, téléphones. Ouvert sans mot de passe sur un
+Wi-Fi partagé (coworking, hôtel, fibre d'immeuble mal segmentée), il serait lisible par
+n'importe qui sur le réseau. Le serveur **refuse donc de s'ouvrir sans clé** : si vous n'en
+fournissez pas, il en tire une au hasard et l'affiche.
+
+La clé ne se saisit qu'une fois : elle est déposée en cookie puis retirée de l'adresse, pour ne
+pas traîner dans l'historique du téléphone ni dans un lien partagé. L'appareil s'en souvient
+30 jours. Tout est protégé — l'interface, ses fichiers et l'API.
+
+Pour garder la même clé d'un démarrage à l'autre :
+
+```powershell
+$env:HOTE="0.0.0.0"; $env:CLE_ACCES="ma-cle-a-moi"; npm start
+```
+
+> **Restez sur votre réseau local.** N'ouvrez pas le port sur votre box et ne le publiez pas
+> via un tunnel : la clé protège d'un voisin de Wi-Fi, pas d'Internet. Le trafic est en HTTP
+> simple, non chiffré.
 
 ## Les quatre écrans
 
