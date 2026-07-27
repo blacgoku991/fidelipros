@@ -342,16 +342,27 @@ function blocAudit(audit) {
       <div class="jauge"><span style="width:${audit.scores.global}%;background:${couleurScore(audit.scores.global)}"></span></div>
     </div>
     ${PILIERS.map((pilier) => {
-      // Une source manquante rend la note optimiste : on le dit sur la carte du volet.
       const partiel = (audit.scores.partiels ?? []).includes(pilier);
+      const nbDefauts = audit.findings.filter((f) => f.pilier === pilier).length;
+      // Volet partiel SANS aucun défaut trouvé : la source de mesure a manqué et rien n'a été
+      // constaté — afficher « 100 » serait un faux score. On affiche « non mesuré » à la place.
+      const nonMesure = partiel && nbDefauts === 0;
+      if (nonMesure) {
+        return `
+      <div class="note-volet non-mesure" title="Source de mesure indisponible (Lighthouse / PageSpeed). Aucune note fiable : ajoutez une clé PAGESPEED_API_KEY pour mesurer ce volet.">
+        <div class="valeur muet">—</div>
+        <div class="nom">${esc(config.piliers[pilier])}</div>
+        <div class="partiel">non mesuré</div>
+      </div>`;
+      }
       return `
       <div class="note-volet"${partiel
-        ? ` title="Mesure partielle : une source n'a pas répondu (voir « non vérifiable » ci-dessous). La note est donc optimiste."`
+        ? ` title="Mesure partielle : une source n'a pas répondu. La note est un plancher — de vrais défauts existent, d'autres ont pu échapper."`
         : ""}>
         <div class="valeur ${classeScore(audit.scores[pilier])}">${audit.scores[pilier]}</div>
         <div class="nom">${esc(config.piliers[pilier])}</div>
         <div class="jauge"><span style="width:${audit.scores[pilier]}%;background:${couleurScore(audit.scores[pilier])}"></span></div>
-        ${partiel ? `<div class="partiel">mesure partielle</div>` : ""}
+        ${partiel ? `<div class="partiel">partiel — au moins ${nbDefauts} défaut(s)</div>` : ""}
       </div>`;
     }).join("")}
   </div>`;

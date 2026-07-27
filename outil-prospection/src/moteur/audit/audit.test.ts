@@ -23,7 +23,7 @@ import { compareVersions, failleDe } from "./composants.ts";
 import { logicielsObsoletes } from "./logiciels.ts";
 import { REGLES, constate, reglesDuPilier } from "./regles.ts";
 import {
-  argumentsCles, calculeScores, piliersPartiels, resumeSeverites, scorePilier,
+  argumentsCles, calculeScores, piliersNonMesures, piliersPartiels, resumeSeverites, scorePilier,
 } from "./score.ts";
 import { evalueSeo } from "./seo.ts";
 import { evalueDesign } from "./design.ts";
@@ -466,6 +466,29 @@ describe("notation", () => {
     expect(scorePilier(findings, "securite")).toBe(100);
   });
 
+  it("exclut du global un volet non mesuré, au lieu de compter un faux 100", () => {
+    // Cas réel « Lighthouse en 429 » : des défauts SEO/sécurité, mais la performance non mesurée.
+    const findings = [
+      constate("seo_title_absent", ""),          // seo : 100 - 20 = 80
+      constate("sec_https_absent", ""),          // securite : 100 - 40 = 60
+    ];
+    const avec = calculeScores(findings);                 // technique compté à 100
+    const sans = calculeScores(findings, ["technique"]);  // technique exclu du global
+
+    // Le volet technique reste à 100 dans le détail, mais ne gonfle plus le global.
+    expect(sans.technique).toBe(100);
+    expect(sans.global).toBeLessThan(avec.global);
+    // Renormalisé sur seo+design+securite (poids 0.3+0.25+0.25 = 0.8) :
+    // (80*0.3 + 100*0.25 + 60*0.25) / 0.8 = (24 + 25 + 15) / 0.8 = 80.
+    expect(sans.global).toBe(80);
+  });
+
+  it("piliersNonMesures ne retient qu'un volet partiel ET sans défaut", () => {
+    const findings = [constate("sec_https_absent", "")];
+    // technique partiel + 0 défaut → non mesuré ; securite partiel mais a un défaut → mesuré.
+    expect(piliersNonMesures(findings, ["technique", "securite"])).toEqual(["technique"]);
+  });
+
   it("borne les scores à zéro et déclenche l'urgence critique", () => {
     const scores = calculeScores([
       constate("sec_https_absent", ""), constate("sec_fichier_expose", ""),
@@ -809,8 +832,14 @@ describe("auditeSite", () => {
       fetchImpl: impl, profondeur: "rapide", anneeCourante: 2026,
     });
 
-    expect(audit.scores.global).toBeGreaterThan(85);
+    // Site propre : note élevée et aucun défaut critique. En profondeur « rapide », Lighthouse
+    // n'est pas lancé : la performance est donc « non mesurée » et exclue du global plutôt que
+    // comptée 100/100 — le global reste haut sans ce faux point parfait.
+    expect(audit.scores.global).toBeGreaterThan(78);
     expect(audit.findings.filter((f) => f.severite === "critique")).toEqual([]);
+    // La performance n'ayant pas été mesurée, le volet technique est signalé comme partiel.
+    expect(audit.scores.partiels).toContain("technique");
+    expect(audit.findings.filter((f) => f.pilier === "technique")).toEqual([]);
     expect(audit.emailContact).toBeNull();
   });
 

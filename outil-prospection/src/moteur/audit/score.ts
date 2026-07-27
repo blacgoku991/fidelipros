@@ -33,19 +33,48 @@ function urgenceDepuis(global: number, findings: Finding[]): Urgence {
   return "faible";
 }
 
-export function calculeScores(findings: Finding[]): ScoresAudit {
-  const seo = scorePilier(findings, "seo");
-  const design = scorePilier(findings, "design");
-  const securite = scorePilier(findings, "securite");
-  const technique = scorePilier(findings, "technique");
-  const global = borne(
-    seo * PONDERATION_PILIERS.seo +
-      design * PONDERATION_PILIERS.design +
-      securite * PONDERATION_PILIERS.securite +
-      technique * PONDERATION_PILIERS.technique,
-  );
+/**
+ * Note globale : moyenne pondérée des volets, en n'incluant que ceux passés en paramètre.
+ * Les poids sont renormalisés sur les seuls volets retenus — sans ça, exclure un volet
+ * reviendrait à le noter zéro. Volets vides : on retombe sur la moyenne simple par sécurité.
+ */
+function globalPondere(scores: Record<Pilier, number>, piliersInclus: Pilier[]): number {
+  const poidsTotal = piliersInclus.reduce((total, p) => total + PONDERATION_PILIERS[p], 0);
+  if (poidsTotal === 0) return 0;
+  const somme = piliersInclus.reduce((total, p) => total + scores[p] * PONDERATION_PILIERS[p], 0);
+  return borne(somme / poidsTotal);
+}
 
-  return { global, seo, design, securite, technique, urgence: urgenceDepuis(global, findings) };
+/**
+ * Calcule les notes par volet et la note globale.
+ *
+ * `piliersNonMesures` (volets dont la source de mesure a manqué et qui n'ont produit aucun
+ * défaut) sont exclus de la note globale : les inclure reviendrait à leur attribuer un 100
+ * fictif qui gonflerait la note. Ils restent présents dans le détail, affichés « non mesuré ».
+ */
+export function calculeScores(findings: Finding[], piliersNonMesures: Pilier[] = []): ScoresAudit {
+  const parPilier: Record<Pilier, number> = {
+    seo: scorePilier(findings, "seo"),
+    design: scorePilier(findings, "design"),
+    securite: scorePilier(findings, "securite"),
+    technique: scorePilier(findings, "technique"),
+  };
+  const exclus = new Set(piliersNonMesures);
+  const mesures = (["seo", "design", "securite", "technique"] as Pilier[]).filter((p) => !exclus.has(p));
+  // Si tout est non mesuré (cas théorique), on garde tous les volets pour ne pas rendre 0.
+  const global = globalPondere(parPilier, mesures.length ? mesures : ["seo", "design", "securite", "technique"]);
+
+  return { global, ...parPilier, urgence: urgenceDepuis(global, findings) };
+}
+
+/**
+ * Volets « non mesurés » : partiels ET sans aucun défaut constaté. Une source a manqué et rien
+ * n'a été trouvé — leur note serait un 100 fictif. C'est ce sous-ensemble qu'on exclut du
+ * global et qu'on affiche « non mesuré », par opposition aux volets partiels qui ont quand
+ * même relevé de vrais défauts (note plancher).
+ */
+export function piliersNonMesures(findings: Finding[], partiels: Pilier[]): Pilier[] {
+  return partiels.filter((p) => !findings.some((f) => f.pilier === p));
 }
 
 /**

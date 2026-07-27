@@ -362,8 +362,11 @@ select.compact { padding: 4px 8px; font-size: 12.5px; }
 }
 
 .note-volet .valeur { font-size: 25px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.note-volet .valeur.muet { color: var(--texte-faible); }
 .note-volet .nom { font-size: 11.5px; color: var(--texte-faible); margin-top: 3px; }
 .note-volet.globale { background: var(--carte-haut); border-color: var(--bordure-claire); }
+/* Volet non mesuré : ni chiffre ni jauge, un tiret discret plutôt qu'un faux 100. */
+.note-volet.non-mesure { border-style: dashed; }
 
 /* Volet dont une source de mesure a manqué : la note est optimiste, on l'affiche. */
 .note-volet .partiel {

@@ -812,12 +812,21 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     : audit
     ? PILIERS.map((pilier) => {
         const findings = audit.findings.filter((f) => f.pilier === pilier);
-        // Une source manquante rend la note optimiste : le prospect doit le lire aussi.
         const partiel = (scores!.partiels ?? []).includes(pilier);
+        // Volet partiel sans aucun défaut trouvé : la mesure a manqué, la note serait fictive.
+        // On n'affiche pas de chiffre — « non mesuré » est plus honnête qu'un 100 inventé.
+        const nonMesure = partiel && findings.length === 0;
+        if (nonMesure) {
+          return `
+        <section class="pilier">
+          <h2>${LIBELLES_PILIERS[pilier]} <span class="mesure-partielle">non mesuré</span></h2>
+          <p class="ok">Ce volet n'a pas pu être mesuré (source d'analyse indisponible au moment de l'audit). Aucune note n'est affichée plutôt qu'une note optimiste trompeuse.</p>
+        </section>`;
+        }
         return `
         <section class="pilier">
           <h2>${LIBELLES_PILIERS[pilier]} <span class="note" style="color:${couleurScore(scores![pilier])}">${scores![pilier]}/100</span>${
-            partiel ? ` <span class="mesure-partielle">mesure partielle</span>` : ""}</h2>
+            partiel ? ` <span class="mesure-partielle">note plancher — mesure partielle</span>` : ""}</h2>
           ${tableauFindings(findings)}
         </section>`;
       }).join("")

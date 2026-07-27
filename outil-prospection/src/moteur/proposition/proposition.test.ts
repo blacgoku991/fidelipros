@@ -305,6 +305,33 @@ describe("rédaction", () => {
     const html = rapportHtml({ ...ctx, audit: audit(DEFAUTS_LOURDS, { erreurs: ["Lighthouse : quota dépassé"] }) });
     expect(html).toContain("Lighthouse : quota dépassé");
   });
+
+  it("affiche « non mesuré » au lieu d'un faux 100 quand la performance n'a pas pu être mesurée", () => {
+    // Défauts SEO/sécurité mais AUCUN défaut technique, et le volet technique déclaré partiel :
+    // c'est le cas réel « Lighthouse en 429 » — la note technique serait un 100 fictif.
+    const findings = [
+      constate("seo_title_absent", "Aucune balise title"),
+      constate("sec_https_absent", "Le site répond en HTTP"),
+    ];
+    const auditPartiel = audit(findings, {
+      scores: { ...calculeScores(findings), partiels: ["technique"] },
+    });
+    const html = rapportHtml({ ...contexte(), audit: auditPartiel });
+
+    // Le volet technique ne doit PAS afficher « 100/100 ».
+    expect(html).toContain("non mesuré");
+    expect(html).not.toMatch(/Performance technique<\/[^>]*>\s*<span class="note"[^>]*>100\/100/);
+  });
+
+  it("garde une note chiffrée sur un volet partiel qui a quand même trouvé des défauts", () => {
+    const findings = [constate("sec_https_absent", "Le site répond en HTTP")];
+    const auditPartiel = audit(findings, {
+      scores: { ...calculeScores(findings), partiels: ["securite"] },
+    });
+    const html = rapportHtml({ ...contexte(), audit: auditPartiel });
+    // La sécurité a un vrai défaut : on affiche la note, signalée comme un plancher.
+    expect(html).toContain("note plancher");
+  });
 });
 
 describe("audit non concluant", () => {
