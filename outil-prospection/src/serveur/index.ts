@@ -578,6 +578,8 @@ async function genereProposition(prospectId: string, corps: Record<string, unkno
     synthese: proposition.synthese,
     email: proposition.email,
     email_html: proposition.email_html,
+    email_intro: proposition.email_intro,
+    email_intro_html: proposition.email_intro_html,
     sms: proposition.sms,
     script_appel: proposition.script_appel,
     rapport_html: proposition.rapport_html,
@@ -602,6 +604,11 @@ function pageRapport(prospectId: string): string | null {
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audit — ${echappeHtml(prospect.nom)}</title></head>
 <body style="margin:0;background:#f5f5f5">
+<div style="position:fixed;top:12px;right:12px;z-index:99" class="sans-impression">
+  <button onclick="window.print()" style="font:600 14px system-ui;padding:9px 16px;border:0;border-radius:8px;background:#2f6df6;color:#fff;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.15)">
+    Enregistrer en PDF</button>
+</div>
+<style>@media print { .sans-impression { display:none !important } }</style>
 ${documents.rapport_html}
 </body></html>`;
 }
@@ -639,6 +646,7 @@ function litPrestations(corps: Record<string, unknown>): { prestations?: Prestat
       adresse: texte(brut.adresse, 200) ?? "",
       email: texte(brut.email, 120) ?? undefined,
       telephone: texte(brut.telephone, 30) ?? "",
+      site_web: texte(brut.site_web, 200) ?? undefined,
       taux_tva: nombre(brut.taux_tva),
       validite_jours: nombre(brut.validite_jours),
       mentions: texte(brut.mentions, 500) ?? undefined,
@@ -749,6 +757,7 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
     return;
   }
 
+  // Email : version « approche » (?intro) ou version avec devis, servie autonome pour aperçu.
   const emailHtmlRoute = chemin.match(/^\/api\/email\/([\w-]+)$/);
   if (emailHtmlRoute && methode === "GET") {
     const documents = stockage.documents(emailHtmlRoute[1]);
@@ -756,11 +765,14 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
       envoieHtml(res, "<p>Aucune proposition générée pour ce prospect.</p>", 404);
       return;
     }
+    const intro = url.searchParams.get("intro") !== null;
+    const objet = intro ? documents.email_intro?.objet ?? documents.email.objet : documents.email.objet;
+    const corpsHtml = intro ? documents.email_intro_html ?? documents.email_html : documents.email_html;
     envoieHtml(res, `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${echappeHtml(documents.email.objet)}</title></head>
-<body style="margin:0;background:#eef0f4">
-${documents.email_html}
+<title>${echappeHtml(objet)}</title></head>
+<body style="margin:0;background:#eef1f6">
+${corpsHtml}
 </body></html>`);
     return;
   }

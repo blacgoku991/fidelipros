@@ -451,6 +451,187 @@ ${emailHtml(ctx, email)}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Email d'approche (premier contact) — présentation de l'agence, sans devis
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Email de première prise de contact.
+ * Objectif : se présenter (agence de création de sites), montrer qu'on a vraiment regardé le
+ * site du prospect, pointer les deux ou trois points qui comptent, et annoncer l'audit complet
+ * joint en PDF — sans devis. Le devis vient plus tard, quand le prospect a répondu.
+ */
+export function emailIntroduction(ctx: ContexteProposition): { objet: string; corps: string } {
+  const nom = nomCommercial(ctx.prospect);
+  const agence = ctx.emetteur.raison_sociale;
+
+  if (auditNonConcluant(ctx)) {
+    return {
+      objet: `${nom} : audit à refaire manuellement`,
+      corps: [
+        `Audit non concluant pour ${nom} — aucun email d'approche n'a été rédigé.`,
+        "",
+        raisonNonConcluant(ctx),
+      ].join("\n"),
+    };
+  }
+
+  const dirigeant = prenomDirigeant(ctx.prospect.dirigeant);
+  const ville = villeLisible(ctx.prospect.ville);
+  const sansSite = !ctx.audit || ctx.prospect.site_statut === "aucun_site";
+  const pire = ctx.arguments[0];
+
+  const objet = sansSite
+    ? `${nom} : je crée des sites web, et le vôtre reste à faire`
+    : pire
+      ? `${nom} : quelques points à revoir sur votre site`
+      : `${nom} : un mot sur votre site web`;
+
+  const salutation = dirigeant ? `Bonjour ${dirigeant},` : "Bonjour,";
+  const presentation = `Je m'appelle ${agence}, je crée et je refais des sites web pour les entreprises${
+    ville ? ` de la région de ${ville}` : ""}.`;
+
+  const accroche = sansSite
+    ? `En cherchant ${nom} en ligne, je n'ai trouvé aucun site à votre nom — uniquement vos concurrents. Aujourd'hui, un client qui vous cherche sur Google ne vous trouve pas.`
+    : `J'ai pris le temps de regarder votre site${ctx.audit ? `, il obtient ${ctx.audit.scores.global}/100` : ""} sur les critères que Google et vos visiteurs regardent. Honnêtement, il mérite mieux.`;
+
+  const listeArguments = sansSite
+    ? "• Aucune présence en ligne : vos concurrents captent les recherches à votre place."
+    : ctx.arguments.slice(0, 3).map((f) => `• ${f.titre} — ${f.impact}`).join("\n");
+
+  const corps = [
+    salutation,
+    "",
+    presentation,
+    "",
+    accroche,
+    "",
+    sansSite ? "Ce que ça vous coûte :" : "Les points qui vous font perdre des clients aujourd'hui :",
+    listeArguments,
+    "",
+    `Vous trouverez le détail complet dans l'audit en pièce jointe (PDF) : chaque point est mesuré, rien n'est inventé, et vous pouvez tout vérifier vous-même.`,
+    "",
+    `Si le sujet vous intéresse, répondez simplement à cet email ou appelez-moi : je vous montre concrètement à quoi ressemblerait un site à la hauteur de votre travail. Sans engagement.`,
+    "",
+    "Bien à vous,",
+    [ctx.emetteur.raison_sociale, ctx.emetteur.telephone, ctx.emetteur.email, sansUrl(ctx.emetteur.site_web)]
+      .filter(Boolean).join(" — "),
+    "",
+    "—",
+    `Vous recevez ce message à titre professionnel. Vos coordonnées d'entreprise proviennent de l'annuaire public des entreprises (données Sirene en open data) et de votre site. Répondez « STOP » et je supprime immédiatement vos données de mon fichier.`,
+  ].join("\n");
+
+  return { objet, corps };
+}
+
+/** « https://smartfixx.fr » → « smartfixx.fr » pour une signature lisible. */
+function sansUrl(site: string | null | undefined): string {
+  return (site ?? "").replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+/**
+ * Version HTML de l'email d'approche : mise en page propre aux couleurs de l'agence, sans
+ * devis. Rappelle en évidence que l'audit complet est joint en PDF.
+ */
+export function emailIntroductionHtml(
+  ctx: ContexteProposition,
+  email: { objet: string; corps: string } = emailIntroduction(ctx),
+): string {
+  const nom = nomCommercial(ctx.prospect);
+  const emetteur = ctx.emetteur;
+
+  if (auditNonConcluant(ctx)) {
+    return `<div style="font-family:${POLICE_EMAIL};max-width:600px;padding:16px;background:#fff8e1;border:1px solid #f5d76e;border-radius:8px;color:#7a5c00">
+  <strong>Aucun email à envoyer : audit non concluant pour ${echappeHtml(nom)}.</strong>
+  <p style="margin:8px 0 0;font-size:14px;line-height:1.6">${echappeHtml(raisonNonConcluant(ctx))}</p>
+</div>`;
+  }
+
+  const score = ctx.audit?.scores;
+  const arguments3 = ctx.arguments.slice(0, 3);
+  const site = sansUrl(emetteur.site_web);
+  const sujetReponse = encodeURIComponent(`Re: ${email.objet}`);
+
+  const bandeauScore = score
+    ? `<tr><td style="padding:2px 0 20px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e6e8ee;border-radius:10px">
+          <tr><td align="center" style="padding:16px 12px 6px">
+            <div style="font-size:34px;font-weight:700;line-height:1;color:${couleurScore(score.global)}">${score.global}<span style="font-size:15px;color:#9aa2b1">/100</span></div>
+            <div style="font-size:12px;color:#6b7280;margin-top:4px">La note de votre site aujourd'hui</div>
+          </td></tr>
+          <tr><td style="padding:0 8px 12px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            ${PILIERS.map((pilier) => `<td width="25%" align="center" style="padding:6px 4px">
+              <div style="font-size:18px;font-weight:700;color:${couleurScore(score[pilier])}">${score[pilier]}</div>
+              <div style="font-size:10.5px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em">${echappeHtml(LIBELLES_PILIERS[pilier])}</div>
+            </td>`).join("")}
+          </tr></table></td></tr>
+        </table>
+       </td></tr>`
+    : "";
+
+  const cartesArguments = arguments3.length
+    ? `<tr><td style="padding:0 0 8px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${arguments3.map((f) => `<tr><td style="padding:0 0 10px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f6f8fc;border-left:3px solid #2f6df6;border-radius:0 8px 8px 0">
+            <tr><td style="padding:12px 14px">
+              <div style="font-size:15px;font-weight:600;color:#1f2430">${echappeHtml(f.titre)}</div>
+              <div style="font-size:14px;color:#3a4150;margin-top:4px;line-height:1.5">${echappeHtml(f.impact)}</div>
+            </td></tr></table></td></tr>`).join("")}
+       </table></td></tr>`
+    : "";
+
+  return `<div style="margin:0;padding:0;background:#eef1f6">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef1f6;padding:24px 12px">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;font-family:${POLICE_EMAIL}">
+
+      <tr><td style="background:linear-gradient(135deg,#1b2a4a,#0f1b34);padding:22px 26px">
+        <div style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.02em">${echappeHtml(emetteur.raison_sociale)}</div>
+        <div style="font-size:12.5px;color:#9fb3d9;margin-top:3px">Création &amp; refonte de sites web${site ? ` · ${echappeHtml(site)}` : ""}</div>
+      </td></tr>
+
+      <tr><td style="padding:24px 26px 6px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${decoupeCorps(email.corps).filter((b) => b.genre === "paragraphe").slice(0, 3)
+            .map((b) => `<tr><td>${b.lignes.map(paragrapheEmail).join("")}</td></tr>`).join("")}
+          ${bandeauScore}
+          ${cartesArguments}
+
+          <tr><td style="padding:4px 0 18px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#eef6ee;border:1px solid #cfe6cf;border-radius:8px">
+              <tr>
+                <td width="42" align="center" style="padding:14px 0 14px 14px;font-size:22px">📎</td>
+                <td style="padding:14px 14px 14px 10px;font-size:14px;color:#2f5d33;line-height:1.5">
+                  <strong>L'audit complet est joint à cet email (PDF).</strong> Chaque point y est mesuré et vérifiable.
+                </td>
+              </tr>
+            </table>
+          </td></tr>
+
+          <tr><td align="center" style="padding:2px 0 20px">
+            <a href="mailto:${echappeHtml(emetteur.email)}?subject=${sujetReponse}"
+               style="display:inline-block;background:#2f6df6;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 28px;border-radius:8px">
+              Échanger 15 minutes</a>
+            <div style="font-size:12px;color:#6b7280;margin-top:8px">Sans engagement — répondez simplement à cet email.</div>
+          </td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="background:#f7f8fb;border-top:1px solid #e6e8ee;padding:16px 26px">
+        <div style="font-size:13px;color:#374151;font-weight:600">${echappeHtml(emetteur.raison_sociale)}</div>
+        <div style="font-size:12.5px;color:#6b7280;margin-top:2px">
+          ${[emetteur.telephone, emetteur.email, site].filter(Boolean).map((v) => echappeHtml(v)).join(" · ")}
+        </div>
+        <div style="font-size:11px;color:#9aa2b1;line-height:1.5;margin-top:10px">
+          ${decoupeCorps(email.corps).filter((b) => b.genre === "mentions").flatMap((b) => b.lignes).map((l) => echappeHtml(l)).join(" ")}
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Rapport HTML (imprimable en PDF)
 // ─────────────────────────────────────────────────────────────────────────────
 

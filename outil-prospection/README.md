@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 244 tests (moteur + stockage)
+npm test                   # 249 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -49,8 +49,8 @@ donc pas être exposé sur le réseau.
 |---|---|
 | **Prospects** | Rechercher des entreprises (secteur, département, dates de création, effectif, CA), liste classée par opportunité, audit de 10 prospects en un clic, statut commercial, export CSV de ce qui est affiché |
 | **Auditer un site** | Coller l'adresse d'un site : audit complet en 15 à 45 s, coordonnées relevées, enregistrement comme prospect |
-| **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, devis, email HTML prêt à envoyer, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
-| **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails |
+| **Fiche prospect** | Contact (email, téléphone, fiche Google, réseaux), notes par volet, défauts avec leur impact, **email d'approche HTML sans devis** (rapport en PDF joint), devis, email HTML de relance, SMS, script d'appel, rapport client imprimable, correction manuelle du site, suppression |
+| **Prestations & devis** | Prix du catalogue (15 prestations), activation, identité portée sur le devis et les emails (raison sociale, **site web**, email, téléphone…) |
 
 ## Les sources : gratuites, sans clé, sans compte
 
@@ -315,7 +315,29 @@ Prix, libellés, activation et identité du devis se règlent dans **Prestations
 
 ## L'email envoyé au prospect
 
-Chaque proposition produit le même message en deux formes :
+Deux moments, deux emails distincts.
+
+### Le premier contact : l'email d'approche
+
+C'est l'email de démarchage, **sans devis ni prix**. Il vous présente comme agence de création
+de sites web, annonce en une note globale que le site du prospect « mérite mieux », résume les
+**trois défauts les plus graves réellement constatés** en cartes lisibles, et **renvoie au rapport
+d'audit joint en PDF** — sans le coller dans le corps du message. La mise en page reprend votre
+identité (**SmartFixx**, `smartfixx.fr`) : en-tête de marque, bande de notes, encadré vert
+« l'audit complet est joint à cet email (PDF) », bouton « Échanger 15 minutes », pied de page
+avec l'origine des données et le droit d'opposition CNIL (« Répondez STOP »). Le devis vient
+**plus tard**, en relance, une fois le contact établi.
+
+Depuis la fiche prospect, la carte **Email d'approche** propose le flux d'envoi en trois étapes :
+*ouvrez le rapport → enregistrez-le en PDF (bouton dédié sur la page du rapport) → joignez le PDF
+à l'email*. L'email lui-même se **copie avec sa mise en forme**, se **télécharge en .html** ou
+s'**ouvre dans un onglet**. Quand l'audit n'est pas concluant, aucun email d'approche n'est
+fabriqué.
+
+### La relance : l'email avec devis
+
+Une fois le prospect intéressé, la seconde forme reprend l'audit **et** le chiffrage. Elle
+existe en deux versions :
 
 - une **version HTML** mise en page (notes de l'audit, défauts en cartes avec la mesure et ce
   qu'elle coûte, chiffrage, bouton de réponse, mentions CNIL). Elle est construite pour les
@@ -394,7 +416,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-244 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+249 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

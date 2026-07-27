@@ -64,6 +64,8 @@ export interface DocumentsStockes {
   synthese: string;
   email: { objet: string; corps: string };
   email_html: string;
+  email_intro: { objet: string; corps: string };
+  email_intro_html: string;
   sms: string;
   script_appel: string;
   rapport_html: string;
@@ -147,7 +149,7 @@ export class Stockage {
         ...baseVide(),
         ...brut,
         prestations: fusionnePrestations(brut.prestations),
-        emetteur: { ...EMETTEUR_PAR_DEFAUT, ...(brut.emetteur ?? {}) },
+        emetteur: { ...EMETTEUR_PAR_DEFAUT, ...(brut.emetteur ?? {}) }, // site_web complété par le défaut
       } as BaseDonnees;
       // Fiches écrites par une version antérieure : compléter sans casser.
       base.prospects = base.prospects.map((prospect) => ({

@@ -139,7 +139,9 @@ describe("stockage local", () => {
     const capture = stockage.cheminCapture(audit.id)!;
     stockage.enregistreDocuments({
       prospect_id: prospect.id, audit_id: audit.id, synthese: "s",
-      email: { objet: "o", corps: "c" }, email_html: "<div></div>", sms: "s", script_appel: "a",
+      email: { objet: "o", corps: "c" }, email_html: "<div></div>",
+      email_intro: { objet: "i", corps: "c" }, email_intro_html: "<div></div>",
+      sms: "s", script_appel: "a",
       rapport_html: "<article></article>",
       devis: {
         lignes_projet: [], lignes_recurrentes: [], sous_total_ht: 0, remise: 0, taux_remise: 0,

@@ -6,16 +6,16 @@ import type { Prospect } from "../types.ts";
 import { construitDevis, EMETTEUR_PAR_DEFAUT, euros, type OptionsDevis } from "./devis.ts";
 import { reformule, type OptionsIa } from "./ia.ts";
 import {
-  emailHtml, emailHtmlAutonome, emailPriseContact, rapportHtml, rapportHtmlAutonome,
-  scriptAppel, sms, synthese,
+  emailHtml, emailHtmlAutonome, emailIntroduction, emailIntroductionHtml, emailPriseContact,
+  rapportHtml, rapportHtmlAutonome, scriptAppel, sms, synthese,
 } from "./redaction.ts";
 import type { ContexteProposition, DocumentsProposition, Devis, Emetteur, Prestation } from "./types.ts";
 
 export { construitDevis, EMETTEUR_PAR_DEFAUT, euros } from "./devis.ts";
 export { reformule } from "./ia.ts";
 export {
-  emailHtml, emailHtmlAutonome, emailPriseContact, rapportHtml, rapportHtmlAutonome,
-  scriptAppel, sms, synthese,
+  emailHtml, emailHtmlAutonome, emailIntroduction, emailIntroductionHtml, emailPriseContact,
+  rapportHtml, rapportHtmlAutonome, scriptAppel, sms, synthese,
 } from "./redaction.ts";
 export type * from "./types.ts";
 
@@ -31,6 +31,7 @@ export function emetteurDepuisSettings(settings: Record<string, string>): Emette
     adresse: settings.devis_adresse?.trim() ?? "",
     email: settings.devis_email?.trim() || EMETTEUR_PAR_DEFAUT.email,
     telephone: settings.devis_telephone?.trim() ?? "",
+    site_web: settings.devis_site_web?.trim() || EMETTEUR_PAR_DEFAUT.site_web,
     taux_tva: nombre("devis_taux_tva", EMETTEUR_PAR_DEFAUT.taux_tva),
     validite_jours: nombre("devis_validite_jours", EMETTEUR_PAR_DEFAUT.validite_jours),
     mentions: settings.devis_mentions?.trim() || EMETTEUR_PAR_DEFAUT.mentions,
@@ -80,12 +81,16 @@ export async function construitProposition(
     ? { objet: textes.objet, corps: textes.corps }
     : emailPriseContact(contexte);
 
+  const emailIntro = emailIntroduction(contexte);
+
   return {
     devis,
     contexte,
     synthese: syntheseTexte,
     email,
     email_html: emailHtml(contexte, email),
+    email_intro: emailIntro,
+    email_intro_html: emailIntroductionHtml(contexte, emailIntro),
     sms: sms(contexte),
     script_appel: scriptAppel(contexte),
     rapport_html: rapportHtml(contexte, syntheseTexte),

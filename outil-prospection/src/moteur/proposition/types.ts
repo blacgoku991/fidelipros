@@ -50,6 +50,8 @@ export interface Emetteur {
   adresse: string;
   email: string;
   telephone: string;
+  /** Site web de l'émetteur, montré dans les emails et le rapport (ex. https://smartfixx.fr). */
+  site_web: string;
   taux_tva: number;
   validite_jours: number;
   mentions: string;
@@ -72,6 +74,10 @@ export interface DocumentsProposition {
   email: { objet: string; corps: string };
   /** Même message que `email`, mis en page pour un client mail (styles en ligne). */
   email_html: string;
+  /** Email d'approche (premier contact) : présentation de l'agence, pas de devis. */
+  email_intro: { objet: string; corps: string };
+  /** Version HTML de l'email d'approche. */
+  email_intro_html: string;
   sms: string;
   script_appel: string;
   rapport_html: string;

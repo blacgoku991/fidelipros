@@ -8,11 +8,12 @@ import type { AuditSiteComplet } from "../audit/types.ts";
 import type { Devis, Emetteur, LigneDevis, Prestation } from "./types.ts";
 
 export const EMETTEUR_PAR_DEFAUT: Emetteur = {
-  raison_sociale: "FideliPro",
+  raison_sociale: "SmartFixx",
   siret: "",
   adresse: "",
-  email: "contact@fidelipro.com",
+  email: "contact@smartfixx.fr",
   telephone: "",
+  site_web: "https://smartfixx.fr",
   taux_tva: 20,
   validite_jours: 30,
   mentions: "Devis gratuit et sans engagement.",

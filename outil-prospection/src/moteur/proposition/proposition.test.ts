@@ -8,7 +8,8 @@ import type { Prospect } from "../types.ts";
 import { construitDevis, EMETTEUR_PAR_DEFAUT, euros } from "./devis.ts";
 import { reformule } from "./ia.ts";
 import {
-  emailHtml, emailPriseContact, rapportHtml, scriptAppel, sms, synthese,
+  emailHtml, emailIntroduction, emailIntroductionHtml, emailPriseContact, rapportHtml,
+  scriptAppel, sms, synthese,
 } from "./redaction.ts";
 import { construitProposition, emetteurDepuisSettings } from "./index.ts";
 import type { ContexteProposition, Prestation } from "./types.ts";
@@ -507,7 +508,7 @@ describe("emailHtml", () => {
     expect(html).toContain("Atelier Web");
     expect(html).toContain("Site non sécurisé (pas de HTTPS)");
     expect(html).toContain(`${ctx.audit!.scores.global}`);
-    expect(html).toContain("mailto:contact@fidelipro.com?subject=Re%3A");
+    expect(html).toContain(`mailto:${EMETTEUR_PAR_DEFAUT.email}?subject=Re%3A`);
     // mentions CNIL conservées dans le pied
     expect(html).toMatch(/STOP/);
     expect(html).toContain("SIRET 91234567800017");
@@ -595,5 +596,84 @@ describe("qualité de la prise de contact", () => {
     expect(texte.length).toBeLessThanOrEqual(480);
     expect(texte).toContain("Répondez OUI");
     expect(texte).toContain("STOP");
+  });
+});
+
+describe("email d'approche (sans devis)", () => {
+  const ctx = (surcharge: Partial<ContexteProposition> = {}): ContexteProposition => {
+    const findings = [
+      constate("sec_https_absent", "Le site répond en HTTP"),
+      constate("design_viewport_absent", "Aucune balise meta viewport"),
+      constate("seo_description_absente", "Aucune balise meta description"),
+    ];
+    const auditComplet = audit(findings);
+    return {
+      prospect: { ...PROSPECT, ville: "BORDEAUX", dirigeant: "Marie DUPONT" },
+      audit: auditComplet,
+      devis: construitDevis(auditComplet, CATALOGUE),
+      emetteur: {
+        ...EMETTEUR_PAR_DEFAUT, raison_sociale: "SmartFixx",
+        email: "contact@smartfixx.fr", telephone: "05 56 00 00 00", site_web: "https://smartfixx.fr",
+      },
+      arguments: findings,
+      ...surcharge,
+    };
+  };
+
+  it("présente l'agence, annonce le PDF, et ne contient aucun devis", () => {
+    const { objet, corps } = emailIntroduction(ctx());
+    expect(corps).toContain("SmartFixx");
+    expect(corps).toContain("je crée");
+    expect(corps).toContain("pièce jointe (PDF)");
+    expect(corps).toContain("smartfixx.fr");
+    // Aucun chiffrage : c'est un premier contact.
+    expect(corps).not.toMatch(/€|devis détaillé|HT par mois/);
+    expect(objet).toContain("Garage Martin");
+    // Prénom du dirigeant utilisé.
+    expect(corps).toContain("Bonjour Marie");
+    // Origine des données + opt-out obligatoires en prospection B2B.
+    expect(corps).toContain("Sirene en open data");
+    expect(corps).toContain("STOP");
+  });
+
+  it("n'affirme que des défauts réellement constatés", () => {
+    const contexte = ctx();
+    const { corps } = emailIntroduction(contexte);
+    const puces = corps.split("\n").filter((l) => l.startsWith("• "));
+    expect(puces).toHaveLength(3);
+    for (const arg of contexte.arguments.slice(0, 3)) expect(corps).toContain(arg.titre);
+  });
+
+  it("met en page l'email HTML aux couleurs de l'agence, avec la pièce jointe en évidence", () => {
+    const html = emailIntroductionHtml(ctx());
+    expect(html).toContain("SmartFixx");
+    expect(html).toContain("Création &amp; refonte de sites web");
+    expect(html).toContain("smartfixx.fr");
+    // Rappel visible de la pièce jointe PDF.
+    expect(html).toContain("joint à cet email (PDF)");
+    // Compatible clients mail : tableaux, styles en ligne, pas de <style>, pas de devis.
+    expect(html).toContain('role="presentation"');
+    expect(html).not.toContain("<style");
+    expect(html).not.toContain("Ce que je propose");
+    expect(html).not.toMatch(/Total\b/);
+    // Lien de réponse pré-rempli.
+    expect(html).toContain("mailto:contact@smartfixx.fr?subject=Re%3A");
+  });
+
+  it("échappe le contenu venu du prospect (nom, dirigeant)", () => {
+    const html = emailIntroductionHtml(ctx({
+      prospect: { ...PROSPECT, enseigne: null, nom: 'Garage <script>alert(1)</script>', dirigeant: 'Jean <script>alert(2)</script>' },
+    }));
+    // Aucune balise active injectée, quelle que soit la donnée reçue du site.
+    expect(html).not.toContain("<script>alert");
+    // Le prénom du dirigeant, lui, est bien rendu — et échappé.
+    expect(html).toContain("&lt;script&gt;");
+  });
+
+  it("ne fabrique aucun email d'approche quand l'audit n'est pas concluant", () => {
+    const auditBloque = audit([], { concluant: false, accessibilite: "bloque", erreurs: ["Accès refusé (403)"] });
+    const html = emailIntroductionHtml(ctx({ audit: auditBloque, arguments: [] }));
+    expect(html).toContain("Aucun email à envoyer");
+    expect(html).not.toContain("joint à cet email");
   });
 });

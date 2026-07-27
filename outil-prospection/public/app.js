@@ -1312,20 +1312,71 @@ function dessineProposition(prospect, documents) {
   const lignes = [...devis.lignes_projet, ...devis.lignes_recurrentes];
 
   if (!lignes.length) {
+    const introSeule = Boolean(documents.email_intro && documents.email_intro_html);
+    const textesSeuls = {
+      intro: introSeule ? `Objet : ${documents.email_intro.objet}\n\n${documents.email_intro.corps}` : "",
+    };
     zone.innerHTML = `<div class="carte"><h2>Proposition</h2>
       <p class="alerte">${esc(documents.synthese)}</p>
-      <p class="aide">Aucun chiffrage : il n'y a pas de constat exploitable sur lequel appuyer
-        un devis.</p></div>`;
+      <p class="aide">Aucun chiffrage pour l'instant. ${introSeule ? "L'email d'approche ci-dessous reste utilisable." : ""}</p></div>
+      ${introSeule ? `
+      <div class="carte" style="border-color:var(--accent)">
+        <div class="entre-deux">
+          <h2>✉️ Email d'approche</h2>
+          <div class="ligne">
+            <button class="primaire" id="copier-intro">Copier avec la mise en forme</button>
+            <a class="bouton" href="/api/email/${esc(prospect.id)}?intro" target="_blank" rel="noreferrer noopener"><button type="button">Ouvrir</button></a>
+          </div>
+        </div>
+        <iframe class="apercu court" src="/api/email/${esc(prospect.id)}?intro" title="Aperçu"></iframe>
+      </div>` : ""}`;
+    if (introSeule) {
+      zone.querySelector("#copier-intro").addEventListener("click", () =>
+        copieRiche(documents.email_intro_html, textesSeuls.intro, "Email d'approche"));
+    }
     return;
   }
 
+  const introDispo = Boolean(documents.email_intro && documents.email_intro_html);
   const textes = {
+    intro: introDispo ? `Objet : ${documents.email_intro.objet}\n\n${documents.email_intro.corps}` : "",
     email: `Objet : ${documents.email.objet}\n\n${documents.email.corps}`,
     sms: documents.sms,
     appel: documents.script_appel,
   };
 
+  // Carte « email d'approche » : premier contact, sans devis, avec le PDF de l'audit joint.
+  const carteApproche = introDispo ? `
+    <div class="carte" style="border-color:var(--accent)">
+      <div class="entre-deux">
+        <h2>✉️ Email d'approche <span class="etiquette et-accent">sans devis</span></h2>
+        <div class="ligne">
+          <button class="primaire" id="copier-intro">Copier avec la mise en forme</button>
+          <button id="telecharger-intro">Télécharger .html</button>
+          <a class="bouton" href="/api/email/${esc(prospect.id)}?intro" target="_blank" rel="noreferrer noopener">
+            <button type="button">Ouvrir dans un onglet</button></a>
+        </div>
+      </div>
+      <p class="aide">Premier contact : vous vous présentez, vous pointez les points faibles du
+        site, et vous joignez l'audit en PDF. Objet : <strong>${esc(documents.email_intro.objet)}</strong>
+        ${prospect.email_contact
+          ? ` — destinataire : <a href="mailto:${esc(prospect.email_contact)}?subject=${encodeURIComponent(documents.email_intro.objet)}">${esc(prospect.email_contact)}</a>`
+          : " — aucun email trouvé sur le site : à demander par téléphone"}.</p>
+      <div class="carte serree" style="margin:0 0 14px;background:var(--fond-relief)">
+        <strong style="font-size:13.5px">Pour l'envoyer :</strong>
+        <ol style="margin:8px 0 0 18px;padding:0;font-size:13px;color:var(--texte-doux);line-height:1.7">
+          <li><a href="/api/rapport/${esc(prospect.id)}" target="_blank" rel="noreferrer noopener">Ouvrez le rapport</a>
+            et cliquez « Enregistrer en PDF ».</li>
+          <li>« Copier avec la mise en forme », puis collez dans Gmail / Outlook.</li>
+          <li>Joignez le PDF de l'audit, et envoyez.</li>
+        </ol>
+      </div>
+      <iframe class="apercu court" src="/api/email/${esc(prospect.id)}?intro" title="Aperçu de l'email d'approche"></iframe>
+      <div style="margin-top:10px">${blocCopiable("Version texte (sans mise en forme)", textes.intro, "intro")}</div>
+    </div>` : "";
+
   zone.innerHTML = `
+    ${carteApproche}
     <div class="carte">
       <div class="entre-deux">
         <h2>Devis</h2>
@@ -1364,7 +1415,7 @@ function dessineProposition(prospect, documents) {
 
     <div class="carte">
       <div class="entre-deux">
-        <h2>Email à envoyer</h2>
+        <h2>Email avec devis <span class="etiquette">relance</span></h2>
         <div class="ligne">
           <button class="primaire" id="copier-email-html">Copier avec la mise en forme</button>
           <button id="telecharger-email">Télécharger .html</button>
@@ -1372,7 +1423,7 @@ function dessineProposition(prospect, documents) {
             <button type="button">Ouvrir dans un onglet</button></a>
         </div>
       </div>
-      <p class="aide">Objet : <strong>${esc(documents.email.objet)}</strong> —
+      <p class="aide">À envoyer en relance, une fois le premier contact établi. Objet : <strong>${esc(documents.email.objet)}</strong> —
         ${prospect.email_contact
           ? `destinataire relevé sur le site : <a href="mailto:${esc(prospect.email_contact)}?subject=${encodeURIComponent(documents.email.objet)}">${esc(prospect.email_contact)}</a>`
           : "aucun email trouvé sur le site : à demander par téléphone ou via le formulaire de contact"}.
@@ -1405,6 +1456,12 @@ function dessineProposition(prospect, documents) {
 
   brancheOnglets(zone);
   brancheCopies(zone, textes);
+  if (introDispo) {
+    zone.querySelector("#copier-intro").addEventListener("click", () =>
+      copieRiche(documents.email_intro_html, textes.intro, "Email d'approche"));
+    zone.querySelector("#telecharger-intro").addEventListener("click", () =>
+      telecharge(`${nomFichierProspect(prospect)}-email-approche.html`, documents.email_intro_html));
+  }
   zone.querySelector("#copier-email-html").addEventListener("click", () =>
     copieRiche(documents.email_html, textes.email, "Email"));
   zone.querySelector("#telecharger-email").addEventListener("click", () =>
@@ -1458,6 +1515,8 @@ async function vuePrestations() {
           <input type="text" id="email" value="${esc(emetteur.email)}"></div>
         <div><label for="telephone">Téléphone</label>
           <input type="text" id="telephone" value="${esc(emetteur.telephone)}"></div>
+        <div><label for="site_web">Site web</label>
+          <input type="text" id="site_web" value="${esc(emetteur.site_web ?? "")}" placeholder="https://smartfixx.fr"></div>
         <div class="pleine-largeur"><label for="adresse">Adresse</label>
           <input type="text" id="adresse" value="${esc(emetteur.adresse)}"></div>
         <div><label for="taux_tva">TVA (%)</label>
@@ -1500,6 +1559,7 @@ async function vuePrestations() {
               siret: valeur("siret"),
               email: valeur("email"),
               telephone: valeur("telephone"),
+              site_web: valeur("site_web"),
               adresse: valeur("adresse"),
               taux_tva: Number(valeur("taux_tva")),
               validite_jours: Number(valeur("validite_jours")),
