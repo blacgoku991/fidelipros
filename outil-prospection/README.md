@@ -36,7 +36,7 @@ Puis ouvrez **http://127.0.0.1:4000**. Pour arrêter : `Ctrl+C` dans le terminal
 
 ```bash
 PORT=4100 npm start        # autre port
-npm test                   # 167 tests (moteur + stockage)
+npm test                   # 188 tests (moteur + stockage)
 npm run verif              # vérification des types
 ```
 
@@ -142,6 +142,14 @@ de défauts critiques et de la note globale.
 résolveur DNS est injoignable, l'audit n'écrit pas « aucun SPF » : il inscrit la panne dans
 les points non vérifiables, affichés comme tels. C'est ce qui rend le rapport défendable
 devant le prospect.
+
+Conséquence assumée : une note se calcule en retirant des points par défaut constaté, donc un
+volet dont une source a manqué ressort **trop favorable**. Ces volets sont marqués **« mesure
+partielle »** dans l'interface et dans le rapport client — sans Lighthouse, « Performance
+technique 100/100 » ne veut rien dire, et le dire est plus utile que de le cacher.
+
+La page d'accueil bénéficie d'une **seconde tentative** avant tout verdict : un incident réseau
+isolé ne doit pas transformer un site vivant en « analyse impossible ».
 
 ### Audit non concluant
 
@@ -257,8 +265,9 @@ donnees/captures/          captures mobiles Lighthouse (hors du JSON, qui reste 
 ```
 
 Un seul fichier JSON, écrit de façon atomique (fichier temporaire puis renommage), lisible
-dans n'importe quel éditeur. Pour repartir de zéro : supprimez le dossier. Pour sauvegarder :
-copiez-le. `DONNEES=/chemin/autre.json npm start` permet de travailler sur plusieurs bases.
+dans n'importe quel éditeur. La version précédente est conservée en `prospection.json.bak` à
+chaque écriture. Pour repartir de zéro : supprimez le dossier. Pour sauvegarder : copiez-le.
+`DONNEES=/chemin/autre.json npm start` permet de travailler sur plusieurs bases.
 
 ## Structure
 
@@ -271,7 +280,7 @@ src/cli/             prospect.ts et audit.ts, pour le traitement par lot
 public/              interface : trois fichiers, sans bundler
 ```
 
-167 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
+188 tests couvrent le moteur (scoring, règles, coordonnées, devis, rédaction) et le stockage
 (dédoublonnage, suivi commercial préservé, écriture atomique, migration d'une base ancienne).
 
 Le moteur est **la même source pour les trois surfaces** (interface, API, CLI) : la logique de

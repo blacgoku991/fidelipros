@@ -7,7 +7,7 @@ import { evalueDesign } from "./design.ts";
 import { evalueSecurite } from "./securite.ts";
 import { evalueSeo } from "./seo.ts";
 import { evalueTechnique } from "./technique.ts";
-import { calculeScores, trieFindings } from "./score.ts";
+import { calculeScores, piliersPartiels, trieFindings } from "./score.ts";
 import type { AuditSiteComplet, ContexteAudit, Finding, Profondeur } from "./types.ts";
 
 export {
@@ -19,8 +19,8 @@ export { evalueSecurite } from "./securite.ts";
 export { evalueSeo } from "./seo.ts";
 export { evalueTechnique } from "./technique.ts";
 export {
-  argumentsCles, calculeScores, compteParSeverite, PONDERATION_PILIERS, resumeSeverites,
-  scorePilier, trieFindings,
+  argumentsCles, calculeScores, compteParSeverite, piliersPartiels, PONDERATION_PILIERS,
+  resumeSeverites, scorePilier, trieFindings,
 } from "./score.ts";
 export {
   constate, LIBELLES_EFFORT, LIBELLES_PILIERS, LIBELLES_SEVERITE, REGLES, reglesDuPilier,
@@ -97,7 +97,7 @@ export async function auditeSite(
     accessibilite: ctx.accessibilite,
     // Un audit sans observation du site ne conclut rien : ni note à présenter, ni devis.
     concluant: ctx.accessibilite !== "bloque",
-    scores: calculeScores(findings),
+    scores: { ...calculeScores(findings), partiels: piliersPartiels(ctx) },
     findings,
     lighthouse: ctx.lighthouse,
     fichiersExposes: ctx.fichiersExposes ?? [],

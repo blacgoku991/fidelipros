@@ -203,3 +203,24 @@ describe("stockage local", () => {
     expect(() => new Stockage(chemin)).toThrow(/illisible/);
   });
 });
+
+describe("sauvegarde", () => {
+  it("conserve la version précédente à chaque écriture", () => {
+    const stockage = new Stockage(chemin);
+    stockage.enregistreProspects([prospectSirene({ siren: "111111111", nom: "Première" })]);
+    expect(existsSync(`${chemin}.bak`)).toBe(false); // rien à sauvegarder au premier écrit
+
+    stockage.enregistreProspects([prospectSirene({ siren: "222222222", nom: "Deuxième" })]);
+    const sauvegarde = JSON.parse(readFileSync(`${chemin}.bak`, "utf8"));
+    expect(sauvegarde.prospects.map((p: { nom: string }) => p.nom)).toEqual(["Première"]);
+    expect(JSON.parse(readFileSync(chemin, "utf8")).prospects).toHaveLength(2);
+  });
+
+  it("indique où trouver la sauvegarde si le fichier devient illisible", () => {
+    const stockage = new Stockage(chemin);
+    stockage.enregistreProspects([prospectSirene()]);
+    stockage.majProspect(stockage.prospects()[0].id, { statut: "rdv" });
+    writeFileSync(chemin, "{ tronqué", "utf8");
+    expect(() => new Stockage(chemin)).toThrow(/\.bak/);
+  });
+});

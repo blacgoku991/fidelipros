@@ -540,9 +540,12 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     : audit
     ? PILIERS.map((pilier) => {
         const findings = audit.findings.filter((f) => f.pilier === pilier);
+        // Une source manquante rend la note optimiste : le prospect doit le lire aussi.
+        const partiel = (scores!.partiels ?? []).includes(pilier);
         return `
         <section class="pilier">
-          <h2>${LIBELLES_PILIERS[pilier]} <span class="note" style="color:${couleurScore(scores![pilier])}">${scores![pilier]}/100</span></h2>
+          <h2>${LIBELLES_PILIERS[pilier]} <span class="note" style="color:${couleurScore(scores![pilier])}">${scores![pilier]}/100</span>${
+            partiel ? ` <span class="mesure-partielle">mesure partielle</span>` : ""}</h2>
           ${tableauFindings(findings)}
         </section>`;
       }).join("")
@@ -560,6 +563,7 @@ export function rapportHtml(ctx: ContexteProposition, syntheseTexte = synthese(c
     .entete { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; border-bottom: 2px solid #1a1a1a; padding-bottom: 14px; }
     .entete .emetteur { text-align: right; font-size: 12px; color: #555; }
     .meta { font-size: 13px; color: #555; }
+    .mesure-partielle { font-size: 11px; font-weight: 600; color: #a35200; background: #fff4e5; padding: 2px 8px; border-radius: 999px; }
     .global { display: flex; gap: 20px; align-items: center; margin: 22px 0; padding: 16px; border: 1px solid #e5e5e5; border-radius: 12px; }
     .global .chiffre { font-size: 44px; font-weight: 600; line-height: 1; }
     .global .chiffre small { font-size: 15px; font-weight: 400; color: #666; }

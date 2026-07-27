@@ -48,6 +48,11 @@ export interface ScoresAudit {
   securite: number;
   technique: number;
   urgence: Urgence;
+  /**
+   * Volets dont une source de mesure a manqué : leur note est optimiste par construction
+   * (un défaut non cherché n'est pas retiré). Affiché tel quel dans l'interface et le rapport.
+   */
+  partiels?: Pilier[];
 }
 
 /** Réponse HTTP normalisée (en-têtes en minuscules). */

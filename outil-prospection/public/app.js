@@ -325,12 +325,19 @@ function blocAudit(audit) {
       <div class="nom">Note globale</div>
       <div class="jauge"><span style="width:${audit.scores.global}%;background:${couleurScore(audit.scores.global)}"></span></div>
     </div>
-    ${PILIERS.map((pilier) => `
-      <div class="note-volet">
+    ${PILIERS.map((pilier) => {
+      // Une source manquante rend la note optimiste : on le dit sur la carte du volet.
+      const partiel = (audit.scores.partiels ?? []).includes(pilier);
+      return `
+      <div class="note-volet"${partiel
+        ? ` title="Mesure partielle : une source n'a pas répondu (voir « non vérifiable » ci-dessous). La note est donc optimiste."`
+        : ""}>
         <div class="valeur ${classeScore(audit.scores[pilier])}">${audit.scores[pilier]}</div>
         <div class="nom">${esc(config.piliers[pilier])}</div>
         <div class="jauge"><span style="width:${audit.scores[pilier]}%;background:${couleurScore(audit.scores[pilier])}"></span></div>
-      </div>`).join("")}
+        ${partiel ? `<div class="partiel">mesure partielle</div>` : ""}
+      </div>`;
+    }).join("")}
   </div>`;
 
   const onglets = PILIERS.map((pilier) => {

@@ -548,11 +548,18 @@ export async function collecte(url: string, options: OptionsCollecte = {}): Prom
   const erreurs: string[] = [];
   const anneeCourante = options.anneeCourante ?? new Date().getFullYear();
 
-  let accueil = await recupereHttp(url, {
+  const optionsAccueil = {
     fetchImpl: options.fetchImpl,
     timeoutMs: options.timeoutMs ?? 10_000,
     maxOctets: options.maxOctets ?? 500_000,
-  });
+  };
+  let accueil = await recupereHttp(url, optionsAccueil);
+  // Deuxième tentative : un incident réseau isolé rendrait l'audit « non concluant » à tort,
+  // et le prospect ressortirait comme non analysable alors que son site fonctionne.
+  if (!accueil && !expire(options.echeance)) {
+    await pause(500);
+    accueil = await recupereHttp(url, { ...optionsAccueil, timeoutMs: (options.timeoutMs ?? 10_000) + 5000 });
+  }
 
   // Une redirection peut mener ailleurs que l'hôte demandé : on refuse d'auditer (et donc
   // d'aller sonder) une arrivée sur le réseau interne.

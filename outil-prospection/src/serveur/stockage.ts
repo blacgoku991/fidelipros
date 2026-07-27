@@ -2,7 +2,9 @@
 // Remplace les quatre tables Supabase de la version SaaS. Aucune dépendance, aucun serveur
 // de base de données : le fichier vit à côté du code et s'inspecte avec un éditeur de texte.
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { Buffer } from "node:buffer";
@@ -156,13 +158,25 @@ export class Stockage {
       return base;
     } catch (erreur) {
       const message = erreur instanceof Error ? erreur.message : String(erreur);
-      throw new Error(`Fichier de données illisible (${this.chemin}) : ${message}`);
+      const sauvegarde = existsSync(`${this.chemin}.bak`) ? ` La version précédente est disponible dans ${this.chemin}.bak.` : "";
+      throw new Error(`Fichier de données illisible (${this.chemin}) : ${message}.${sauvegarde}`);
     }
   }
 
-  /** Écriture atomique : fichier temporaire puis renommage, pour ne jamais laisser un JSON tronqué. */
+  /**
+   * Écriture atomique : fichier temporaire puis renommage, pour ne jamais laisser un JSON
+   * tronqué. La version précédente est conservée en `.bak` — un disque plein ou un arrêt
+   * brutal ne doit pas coûter un fichier de prospects.
+   */
   private ecrit(): void {
     mkdirSync(dirname(this.chemin), { recursive: true });
+    if (existsSync(this.chemin)) {
+      try {
+        copyFileSync(this.chemin, `${this.chemin}.bak`);
+      } catch (erreur) {
+        console.error(`[stockage] sauvegarde impossible : ${erreur instanceof Error ? erreur.message : erreur}`);
+      }
+    }
     const temporaire = `${this.chemin}.tmp`;
     writeFileSync(temporaire, JSON.stringify(this.base, null, 2), "utf8");
     renameSync(temporaire, this.chemin);

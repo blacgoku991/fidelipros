@@ -1,7 +1,7 @@
 // Notation d'un audit : une note par pilier, une note globale, un niveau d'urgence.
 
 import { LIBELLES_SEVERITE } from "./regles.ts";
-import type { Finding, Pilier, ScoresAudit, Severite, Urgence } from "./types.ts";
+import type { ContexteAudit, Finding, Pilier, ScoresAudit, Severite, Urgence } from "./types.ts";
 
 /** Poids de chaque pilier dans la note globale. */
 export const PONDERATION_PILIERS: Record<Pilier, number> = {
@@ -46,6 +46,34 @@ export function calculeScores(findings: Finding[]): ScoresAudit {
   );
 
   return { global, seo, design, securite, technique, urgence: urgenceDepuis(global, findings) };
+}
+
+/**
+ * Volets dont une source de mesure a manqué.
+ *
+ * Une note se calcule en retirant des points pour chaque défaut constaté : si une source n'a
+ * pas répondu, ses défauts éventuels n'ont pas pu être constatés et le volet ressort trop
+ * favorable — Lighthouse indisponible et le volet technique afficherait 100/100. On le signale
+ * plutôt que de laisser croire à un site parfait sur ce point.
+ */
+export function piliersPartiels(ctx: ContexteAudit): Pilier[] {
+  const partiels = new Set<Pilier>();
+
+  // Lighthouse alimente la performance, l'accessibilité, la note SEO et les Core Web Vitals.
+  if (!ctx.lighthouse) {
+    partiels.add("technique");
+    partiels.add("design");
+    partiels.add("seo");
+  }
+  // Protection email : un résolveur muet ne prouve pas l'absence de SPF ou de DMARC.
+  const dns = ctx.dns;
+  if (!dns || !dns.spf.verifie || !dns.dmarc.verifie || !dns.mx.verifie) partiels.add("securite");
+  // Sondage désactivé (audit rapide) : les fichiers exposés n'ont pas été cherchés.
+  if (ctx.fichiersExposes === null) partiels.add("securite");
+  // Pages annexes non lues : robots.txt, sitemap et page 404 pèsent sur le référencement.
+  if (!ctx.robots || !ctx.sitemap || !ctx.page404) partiels.add("seo");
+
+  return (["seo", "design", "securite", "technique"] as Pilier[]).filter((p) => partiels.has(p));
 }
 
 /** Défauts triés par gravité puis par poids : l'ordre d'attaque commerciale. */

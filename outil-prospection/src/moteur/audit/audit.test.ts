@@ -17,7 +17,9 @@ import {
   niveauxTitres, ressourcesNonSecurisees, texteVisible, titrePage, typesJsonLd,
 } from "./html.ts";
 import { REGLES, constate, reglesDuPilier } from "./regles.ts";
-import { argumentsCles, calculeScores, resumeSeverites, scorePilier } from "./score.ts";
+import {
+  argumentsCles, calculeScores, piliersPartiels, resumeSeverites, scorePilier,
+} from "./score.ts";
 import { evalueSeo } from "./seo.ts";
 import { evalueDesign } from "./design.ts";
 import { evalueSecurite } from "./securite.ts";
@@ -1064,5 +1066,87 @@ describe("robustesse face à une page hostile", () => {
     );
     expect(resultat).toBeNull();
     expect(appels).toEqual([]);
+  });
+});
+
+describe("volets partiellement mesurés", () => {
+  it("signale les volets dont une source a manqué", () => {
+    // Lighthouse absent : performance, accessibilité et note SEO manquent.
+    const sansLighthouse = piliersPartiels(contexte({ lighthouse: null }));
+    expect(sansLighthouse).toContain("technique");
+    expect(sansLighthouse).toContain("design");
+    expect(sansLighthouse).toContain("seo");
+
+    // Résolveur DNS muet : on ne peut rien conclure sur SPF / DMARC.
+    expect(piliersPartiels(contexte({ dns: null }))).toContain("securite");
+    expect(piliersPartiels(contexte({
+      dns: { mx: { verifie: true, valeur: [] }, spf: { verifie: false, valeur: null }, dmarc: { verifie: true, valeur: null } },
+    }))).toContain("securite");
+
+    // Sondage désactivé (audit rapide) : les fichiers exposés n'ont pas été cherchés.
+    expect(piliersPartiels(contexte({ fichiersExposes: null }))).toContain("securite");
+
+    // Pages annexes non lues : le référencement n'est que partiellement mesuré.
+    expect(piliersPartiels(contexte({ robots: null }))).toContain("seo");
+  });
+
+  it("ne signale rien quand tout a été mesuré", () => {
+    const complet = contexte({
+      lighthouse: {
+        performance: 40, seo: 70, accessibilite: 60, bonnesPratiques: 70,
+        lcpMs: 3000, cls: 0.05, tbtMs: 200, octets: 900_000, requetes: 40,
+        audits: {}, captureDataUri: null,
+      },
+      fichiersExposes: [],
+    });
+    expect(piliersPartiels(complet)).toEqual([]);
+  });
+
+  it("porte l'information dans le résultat de l'audit", async () => {
+    // Sans clé PageSpeed et sans DNS joignable, le volet technique afficherait 100/100 :
+    // le rapport doit dire que la mesure est partielle.
+    const impl = fetchSimule({
+      "https://garage-martin.fr/": {
+        corps: `<html><head><title>Garage Martin, mécanique générale à Bordeaux</title>
+          <meta name="description" content="${"Entretien et réparation toutes marques à Bordeaux. ".repeat(3)}">
+          <meta name="viewport" content="width=device-width"></head>
+          <body><h1>Garage Martin</h1>${"Entretien, réparation, pneus. ".repeat(30)}</body></html>`,
+      },
+    });
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+    expect(audit.scores.partiels).toContain("technique");
+    expect(audit.scores.partiels).toContain("securite");
+  });
+});
+
+describe("seconde chance sur la page d'accueil", () => {
+  it("réessaie une fois avant de déclarer un site non analysable", async () => {
+    let appels = 0;
+    // Premier appel : incident réseau. Second : le site répond normalement.
+    const impl = (async (url: string) => {
+      appels++;
+      if (appels === 1) throw new Error("ECONNRESET");
+      return {
+        ok: true, status: 200, url: String(url),
+        headers: { get: (nom: string) => (nom.toLowerCase() === "content-type" ? "text/html" : null) },
+        text: async () => `<html><head><title>Garage Martin, mécanique à Bordeaux</title></head>
+          <body><h1>Garage Martin</h1>${"Entretien et réparation. ".repeat(30)}</body></html>`,
+        json: async () => ({}),
+        body: null,
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+
+    expect(appels).toBeGreaterThan(1);
+    expect(audit.concluant).toBe(true);
+    expect(audit.accessibilite).toBe("ok");
+  });
+
+  it("conclut à l'impossibilité d'analyser si les deux tentatives échouent", async () => {
+    const impl = (async () => { throw new Error("timeout"); }) as unknown as typeof fetch;
+    const audit = await auditeSite("https://garage-martin.fr/", { fetchImpl: impl, profondeur: "rapide" });
+    expect(audit.concluant).toBe(false);
+    expect(audit.findings).toEqual([]);
   });
 });
