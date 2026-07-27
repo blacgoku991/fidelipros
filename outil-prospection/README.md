@@ -81,6 +81,39 @@ c'est l'audit qui cherchera réellement un site avant de conclure.
 Les deux sources se complètent et se rejoignent : un commerce déjà connu par Sirene n'est pas
 dupliqué, sa fiche gagne simplement le téléphone et l'adresse relevés sur le terrain.
 
+### La chasse aux leads, pas à pas
+
+C'est le parcours qui donne des prospects réellement exploitables — nom, **téléphone**, souvent
+l'email, la fiche Google, et l'état réel du site :
+
+1. **Prospects → Trouver des commerces** : une commune (ou un code postal) et une ou plusieurs
+   catégories. La recherche interroge OpenStreetMap et rend les établissements tels qu'ils
+   existent sur le terrain, avec leur adresse, leur téléphone et leur site quand il est déclaré.
+2. **Auditer** la liste (bouton *Auditer 10 prospects*, ou l'audit d'une fiche). Pour chacun :
+   le site est cherché puis analysé, et les coordonnées publiées sont relevées sur l'accueil,
+   la page Contact et les **mentions légales**.
+3. **Lire le classement.** Le score fait le tri tout seul :
+
+| Situation | Statut | Score | Ce que vous vendez |
+|---|---|---|---|
+| Aucun site | `aucun_site` | le plus haut | une création |
+| Site daté, non responsive, en HTTP… | `site_obsolete` | élevé | une refonte |
+| Site correct mais perfectible | `site_a_rafraichir` | moyen | des correctifs |
+| Site récent et propre | `site_recent` | le plus bas | rien — passez au suivant |
+
+Vérifié de bout en bout sur quatre commerces simulés : la boulangerie et le garage sans site
+sortent à 78, le salon au site daté à 58 (avec son email récupéré dans les mentions légales,
+alors qu'il était écrit en anti-robot), et la pharmacie au site correct tombe à 41. Le
+téléphone de la pharmacie, absent d'OpenStreetMap, a été relevé sur son site.
+
+> **Et Google Maps ?** Extraire automatiquement les fiches Google est interdit par les
+> conditions d'utilisation de Google, qui bloque activement ces accès (captcha, blocage
+> d'adresse IP) : l'outil deviendrait inutilisable du jour au lendemain, et le risque serait
+> pour vous. OpenStreetMap fournit les mêmes informations — nom, adresse, téléphone, site,
+> horaires — sous une licence qui autorise explicitement cet usage. Le lien vers la fiche
+> Google reste proposé sur chaque prospect : celui publié sur son site quand il existe, une
+> recherche Google Maps sinon, et l'interface distingue clairement les deux.
+
 ### Les sociétés toutes neuves
 
 Le filtre d'ancienneté descend à **1, 2 ou 3 mois**, et le raccourci *« Sociétés créées ces
