@@ -16,7 +16,7 @@ import { extname, join, normalize, resolve } from "node:path";
 import process from "node:process";
 
 import {
-  appliqueAudit, appliqueFiltres, categorieEcart, dateIlYaNMois, filtreSelonCible, filtresValides,
+  ageEnMois, appliqueAudit, appliqueFiltres, categorieEcart, dateIlYaNMois, filtreSelonCible, filtresValides,
   respecteFiltres, scoreProspect, versCsv,
 } from "../moteur/core.ts";
 import { nafDesSecteurs, SECTEURS_CIBLES, TRANCHES_EFFECTIF } from "../moteur/naf.ts";
@@ -57,6 +57,17 @@ const STATUTS_SITE: StatutSite[] = [
 ];
 
 /** Opportunité commerciale associée à un état déclaré à la main. */
+/**
+ * Jusqu'où descendre dans le classement de l'API quand l'objectif n'est pas atteint.
+ * 60 pages × 25 = 1 500 entreprises examinées au maximum ; c'est la durée ci-dessous qui
+ * arrête réellement la recherche, ce plafond n'est qu'un garde-fou.
+ */
+const PAGES_MAX_RECHERCHE = 60;
+/** Au-delà, on rend ce qu'on a trouvé : mieux vaut un résultat partiel qu'une page qui tourne. */
+const DUREE_MAX_RECHERCHE_MS = 25_000;
+/** Nombre d'entreprises « les plus jeunes trouvées » remontées quand rien ne passe le filtre. */
+const NB_PLUS_JEUNES = 8;
+
 const OPPORTUNITE_PAR_STATUT: Record<StatutSite, number> = {
   non_verifie: 50,
   aucun_site: 100,
@@ -318,6 +329,12 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
   const recherche = await rechercheEntreprises(filtres, {
     objectif,
     endpoint: process.env.SIRENE_URL || undefined,
+    // L'API classe par pertinence : sur « créées il y a moins de 2 mois », les grosses
+    // entreprises anciennes occupent tout le haut du classement. Tant que l'objectif n'est
+    // pas atteint, on descend donc bien plus loin que les 10 pages nominales — le temps,
+    // et non le nombre de pages, sert de garde-fou.
+    pagesMax: PAGES_MAX_RECHERCHE,
+    echeance: debut + DUREE_MAX_RECHERCHE_MS,
     retenir: (prospect) => respecteFiltres(prospect, filtres) === null,
     onPage: (page, total) => {
       travail.etape = `page ${page} — ${nombreFr(total)} entreprise(s) correspondent aux critères de l'API`;
@@ -358,11 +375,31 @@ async function lanceProspection(corps: Record<string, unknown>, travail: Travail
     raisons[categorie] = (raisons[categorie] ?? 0) + 1;
   }
 
+  // Rien ne passe le filtre d'âge : plutôt qu'un écran vide, on montre les entreprises les
+  // plus jeunes réellement trouvées. Le prospecteur voit l'âge du gisement et sait de combien
+  // élargir, au lieu de deviner.
+  const plusJeunes = (filtres.creeApres && !retenus.length)
+    ? recherche.ecartes
+      .filter((p) => p.date_creation)
+      .sort((a, b) => (b.date_creation! < a.date_creation! ? -1 : 1))
+      .slice(0, NB_PLUS_JEUNES)
+      .map((p) => ({
+        nom: p.enseigne?.trim() || p.nom,
+        ville: p.ville,
+        date_creation: p.date_creation,
+        age_mois: ageEnMois(p.date_creation),
+      }))
+    : [];
+
   return {
     total_disponible: recherche.totalDisponible,
     analyses: recherche.analysees,
     pages_parcourues: recherche.pagesParcourues,
     objectif,
+    // Faux quand l'API a ignoré la fenêtre de dates : sans ça, un « 0 retenu » se lit comme
+    // « la base est vide » alors que c'est le tri par pertinence qui est en cause.
+    filtre_date_applique: recherche.filtreDateApplique,
+    plus_jeunes: plusJeunes,
     hors_criteres: ecartes.length,
     raisons_ecart: Object.entries(raisons).map(([raison, nombre]) => ({ raison, nombre }))
       .sort((a, b) => b.nombre - a.nombre),
@@ -719,6 +756,13 @@ async function route(req: IncomingMessage, res: ServerResponse): Promise<void> {
 
   if (methode === "GET" && chemin === "/api/prospects") {
     envoieJson(res, { prospects: stockage.prospects().map(vueListe) });
+    return;
+  }
+
+  // Repartir de zéro : supprime tous les prospects, audits et documents, jamais le catalogue
+  // de prestations ni l'identité de l'émetteur (ce sont des réglages, pas des résultats).
+  if (methode === "DELETE" && chemin === "/api/prospects") {
+    envoieJson(res, { supprimes: stockage.videProspects() });
     return;
   }
 

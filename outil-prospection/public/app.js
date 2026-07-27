@@ -635,6 +635,7 @@ async function vueProspects() {
           </select>
           <button type="button" id="auditer-lot">Auditer 10 prospects</button>
           <button type="button" id="exporter">Exporter en CSV</button>
+          <button type="button" id="vider-prospects" class="discret">Tout supprimer</button>
         </div>
       </div>
       <div id="progression-audits"></div>
@@ -661,6 +662,27 @@ async function vueProspects() {
   vue.querySelector("#vider-criteres").addEventListener("click", () => {
     localStorage.removeItem(CLE_CRITERES);
     vueProspects();
+  });
+
+  // Repartir de zéro. Irréversible et non filtré : on demande confirmation en annonçant le
+  // nombre exact, et on rappelle que le catalogue et l'identité sont conservés.
+  vue.querySelector("#vider-prospects").addEventListener("click", async (evenement) => {
+    if (!prospects.length) {
+      notifie("La liste est déjà vide", "info");
+      return;
+    }
+    const message = `Supprimer définitivement les ${prospects.length} prospect(s), leurs audits ` +
+      `et leurs documents ?\n\nVos prestations et votre identité sont conservées.`;
+    if (!window.confirm(message)) return;
+    try {
+      const { supprimes } = await pendant(evenement.currentTarget, "Suppression…", () =>
+        api("/api/prospects", { methode: "DELETE" }));
+      dernierBilan = null;
+      await chargeEtAffiche();
+      notifie(`${supprimes} prospect(s) supprimé(s)`, "succes");
+    } catch (erreur) {
+      notifie(erreur.message, "erreur");
+    }
   });
 
   // Raccourci « sociétés toutes neuves » : deux mois d'ancienneté, et on efface les dates
@@ -835,6 +857,15 @@ function messageRecherche(bilan) {
     return `${bilan.retenus} prospect(s) retenu(s) — ${bilan.nouveaux} nouveau(x)` +
       (bilan.hors_criteres ? `, ${bilan.hors_criteres} écarté(s) par vos critères` : "");
   }
+  // Le filtre d'âge est celui qui vide le plus souvent l'écran : on montre alors le gisement
+  // réel (les plus jeunes trouvées) plutôt que de renvoyer l'utilisateur deviner un chiffre.
+  const jeunes = bilan.plus_jeunes ?? [];
+  if (jeunes.length) {
+    const ages = jeunes.map((j) => j.age_mois).filter((m) => typeof m === "number");
+    const plusJeune = ages.length ? Math.min(...ages) : null;
+    return `Aucune entreprise assez récente : ${bilan.analyses} examinée(s), la plus jeune a ` +
+      `${plusJeune ?? "?"} mois. Élargissez l'ancienneté — le détail est sous le tableau.`;
+  }
   const raison = raisonDominante(bilan);
   if (raison) {
     return `Aucun prospect retenu : ${bilan.analyses} entreprise(s) examinée(s), toutes écartées ` +
@@ -898,7 +929,47 @@ function dessineBilan() {
     ${raisons ? `<div class="aide-mini">Écartées par vos critères :
       <ul style="margin:4px 0 0 18px">${raisons}</ul>
       <p style="margin-top:6px">Ces critères sont vérifiés ici sur chaque entreprise reçue : l'API
-        ne sait pas tous les appliquer elle-même, en particulier la date de création.</p></div>` : ""}`;
+        ne sait pas tous les appliquer elle-même, en particulier la date de création.</p></div>` : ""}
+    ${panneauPlusJeunes(bilan)}`;
+
+  // Élargir en un clic : le mois proposé est celui qui ferait entrer la plus jeune trouvée.
+  cible.querySelector("#elargir-age")?.addEventListener("click", (evenement) => {
+    const mois = Number(evenement.currentTarget.dataset.mois);
+    const champ = vue.querySelector("#depuis");
+    // La liste ne propose que certains paliers : on prend le premier qui couvre le besoin.
+    const palier = [...champ.options].map((o) => Number(o.value))
+      .filter((v) => v > 0).sort((a, b) => a - b).find((v) => v >= mois);
+    champ.value = palier ? String(palier) : "";
+    vue.querySelector("#creeApres").value = "";
+    notifie(palier ? `Ancienneté portée à ${palier} mois — relancez la recherche`
+      : "Critère d'ancienneté retiré — relancez la recherche", "info");
+  });
+}
+
+/**
+ * Quand le filtre d'âge ne laisse rien passer, montrer le gisement réel : les entreprises les
+ * plus jeunes trouvées, avec leur âge. Un écran vide ne dit pas s'il faut élargir d'un mois ou
+ * de deux ans ; cette liste le dit, et le bouton applique le bon palier.
+ */
+function panneauPlusJeunes(bilan) {
+  const jeunes = bilan.plus_jeunes ?? [];
+  if (!jeunes.length) return "";
+  const ages = jeunes.map((j) => j.age_mois).filter((m) => typeof m === "number");
+  const plusJeune = ages.length ? Math.min(...ages) : null;
+
+  return `<div class="carte serree" style="margin-top:14px">
+    <h3 style="margin-top:0">Aucune entreprise assez récente — voici les plus jeunes trouvées</h3>
+    <ul style="margin:0 0 10px 18px">
+      ${jeunes.map((j) => `<li>${esc(j.nom)}${j.ville ? ` — ${esc(j.ville)}` : ""}
+        <span class="aide-mini">créée le ${dateCourte(j.date_creation)}${
+          typeof j.age_mois === "number" ? ` · ${j.age_mois} mois` : ""}</span></li>`).join("")}
+    </ul>
+    ${plusJeune !== null ? `<button id="elargir-age" class="primaire petit" data-mois="${plusJeune}">
+      Élargir à ${plusJeune} mois d'ancienneté</button>` : ""}
+    <p class="aide-mini">${bilan.filtre_date_applique === false
+      ? "L'API a ignoré la fenêtre de dates : le tri se fait par pertinence, les entreprises jeunes arrivent en dernier. La recherche est donc descendue bien au-delà des premières pages avant de conclure."
+      : "Le gisement d'entreprises très récentes est mince sur ce secteur et ce département : élargissez la zone ou l'ancienneté."}</p>
+  </div>`;
 }
 
 /** Les prospects effectivement listés, après les filtres d'affichage. */

@@ -462,6 +462,61 @@ describe("rechercheEntreprises", () => {
       /Filtres insuffisants/,
     );
   });
+
+  // L'API classe par pertinence : sur « créées récemment », les jeunes entreprises sont en
+  // fin de classement. S'arrêter au budget nominal revient à conclure « rien » sans les avoir
+  // atteintes — c'est le « 0 prospect retenu » constaté en usage réel.
+  it("descend au-delà du budget nominal tant que l'objectif n'est pas atteint", async () => {
+    const fetchSimule = (async (url: string) => {
+      const page = Number(new URL(String(url)).searchParams.get("page"));
+      // Les entreprises conformes n'apparaissent qu'à la page 7, hors du budget de 2 pages.
+      const jeune = page >= 7;
+      return reponseJson({
+        total_results: 500, total_pages: 20,
+        results: [{
+          ...entrepriseApi,
+          siren: String(900000000 + page),
+          date_creation: jeune ? "2026-07-01" : "2004-03-02",
+        }],
+      });
+    }) as unknown as typeof fetch;
+
+    const resultat = await rechercheEntreprises(
+      { departement: "33", pages: 2, creeApres: "2026-06-01" },
+      {
+        fetchImpl: fetchSimule, delaiEntrePagesMs: 0, objectif: 2, pagesMax: 12,
+        retenir: (p) => (p.date_creation ?? "") >= "2026-06-01",
+      },
+    );
+
+    expect(resultat.prospects).toHaveLength(2);
+    expect(resultat.pagesParcourues).toBe(8);
+    // Les entreprises écartées restent disponibles : elles alimentent « les plus jeunes ».
+    expect(resultat.ecartes.length).toBeGreaterThan(0);
+  });
+
+  it("signale que l'API a ignoré la fenêtre de dates demandée", async () => {
+    const parPage = (dateCreation: string) => (async (url: string) => reponseJson({
+      total_results: 100, total_pages: 4,
+      results: Array.from({ length: 6 }, (_, i) => ({
+        ...entrepriseApi,
+        siren: String(910000000 + Number(new URL(String(url)).searchParams.get("page")) * 10 + i),
+        date_creation: dateCreation,
+      })),
+    })) as unknown as typeof fetch;
+
+    const ignore = await rechercheEntreprises(
+      { departement: "33", pages: 1, creeApres: "2026-06-01" },
+      { fetchImpl: parPage("1998-01-01"), delaiEntrePagesMs: 0 },
+    );
+    expect(ignore.filtreDateApplique).toBe(false);
+
+    const applique = await rechercheEntreprises(
+      { departement: "33", pages: 1, creeApres: "2026-06-01" },
+      { fetchImpl: parPage("2026-07-01"), delaiEntrePagesMs: 0 },
+    );
+    expect(applique.filtreDateApplique).toBe(true);
+  });
 });
 
 describe("detecteEtAuditeSite", () => {

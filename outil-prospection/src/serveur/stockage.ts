@@ -343,6 +343,24 @@ export class Stockage {
     return true;
   }
 
+  /**
+   * Vide entièrement le fichier de prospects (et les audits, documents et captures liés).
+   * Le catalogue de prestations et l'identité de l'émetteur sont conservés : ce sont des
+   * réglages, pas des résultats de recherche.
+   */
+  videProspects(): number {
+    const supprimes = this.base.prospects.length;
+    if (!supprimes) return 0;
+    for (const audit of this.base.audits) {
+      if (audit.capture) rmSync(join(this.dossierCaptures, audit.capture), { force: true });
+    }
+    this.base.prospects = [];
+    this.base.audits = [];
+    this.base.documents = [];
+    this.ecrit();
+    return supprimes;
+  }
+
   // ── Audits ────────────────────────────────────────────────────────────────
 
   enregistreAudit(prospectId: string, audit: AuditSiteComplet): AuditStocke {
