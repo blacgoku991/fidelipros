@@ -48,15 +48,20 @@ export function evalueTechnique(ctx: ContexteAudit): Finding[] {
     findings.push(constate("tech_cache_absent", "Google relève des fichiers servis sans durée de cache"));
   }
 
+  // TTFB : uniquement la vraie mesure de Google (server-response-time). `accueil.dureeMs`
+  // inclut le téléchargement du corps ET la latence de notre propre réseau — ce n'est pas le
+  // temps de réponse du serveur, on ne le présente donc pas comme tel (zéro donnée mal étiquetée).
   const dureeServeur = lh?.audits?.["server-response-time"];
-  if ((dureeServeur && !dureeServeur.reussi) || accueil.dureeMs > 1500) {
-    findings.push(constate("tech_ttfb_lent", `Première réponse du serveur en ${(accueil.dureeMs / 1000).toFixed(1)} s`));
+  if (dureeServeur && !dureeServeur.reussi) {
+    findings.push(constate(
+      "tech_ttfb_lent",
+      "Google relève un temps de réponse du serveur trop élevé (audit « server-response-time » échoué)",
+    ));
   }
 
-  // alt-svc annonce HTTP/3 ; son absence combinée à une réponse lente trahit un hébergement daté.
-  if (!entetes["alt-svc"] && accueil.dureeMs > 1000) {
-    findings.push(constate("tech_http2_absent", "Aucune annonce HTTP/3 (en-tête alt-svc) et réponse serveur lente"));
-  }
+  // Le protocole HTTP négocié (HTTP/1.1 vs 2 vs 3) n'est pas exposé par fetch : impossible de
+  // le mesurer de façon fiable. On ne devine pas depuis l'absence d'un en-tête `alt-svc`
+  // (que la plupart des sites HTTP/2 n'envoient jamais) — le check était un faux positif.
 
   if (lh?.audits?.["errors-in-console"] && !lh.audits["errors-in-console"].reussi) {
     findings.push(constate("tech_erreurs_console", "Google relève des erreurs JavaScript au chargement"));

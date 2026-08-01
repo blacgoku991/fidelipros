@@ -285,9 +285,17 @@ export function comptePolices(html: string): number {
 
 /** Ressources chargées en http:// depuis une page (contenu mixte). */
 export function ressourcesNonSecurisees(html: string): string[] {
-  return [...html.matchAll(/(?:src|href)=["'](http:\/\/[^"']+)["']/gi)]
-    .map((m) => m[1])
+  // Vraie faille de contenu mixte = une RESSOURCE chargée en http:// sur une page https://
+  // (image, script, iframe, média, feuille de style). Un simple lien de navigation
+  // `<a href="http://…">` n'est PAS du contenu mixte — l'inclure produisait un faux positif.
+  const ressources: string[] = [];
+  // src="http://…" couvre img, script, iframe, audio, video, source.
+  for (const m of html.matchAll(/\bsrc=["'](http:\/\/[^"']+)["']/gi)) ressources.push(m[1]);
+  // href="http://…" uniquement dans une balise <link> (feuille de style, préchargement).
+  for (const m of html.matchAll(/<link\b[^>]*?\bhref=["'](http:\/\/[^"']+)["']/gi)) ressources.push(m[1]);
+  return ressources
     .filter((url) => !/\.(xml|txt)$/i.test(url) && !url.includes("://localhost"))
+    .filter((url, i, tab) => tab.indexOf(url) === i)
     .slice(0, 10);
 }
 

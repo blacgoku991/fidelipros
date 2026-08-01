@@ -210,7 +210,7 @@ export const REGLES: Record<string, Regle> = {
   design_viewport_absent: {
     pilier: "design", severite: "critique", poids: 35,
     titre: "Site non adapté au mobile",
-    impact: "Plus de 6 visiteurs sur 10 arrivent depuis un téléphone : ils voient un site minuscule et repartent aussitôt.",
+    impact: "La plupart des visiteurs arrivent depuis un téléphone : sans version mobile, le site s'affiche en tout petit et ils repartent.",
     effort: "moyen", prestations: ["responsive_mobile", "refonte_site"],
   },
   design_debordement_mobile: {
@@ -278,7 +278,7 @@ export const REGLES: Record<string, Regle> = {
   design_layout_tableaux: {
     pilier: "design", severite: "majeur", poids: 15,
     titre: "Mise en page construite avec des tableaux HTML",
-    impact: "Méthode abandonnée depuis 2010 : affichage cassé sur mobile et impossible à faire évoluer.",
+    impact: "Technologie de mise en page abandonnée de longue date : affichage fragile sur mobile et difficile à faire évoluer.",
     effort: "eleve", prestations: ["refonte_site"],
   },
   design_flash: {
@@ -308,7 +308,7 @@ export const REGLES: Record<string, Regle> = {
   design_lcp_lent: {
     pilier: "design", severite: "majeur", poids: 10,
     titre: "Affichage du contenu principal trop lent",
-    impact: "Au-delà de 2,5 secondes d'attente, la moitié des visiteurs mobiles sont déjà partis.",
+    impact: "Un temps de chargement élevé fait partir une part importante des visiteurs avant l'affichage.",
     effort: "moyen", prestations: ["optimisation_perf"],
   },
   design_cls_eleve: {
@@ -625,7 +625,7 @@ export const REGLES: Record<string, Regle> = {
   tech_compression_absente: {
     pilier: "technique", severite: "majeur", poids: 10,
     titre: "Compression des pages désactivée",
-    impact: "Les pages transitent 3 à 4 fois plus lourdes que nécessaire.",
+    impact: "Les pages sont transmises bien plus lourdes que nécessaire, ce qui ralentit l'affichage.",
     effort: "faible", prestations: ["optimisation_perf"],
   },
   tech_cache_absent: {

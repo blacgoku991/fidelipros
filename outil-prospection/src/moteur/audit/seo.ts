@@ -110,7 +110,18 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
 
   // ── Navigation, contact, mentions ────────────────────────────────────────
   const tousLiens = liens(html);
-  const interneCount = tousLiens.filter((l) => !/^(https?:)?\/\//i.test(l.href) || l.href.includes(hote(accueil.urlFinale))).length;
+  const hoteAccueil = hote(accueil.urlFinale).replace(/^www\./, "");
+  const estInterne = (href: string): boolean => {
+    // Lien relatif → interne. Lien absolu → interne seulement si même hôte.
+    if (!/^(https?:)?\/\//i.test(href)) return true;
+    if (!hoteAccueil) return false; // hôte indéterminé : on ne tranche pas « interne » à tort
+    try {
+      return new URL(href, accueil.urlFinale).hostname.replace(/^www\./, "") === hoteAccueil;
+    } catch {
+      return false;
+    }
+  };
+  const interneCount = tousLiens.filter((l) => estInterne(l.href)).length;
   if (interneCount < 5) {
     findings.push(constate("seo_maillage_faible", `${interneCount} lien(s) interne(s) détecté(s)`));
   }
@@ -128,7 +139,10 @@ export function evalueSeo(ctx: ContexteAudit): Finding[] {
   // Détection linéaire : le motif à quantificateur imbriqué s'effondrait sur une page
   // contenant une longue suite de chiffres (plusieurs secondes de blocage).
   const aTelephone = telephonesDepuisHtml(texte).length > 0;
-  const aAdresse = /\b\d{5}\b/.test(texte);
+  // Adresse = code postal français (préfixe département 01-98) SUIVI d'un nom de ville.
+  // L'ancien `\b\d{5}\b` prenait n'importe quel nombre à 5 chiffres (prix, référence, année)
+  // pour une adresse → faux positif systématique. Ici on exige « 33000 Bordeaux ».
+  const aAdresse = /\b(?:0[1-9]|[1-8]\d|9[0-8])\d{3}\s+[A-ZÀ-Ÿ][a-zà-ÿ]/.test(texte);
   if (!aTelephone || !aAdresse) {
     findings.push(
       constate(

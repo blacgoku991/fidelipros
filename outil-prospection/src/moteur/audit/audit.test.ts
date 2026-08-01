@@ -190,6 +190,16 @@ describe("extracteurs HTML", () => {
     expect(anneeCopyright("<p>© 2099 futur</p>", 2026)).toBeNull();
   });
 
+  it("ne prend pas un lien de navigation http:// pour du contenu mixte (faux positif retiré)", () => {
+    // Un <a href="http://…"> est une navigation, pas une ressource chargée : ce n'est PAS
+    // du contenu mixte. Seules img/script/iframe (src) et <link> (href) en sont.
+    expect(ressourcesNonSecurisees('<a href="http://vieux-partenaire.fr">Notre partenaire</a>')).toEqual([]);
+    expect(ressourcesNonSecurisees(
+      '<a href="http://x.fr">lien</a><script src="http://cdn.fr/a.js"></script>' +
+      '<link rel="stylesheet" href="http://cdn.fr/s.css">',
+    )).toEqual(["http://cdn.fr/a.js", "http://cdn.fr/s.css"]);
+  });
+
   it("compte les familles de polices", () => {
     expect(comptePolices('<style>body{font-family:"Inter",sans-serif}h1{font-family:Georgia}</style>')).toBe(2);
   });
@@ -244,6 +254,26 @@ describe("evalueSeo", () => {
     expect(ids).toContain("seo_alt_manquants");
     expect(ids).toContain("seo_nap_absent");
     expect(ids).toContain("seo_page_contact_absente");
+  });
+
+  it("ne prend pas un nombre à 5 chiffres quelconque pour une adresse postale (faux positif retiré)", () => {
+    const tel = "05 56 12 34 56";
+    const sansAdresse = `<p>Téléphone ${tel} — Référence produit 12345 — commande 90210</p>`;
+    expect(evalueSeo(contexte({ accueil: reponse({ html: sansAdresse }) })).map((f) => f.regle))
+      .toContain("seo_nap_absent");
+    const avecAdresse = `<p>8 rue de la Paix, 33000 Bordeaux — Tél. ${tel}</p>`;
+    expect(evalueSeo(contexte({ accueil: reponse({ html: avecAdresse }) })).map((f) => f.regle))
+      .not.toContain("seo_nap_absent");
+  });
+
+  it("ne compte pas un lien externe contenant le domaine comme lien interne (faux positif retiré)", () => {
+    const html = `<html><body>
+      <a href="/services">Services</a><a href="/tarifs">Tarifs</a>
+      <a href="/contact">Contact</a><a href="/a-propos">À propos</a>
+      <a href="https://annuaire-spam.com/?u=garagemartin.fr">annuaire</a>
+    </body></html>`;
+    expect(evalueSeo(contexte({ accueil: reponse({ html }) })).map((f) => f.regle))
+      .toContain("seo_maillage_faible");
   });
 
   it("signale un site désindexé", () => {
@@ -439,7 +469,11 @@ describe("evalueTechnique", () => {
   it("mesure lenteur, poids et absence de compression", () => {
     const findings = evalueTechnique(contexte({
       accueil: reponse({ dureeMs: 2600, octets: 120_000, entetes: { "content-type": "text/html" } }),
-      lighthouse: lighthouse({ performance: 28, octets: 4_200_000, requetes: 140 }),
+      lighthouse: lighthouse({
+        performance: 28, octets: 4_200_000, requetes: 140,
+        // TTFB ne vient QUE de la vraie mesure Google, pas du temps total de notre requête.
+        audits: { "server-response-time": { note: null, reussi: false } },
+      }),
     }));
     const ids = findings.map((f) => f.regle);
 
@@ -448,6 +482,18 @@ describe("evalueTechnique", () => {
     expect(ids).toContain("tech_trop_de_requetes");
     expect(ids).toContain("tech_compression_absente");
     expect(ids).toContain("tech_ttfb_lent");
+  });
+
+  it("ne présente plus le temps total de requête comme un TTFB serveur (faux positif retiré)", () => {
+    // dureeMs élevé mais AUCUNE mesure Lighthouse de server-response-time : on ne conclut rien
+    // sur le serveur (le temps total inclut le téléchargement et notre propre latence réseau).
+    const findings = evalueTechnique(contexte({
+      accueil: reponse({ dureeMs: 5000, octets: 120_000, entetes: { "content-encoding": "gzip", "content-type": "text/html" } }),
+      lighthouse: null,
+    }));
+    expect(findings.map((f) => f.regle)).not.toContain("tech_ttfb_lent");
+    // Le check « protocole HTTP obsolète » déduit de l'absence d'alt-svc est supprimé.
+    expect(findings.map((f) => f.regle)).not.toContain("tech_http2_absent");
   });
 });
 
